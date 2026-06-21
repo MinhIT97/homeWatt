@@ -5,6 +5,8 @@ namespace Modules\Device\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Modules\Device\Models\Device;
 use Modules\Device\Models\DeviceType;
@@ -12,6 +14,7 @@ use Modules\Device\Models\DeviceSpecification;
 use Modules\Device\Models\DeviceUsageProfile;
 use Modules\Device\Http\Requests\StoreDeviceRequest;
 use Modules\Device\Http\Requests\UpdateDeviceRequest;
+use Modules\AI\Models\AiAnalysisRequest;
 use Modules\Room\Models\Room;
 
 class DeviceController extends \App\Http\Controllers\Controller
@@ -84,9 +87,23 @@ class DeviceController extends \App\Http\Controllers\Controller
     {
         $this->authorize('view', $device);
 
-        $device->load(['room.home', 'deviceType', 'specification', 'usageProfile', 'energyReadings']);
+        $device->load([
+            'room.home',
+            'deviceType',
+            'specification',
+            'usageProfile',
+            'energyReadings',
+            'media' => fn($q) => $q->latest(),
+        ]);
 
-        return view('device::show', compact('device'));
+        $analyses = AiAnalysisRequest::whereIn('media_id', $device->media->pluck('id'))
+            ->with(['result.extractions'])
+            ->latest()
+            ->get();
+
+        $deviceTypes = DeviceType::orderBy('name')->get();
+
+        return view('device::show', compact('device', 'analyses', 'deviceTypes'));
     }
 
     public function edit(Request $request, Device $device): View
@@ -143,6 +160,40 @@ class DeviceController extends \App\Http\Controllers\Controller
 
         return redirect()->route('rooms.show', $room)
             ->with('success', 'Device deleted.');
+    }
+
+    public function uploadImage(Request $request, Device $device): RedirectResponse
+    {
+        $this->authorize('update', $device);
+
+        $request->validate([
+            'image' => ['required', 'image', 'mimes:jpeg,png,webp', 'max:20480'],
+        ]);
+
+        $file = $request->file('image');
+        $path = $file->store('devices/' . $device->id, 'private');
+
+        $device->media()->create([
+            'disk' => 'private',
+            'path' => $path,
+            'mime_type' => $file->getMimeType(),
+            'size' => $file->getSize(),
+            'checksum' => hash_file('sha256', $file->getRealPath()),
+            'status' => 'ready',
+        ]);
+
+        return back()->with('success', 'Ảnh đã được tải lên. Nhấn "AI Phân tích" để trích xuất thông số.');
+    }
+
+    public function deleteImage(Request $request, Device $device, $mediaId): RedirectResponse
+    {
+        $this->authorize('update', $device);
+
+        $media = $device->media()->findOrFail($mediaId);
+        Storage::disk($media->disk)->delete($media->path);
+        $media->delete();
+
+        return back()->with('success', 'Đã xóa ảnh.');
     }
 
     protected function authorizeRoomMember(Request $request, Room $room): void

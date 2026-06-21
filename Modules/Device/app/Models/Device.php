@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Device extends Model
@@ -50,5 +51,10 @@ class Device extends Model
     public function energyReadings(): HasMany
     {
         return $this->hasMany(\Modules\Energy\Models\EnergyReading::class);
+    }
+
+    public function media(): MorphMany
+    {
+        return $this->morphMany(\Modules\Media\Models\Media::class, 'owner');
     }
 }
