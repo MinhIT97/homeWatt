@@ -54,7 +54,7 @@
             <div class="mt-8">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-bold text-slate-800 font-outfit">Danh Sách Phòng</h3>
-                    <a href="#" class="text-sm text-primary-600 hover:text-primary-800 font-bold transition flex items-center gap-1">+ Thêm phòng</a>
+                    <a href="{{ route('rooms.create', ['home_id' => $home->id]) }}" class="text-sm text-primary-600 hover:text-primary-800 font-bold transition flex items-center gap-1">+ Thêm phòng</a>
                 </div>
 
                 @if($home->rooms->isEmpty())
