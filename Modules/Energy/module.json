@@ -1,0 +1,11 @@
+{
+    "name": "Energy",
+    "alias": "energy",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Energy\\Providers\\EnergyServiceProvider"
+    ],
+    "files": []
+}

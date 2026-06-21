@@ -1,0 +1,46 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t homewatt:${GITHUB_SHA} .
+
+      - name: Run migrations
+        run: |
+          docker compose exec -T app php artisan migrate --force
+
+      - name: Deploy
+        run: |
+          docker compose up -d --no-deps app nginx
+          docker compose up -d queue queue-ai scheduler
+
+      - name: Health check
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8087/up && exit 0
+            sleep 2
+          done
+          echo "Health check failed"
+          exit 1
+
+      - name: Smoke test
+        run: |
+          curl -sf http://localhost:8087/up
+          curl -sf http://localhost:8087/version
+          curl -sf -o /dev/null http://localhost:8087/login
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          docker compose up -d --no-deps app nginx

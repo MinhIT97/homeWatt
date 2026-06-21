@@ -1,0 +1,12 @@
+{
+    "Core": true,
+    "Home": true,
+    "Room": true,
+    "Device": true,
+    "Media": true,
+    "AI": true,
+    "Energy": true,
+    "Tariff": true,
+    "Dashboard": true,
+    "Admin": true
+}
