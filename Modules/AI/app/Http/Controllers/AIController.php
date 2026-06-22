@@ -3,54 +3,54 @@
 namespace Modules\AI\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Modules\AI\Models\AiAnalysisRequest;
+use Modules\AI\Models\DeviceExtraction;
 
 class AIController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function index(Request $request): JsonResponse
     {
-        return view('ai::index');
+        $analyses = AiAnalysisRequest::where('user_id', $request->user()->id)
+            ->with(['media', 'result.extractions'])
+            ->latest()
+            ->paginate(20);
+
+        return response()->json($analyses);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function store(Request $request): JsonResponse
     {
-        return view('ai::create');
+        return response()->json(['message' => 'Use /ai/analyses endpoint'], 400);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request) {}
-
-    /**
-     * Show the specified resource.
-     */
-    public function show($id)
+    public function show(Request $request, $id): JsonResponse
     {
-        return view('ai::show');
+        $analysis = AiAnalysisRequest::with(['media', 'result.extractions'])->findOrFail($id);
+
+        if ($analysis->user_id !== $request->user()->id) {
+            abort(403);
+        }
+
+        return response()->json($analysis);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit($id)
+    public function update(Request $request, $id): JsonResponse
     {
-        return view('ai::edit');
+        return response()->json(['message' => 'Not implemented'], 405);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, $id) {}
+    public function destroy(Request $request, $id): JsonResponse
+    {
+        $analysis = AiAnalysisRequest::findOrFail($id);
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy($id) {}
+        if ($analysis->user_id !== $request->user()->id) {
+            abort(403);
+        }
+
+        $analysis->delete();
+
+        return response()->json(null, 204);
+    }
 }

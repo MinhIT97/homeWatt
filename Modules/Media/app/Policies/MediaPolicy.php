@@ -12,7 +12,13 @@ class MediaPolicy
 
     public function view(User $user, Media $media): bool
     {
-        return true;
+        return $media->owner_type === 'device'
+            && $media->owner
+            && $media->owner->room
+            && $media->owner->room->home
+            && $media->owner->room->home->members()
+                ->where('user_id', $user->id)
+                ->exists();
     }
 
     public function create(User $user): bool
@@ -22,6 +28,13 @@ class MediaPolicy
 
     public function delete(User $user, Media $media): bool
     {
-        return true;
+        if (! $media->owner || ! $media->owner->room) {
+            return false;
+        }
+
+        return $media->owner->room->home->members()
+            ->where('user_id', $user->id)
+            ->whereIn('role', ['owner', 'manager'])
+            ->exists();
     }
 }

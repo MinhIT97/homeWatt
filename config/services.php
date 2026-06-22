@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'smartplug' => [
+        'api_key' => env('SMARTPLUG_API_KEY'),
+    ],
+
 ];

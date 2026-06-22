@@ -39,6 +39,8 @@ class MediaController extends Controller
 
     public function serve(Media $media)
     {
+        $this->authorize('view', $media);
+
         if (! Storage::disk($media->disk)->exists($media->path)) {
             abort(404);
         }
