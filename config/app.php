@@ -15,6 +15,8 @@ return [
 
     'name' => env('APP_NAME', 'Laravel'),
 
+    'release' => env('APP_RELEASE', 'unknown'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment

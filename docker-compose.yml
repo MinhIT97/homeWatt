@@ -1,139 +1,176 @@
+name: homewatt
+
+x-app-environment: &app-environment
+    APP_ENV: production
+    APP_DEBUG: "false"
+    DB_HOST: db
+    DB_PORT: 3306
+    CACHE_STORE: redis
+    QUEUE_CONNECTION: database
+    REDIS_HOST: redis
+    REDIS_PORT: 6379
+    APP_RELEASE: ${APP_RELEASE:-unknown}
+
+x-app-service: &app-service
+    image: homewatt:${APP_IMAGE_TAG:-latest}
+    env_file:
+        - .env
+    environment:
+        <<: *app-environment
+    volumes:
+        - storage_data:/var/www/storage
+    networks:
+        - homewatt-network
+    restart: unless-stopped
+
 services:
-  app:
-    build:
-      context: .
-      dockerfile: docker/php/Dockerfile
-    container_name: homewatt-app
-    restart: unless-stopped
-    working_dir: /var/www
-    volumes:
-      - .:/var/www
-      - homewatt-app-storage:/var/www/storage
-    networks:
-      - homewatt-network
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      - APP_ENV=${APP_ENV:-local}
-      - APP_DEBUG=${APP_DEBUG:-false}
+    app:
+        <<: *app-service
+        build:
+            context: .
+            dockerfile: Dockerfile
+            target: production
+            args:
+                APP_RELEASE: ${APP_RELEASE:-unknown}
+        container_name: homewatt-app
+        environment:
+            <<: *app-environment
+            CONTAINER_ROLE: app
+        depends_on:
+            db:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD", "/usr/local/bin/container-healthcheck"]
+            interval: 10s
+            timeout: 5s
+            retries: 10
+            start_period: 30s
+        stop_grace_period: 30s
 
-  nginx:
-    build:
-      context: .
-      dockerfile: docker/nginx/Dockerfile
-    container_name: homewatt-nginx
-    restart: unless-stopped
-    ports:
-      - "${APP_HTTP_PORT:-8087}:80"
-    volumes:
-      - .:/var/www
-      - homewatt-app-storage:/var/www/storage
-    networks:
-      - homewatt-network
-    depends_on:
-      - app
+    queue:
+        <<: *app-service
+        container_name: homewatt-queue
+        command: php artisan queue:work --queue=default --sleep=2 --tries=3 --timeout=90
+        environment:
+            <<: *app-environment
+            CONTAINER_ROLE: queue
+        depends_on:
+            app:
+                condition: service_healthy
+        init: true
+        healthcheck:
+            test: ["CMD", "/usr/local/bin/container-healthcheck"]
+            interval: 15s
+            timeout: 5s
+            retries: 5
+            start_period: 20s
+        stop_grace_period: 120s
 
-  queue:
-    build:
-      context: .
-      dockerfile: docker/php/Dockerfile
-    container_name: homewatt-queue
-    restart: unless-stopped
-    working_dir: /var/www
-    command: php artisan queue:work redis --queue=default --sleep=3 --tries=3 --timeout=300
-    volumes:
-      - .:/var/www
-      - homewatt-app-storage:/var/www/storage
-    networks:
-      - homewatt-network
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+    queue-ai:
+        <<: *app-service
+        container_name: homewatt-queue-ai
+        command: php artisan queue:work --queue=ai --sleep=5 --tries=3 --timeout=180
+        environment:
+            <<: *app-environment
+            CONTAINER_ROLE: queue-ai
+        depends_on:
+            app:
+                condition: service_healthy
+        init: true
+        healthcheck:
+            test: ["CMD", "/usr/local/bin/container-healthcheck"]
+            interval: 15s
+            timeout: 5s
+            retries: 5
+            start_period: 20s
+        stop_grace_period: 210s
 
-  queue-ai:
-    build:
-      context: .
-      dockerfile: docker/php/Dockerfile
-    container_name: homewatt-queue-ai
-    restart: unless-stopped
-    working_dir: /var/www
-    command: php artisan queue:work redis --queue=ai --sleep=3 --tries=2 --timeout=600 --backoff=30
-    volumes:
-      - .:/var/www
-      - homewatt-app-storage:/var/www/storage
-    networks:
-      - homewatt-network
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+    scheduler:
+        <<: *app-service
+        container_name: homewatt-scheduler
+        command: php artisan schedule:work
+        environment:
+            <<: *app-environment
+            CONTAINER_ROLE: scheduler
+        depends_on:
+            app:
+                condition: service_healthy
+        init: true
+        healthcheck:
+            test: ["CMD", "/usr/local/bin/container-healthcheck"]
+            interval: 15s
+            timeout: 5s
+            retries: 5
+            start_period: 20s
+        stop_grace_period: 30s
 
-  scheduler:
-    build:
-      context: .
-      dockerfile: docker/php/Dockerfile
-    container_name: homewatt-scheduler
-    restart: unless-stopped
-    working_dir: /var/www
-    command: /bin/sh -c "while true; do php artisan schedule:run --verbose --no-interaction & sleep 60; done"
-    volumes:
-      - .:/var/www
-      - homewatt-app-storage:/var/www/storage
-    networks:
-      - homewatt-network
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+    nginx:
+        build:
+            context: .
+            dockerfile: Dockerfile
+            target: web
+            args:
+                APP_RELEASE: ${APP_RELEASE:-unknown}
+        image: homewatt-nginx:${APP_IMAGE_TAG:-latest}
+        container_name: homewatt-nginx
+        ports:
+            - "${APP_HTTP_PORT:-8087}:80"
+        volumes:
+            - storage_data:/var/www/storage:ro
+        networks:
+            - homewatt-network
+        depends_on:
+            app:
+                condition: service_healthy
+        restart: unless-stopped
 
-  db:
-    image: mysql:8.0
-    container_name: homewatt-db
-    restart: unless-stopped
-    ports:
-      - "${DB_FORWARD_PORT:-3311}:3306"
-    environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
-      MYSQL_DATABASE: ${DB_DATABASE:-homewatt}
-      MYSQL_ALLOW_EMPTY_PASSWORD: ${DB_PASSWORD:-yes}
-    volumes:
-      - homewatt-db-data:/var/lib/mysql
-    networks:
-      - homewatt-network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    db:
+        image: mysql:8.0
+        container_name: homewatt-db
+        command:
+            - --character-set-server=utf8mb4
+            - --collation-server=utf8mb4_unicode_ci
+        ports:
+            - "${DB_FORWARD_PORT:-3311}:3306"
+        environment:
+            MYSQL_DATABASE: ${DB_DATABASE:-homewatt}
+            MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-123456}
+            MYSQL_ROOT_HOST: "%"
+        volumes:
+            - dbdata:/var/lib/mysql
+        networks:
+            - homewatt-network
+        healthcheck:
+            test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
+            interval: 10s
+            timeout: 5s
+            retries: 10
+            start_period: 30s
+        restart: unless-stopped
 
-  redis:
-    image: redis:7-alpine
-    container_name: homewatt-redis
-    restart: unless-stopped
-    ports:
-      - "${REDIS_FORWARD_PORT:-6384}:6379"
-    volumes:
-      - homewatt-redis-data:/data
-    networks:
-      - homewatt-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
-
-networks:
-  homewatt-network:
-    driver: bridge
+    redis:
+        image: redis:7-alpine
+        container_name: homewatt-redis
+        ports:
+            - "${REDIS_FORWARD_PORT:-6384}:6379"
+        volumes:
+            - redisdata:/data
+        networks:
+            - homewatt-network
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 10s
+            timeout: 3s
+            retries: 5
+        restart: unless-stopped
 
 volumes:
-  homewatt-db-data:
-  homewatt-redis-data:
-  homewatt-app-storage:
+    dbdata:
+    redisdata:
+    storage_data:
+
+networks:
+    homewatt-network:
+        driver: bridge

@@ -3,6 +3,16 @@
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/up', function () {
+    return response()->json(['status' => 'ok']);
+})->name('health');
+
+Route::get('/version', function () {
+    return response()->json([
+        'release' => config('app.release', 'unknown'),
+    ])->header('Cache-Control', 'no-store');
+})->name('version');
+
 Route::get('/', function () {
     return view('core::welcome');
 })->name('home');

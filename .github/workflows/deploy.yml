@@ -1,46 +1,308 @@
-name: Deploy
+name: CI and Deploy
 
 on:
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
-    branches: [main]
+    pull_request:
+        branches: [main]
+    push:
+        branches: [main]
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+concurrency:
+    group: homewatt-${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: false
 
 jobs:
-  deploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    runs-on: self-hosted
-    steps:
-      - uses: actions/checkout@v4
+    test:
+        name: Test and build
+        runs-on: ubuntu-latest
+        timeout-minutes: 20
 
-      - name: Build image
-        run: docker build -t homewatt:${GITHUB_SHA} .
+        services:
+            mysql:
+                image: mysql:8.0
+                env:
+                    MYSQL_DATABASE: homewatt_test
+                    MYSQL_ROOT_PASSWORD: 123456
+                ports:
+                    - 3306:3306
+                options: >-
+                    --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -p123456 --silent"
+                    --health-interval=10s
+                    --health-timeout=5s
+                    --health-retries=10
 
-      - name: Run migrations
-        run: |
-          docker compose exec -T app php artisan migrate --force
+        env:
+            APP_ENV: testing
+            APP_DEBUG: false
+            DB_CONNECTION: mysql
+            DB_HOST: 127.0.0.1
+            DB_PORT: 3306
+            DB_DATABASE: homewatt_test
+            DB_USERNAME: root
+            DB_PASSWORD: 123456
+            CACHE_STORE: array
+            QUEUE_CONNECTION: sync
+            SESSION_DRIVER: array
 
-      - name: Deploy
-        run: |
-          docker compose up -d --no-deps app nginx
-          docker compose up -d queue queue-ai scheduler
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
 
-      - name: Health check
-        run: |
-          for i in $(seq 1 30); do
-            curl -sf http://localhost:8087/up && exit 0
-            sleep 2
-          done
-          echo "Health check failed"
-          exit 1
+            - name: Set up PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: '8.4'
+                  extensions: bcmath, curl, intl, mbstring, pdo_mysql, redis
+                  coverage: none
 
-      - name: Smoke test
-        run: |
-          curl -sf http://localhost:8087/up
-          curl -sf http://localhost:8087/version
-          curl -sf -o /dev/null http://localhost:8087/login
+            - name: Set up Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: npm
 
-      - name: Rollback on failure
-        if: failure()
-        run: |
-          docker compose up -d --no-deps app nginx
+            - name: Install PHP dependencies
+              run: composer install --no-interaction --no-progress --prefer-dist --no-scripts
+
+            - name: Prepare application
+              run: |
+                  cp .env.example .env
+                  php artisan key:generate
+                  php artisan package:discover --ansi
+
+            - name: Lint
+              run: vendor/bin/pint --test
+
+            - name: Composer audit
+              run: composer audit
+
+            - name: Install and build frontend
+              run: |
+                  npm ci --no-audit --no-fund
+                  npm run build
+
+            - name: Run database migrations
+              run: php artisan migrate --force --no-interaction
+
+            - name: Run tests
+              run: php artisan test --compact
+
+            - name: Validate Docker Compose
+              run: docker compose config --quiet
+
+            - name: Build production images
+              run: |
+                  docker build --target production --tag homewatt-app:ci .
+                  docker build --target web --tag homewatt-nginx:ci .
+
+    deploy:
+        name: Deploy production
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        needs: test
+        runs-on: [self-hosted, linux, x64]
+        timeout-minutes: 30
+        environment: production
+
+        env:
+            PROJECT_DIR: ${{ vars.PROJECT_DIR || '/home/minhnv/projects/homeWatt' }}
+            PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'http://localhost:8087' }}
+
+        steps:
+            - name: Verify self-hosted runner
+              run: |
+                  command -v git
+                  command -v docker
+                  command -v curl
+                  docker compose version
+                  test -d "$PROJECT_DIR/.git" || {
+                      echo "Git checkout not found: $PROJECT_DIR"
+                      exit 1
+                  }
+                  test -f "$PROJECT_DIR/.env" || {
+                      echo "Environment file not found: $PROJECT_DIR/.env"
+                      exit 1
+                  }
+
+            - name: Update deployment checkout
+              working-directory: ${{ env.PROJECT_DIR }}
+              run: |
+                  git fetch --prune origin main
+                  git reset --hard origin/main
+                  test -f .env
+                  release=$(git rev-parse HEAD)
+                  release_tag=$(git rev-parse --short=12 HEAD)
+                  rollback_tag="rollback-${GITHUB_RUN_ID}"
+                  echo "APP_RELEASE=$release" >> "$GITHUB_ENV"
+                  echo "APP_IMAGE_TAG=$release_tag" >> "$GITHUB_ENV"
+                  echo "ROLLBACK_TAG=$rollback_tag" >> "$GITHUB_ENV"
+                  echo "Deploying $release"
+
+            - name: Preserve current production images
+              working-directory: ${{ env.PROJECT_DIR }}
+              run: |
+                  app_image=$(docker inspect --format='{{.Image}}' homewatt-app 2>/dev/null || true)
+                  nginx_image=$(docker inspect --format='{{.Image}}' homewatt-nginx 2>/dev/null || true)
+
+                  if [ -n "$app_image" ] && [ -n "$nginx_image" ]; then
+                      previous_release=$(docker image inspect \
+                          --format='{{ index .Config.Labels "org.opencontainers.image.revision" }}' \
+                          "$app_image" 2>/dev/null || true)
+                      if [ "$previous_release" = "<no value>" ]; then
+                          previous_release="rollback-unknown"
+                      fi
+                      docker tag "$app_image" "homewatt-app:${ROLLBACK_TAG}"
+                      docker tag "$nginx_image" "homewatt-nginx:${ROLLBACK_TAG}"
+                      echo "ROLLBACK_AVAILABLE=true" >> "$GITHUB_ENV"
+                      echo "PREVIOUS_RELEASE=${previous_release:-rollback-unknown}" >> "$GITHUB_ENV"
+                  else
+                      echo "ROLLBACK_AVAILABLE=false" >> "$GITHUB_ENV"
+                      echo "No running production images were available for rollback."
+                  fi
+
+            - name: Validate configuration
+              working-directory: ${{ env.PROJECT_DIR }}
+              run: docker compose config --quiet
+
+            - name: Build production images
+              working-directory: ${{ env.PROJECT_DIR }}
+              run: |
+                  docker compose build --pull app
+                  docker compose build nginx
+
+            - name: Start dependencies
+              working-directory: ${{ env.PROJECT_DIR }}
+              run: docker compose up -d --wait db redis
+
+            - name: Verify database credentials
+              working-directory: ${{ env.PROJECT_DIR }}
+              run: |
+                  docker compose run --rm --no-deps \
+                      --entrypoint php app artisan db:show --no-interaction || {
+                      echo "Laravel cannot authenticate to MySQL. Check DB_USERNAME and DB_PASSWORD in $PROJECT_DIR/.env against the existing homewatt_dbdata volume."
+                      exit 1
+                  }
+
+            - name: Run database migrations
+              working-directory: ${{ env.PROJECT_DIR }}
+              run: docker compose run --rm --no-deps app php artisan migrate --force --no-interaction
+
+            - name: Recreate application services
+              working-directory: ${{ env.PROJECT_DIR }}
+              run: |
+                  docker compose up -d --force-recreate --remove-orphans \
+                      app queue queue-ai scheduler nginx
+
+            - name: Wait for healthy services
+              working-directory: ${{ env.PROJECT_DIR }}
+              run: |
+                  for container in homewatt-app homewatt-queue homewatt-queue-ai homewatt-scheduler; do
+                      for attempt in $(seq 1 30); do
+                          status=$(docker inspect --format='{{.State.Health.Status}}' "$container" 2>/dev/null || echo starting)
+                          echo "$container health ($attempt/30): $status"
+
+                          if [ "$status" = "healthy" ]; then
+                              break
+                          fi
+
+                          if [ "$status" = "unhealthy" ] || [ "$attempt" -eq 30 ]; then
+                              docker compose logs --tail=100 app queue queue-ai scheduler
+                              exit 1
+                          fi
+
+                          sleep 5
+                      done
+                  done
+
+                  port=$(docker compose port nginx 80 | awk -F: '{print $NF}')
+                  curl --fail --silent --show-error --retry 10 --retry-delay 3 \
+                      "http://127.0.0.1:${port}/up"
+
+            - name: Run production smoke test
+              working-directory: ${{ env.PROJECT_DIR }}
+              run: scripts/deploy/smoke-test.sh "$PRODUCTION_URL" "$APP_RELEASE"
+
+            - name: Show deployment status
+              working-directory: ${{ env.PROJECT_DIR }}
+              run: |
+                  docker compose ps
+                  docker compose logs --tail=30 app queue queue-ai scheduler nginx
+
+            - name: Notify successful deployment
+              working-directory: ${{ env.PROJECT_DIR }}
+              continue-on-error: true
+              env:
+                  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+                  TELEGRAM_DEPLOY_CHAT_ID: ${{ secrets.TELEGRAM_DEPLOY_CHAT_ID }}
+              run: scripts/deploy/notify-telegram.sh success "$APP_RELEASE" "Production smoke test passed."
+
+            - name: Show failure logs
+              if: failure()
+              run: |
+                  if [ -f "$PROJECT_DIR/docker-compose.yml" ]; then
+                      cd "$PROJECT_DIR"
+                      docker compose logs --tail=150 app queue queue-ai scheduler nginx db redis
+                  else
+                      echo "Cannot show Docker logs: $PROJECT_DIR/docker-compose.yml not found"
+                  fi
+
+            - name: Roll back production images
+              if: failure()
+              working-directory: ${{ env.PROJECT_DIR }}
+              run: |
+                  if [ "${ROLLBACK_AVAILABLE:-false}" != "true" ]; then
+                      echo "Rollback skipped because no previous production images were captured."
+                      echo "ROLLBACK_RESULT=skipped-no-previous-image" >> "$GITHUB_ENV"
+                      exit 0
+                  fi
+
+                  docker tag "homewatt-app:${ROLLBACK_TAG}" "homewatt-app:${APP_IMAGE_TAG}"
+                  docker tag "homewatt-nginx:${ROLLBACK_TAG}" "homewatt-nginx:${APP_IMAGE_TAG}"
+                  APP_RELEASE="${PREVIOUS_RELEASE:-rollback-unknown}" \
+                      docker compose up -d --force-recreate --remove-orphans \
+                      app queue queue-ai scheduler nginx
+
+                  for container in homewatt-app homewatt-queue homewatt-queue-ai homewatt-scheduler; do
+                      for attempt in $(seq 1 30); do
+                          status=$(docker inspect --format='{{.State.Health.Status}}' "$container" 2>/dev/null || echo starting)
+                          echo "Rollback $container health ($attempt/30): $status"
+                          [ "$status" = "healthy" ] && break
+
+                          if [ "$status" = "unhealthy" ] || [ "$attempt" -eq 30 ]; then
+                              docker compose logs --tail=100 app queue queue-ai scheduler
+                              exit 1
+                          fi
+
+                          sleep 5
+                      done
+                  done
+
+                  docker compose ps
+                  echo "ROLLBACK_RESULT=restored-${PREVIOUS_RELEASE:-rollback-unknown}" >> "$GITHUB_ENV"
+
+            - name: Notify failed deployment
+              if: failure()
+              working-directory: ${{ env.PROJECT_DIR }}
+              continue-on-error: true
+              env:
+                  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+                  TELEGRAM_DEPLOY_CHAT_ID: ${{ secrets.TELEGRAM_DEPLOY_CHAT_ID }}
+              run: scripts/deploy/notify-telegram.sh failed "${APP_RELEASE:-unknown}" "${ROLLBACK_RESULT:-rollback-failed}; check workflow logs."
+
+            - name: Clean unused images
+              if: success()
+              run: |
+                  docker image rm \
+                      "homewatt-app:${ROLLBACK_TAG}" \
+                      "homewatt-nginx:${ROLLBACK_TAG}" 2>/dev/null || true
+
+                  for image in $(docker images homewatt-app --format '{{.Repository}}:{{.Tag}}'); do
+                      [ "$image" = "homewatt-app:${APP_IMAGE_TAG}" ] || docker image rm "$image" || true
+                  done
+                  for image in $(docker images homewatt-nginx --format '{{.Repository}}:{{.Tag}}'); do
+                      [ "$image" = "homewatt-nginx:${APP_IMAGE_TAG}" ] || docker image rm "$image" || true
+                  done
+
+                  docker image prune --force

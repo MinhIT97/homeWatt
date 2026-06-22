@@ -1,58 +1,162 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# HomeWatt
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Ứng dụng quản lý thiết bị điện gia đình — chụp ảnh, AI trích xuất thông số, đo
+và ước tính điện năng tiêu thụ, dự báo chi phí hàng tháng theo biểu giá điện.
 
-## About Laravel
+## Tech Stack
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+| Lớp | Công nghệ |
+| --- | --- |
+| Backend | PHP 8.4, Laravel 12 |
+| Kiến trúc | Modular monolith ([nwidart/laravel-modules](https://github.com/nwidart/laravel-modules)) |
+| Frontend | Blade, Alpine.js, Tailwind CSS, Vite |
+| Database | MySQL 8 |
+| Cache / Queue | Redis 7 |
+| Web server | Nginx + PHP-FPM |
+| AI | Provider-agnostic (OpenAI Vision, Gemini, v.v.) |
+| CI/CD | GitHub Actions, self-hosted runner |
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Yêu cầu cục bộ
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- PHP 8.4 + Composer
+- Node.js 22 + npm
+- MySQL 8 hoặc Docker
+- Redis (tùy chọn khi dùng Docker)
 
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## Cài đặt cục bộ (không Docker)
 
 ```bash
-composer require laravel/boost --dev
+cp .env.example .env
+# Sửa DB_HOST=127.0.0.1, DB_PORT=3306, REDIS_HOST=127.0.0.1 trong .env
 
-php artisan boost:install
+composer install
+php artisan key:generate
+php artisan migrate --seed
+npm ci
+npm run dev
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Chạy queue worker cho AI analysis:
 
-## Contributing
+```bash
+php artisan queue:work redis --queue=default
+php artisan queue:work redis --queue=ai --sleep=5 --tries=3 --timeout=180
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Truy cập http://localhost:8087 (nếu dùng artisan serve) hoặc port được cấu hình.
 
-## Code of Conduct
+## Docker (development)
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+cp .env.example .env
+# Giữ nguyên DB_HOST=db, REDIS_HOST=redis — container giao tiếp nội bộ
 
-## Security Vulnerabilities
+docker compose up -d --wait
+docker compose exec app php artisan key:generate
+docker compose exec app php artisan migrate --seed
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Port mapping:
+
+| Service | Host | Container |
+| --- | ---: | ---: |
+| Nginx | `8087` | `80` |
+| MySQL | `3311` | `3306` |
+| Redis | `6384` | `6379` |
+
+## Docker (production)
+
+Production image là multi-stage build, không mount source code từ host:
+
+```bash
+# Build
+APP_IMAGE_TAG=$(git rev-parse --short=12 HEAD)
+docker compose build --pull app nginx
+
+# Deploy
+docker compose up -d --wait db redis
+docker compose run --rm --no-deps app php artisan migrate --force --no-interaction
+docker compose up -d --force-recreate app queue queue-ai scheduler nginx
+```
+
+Hoặc push lên `main` — GitHub Actions trên self-hosted runner sẽ tự động deploy.
+
+## CI/CD
+
+Hai workflow chạy trên GitHub Actions:
+
+| Workflow | Kích hoạt | Mô tả |
+| --- | --- | --- |
+| `ci.yml` | Push `develop`, PR vào `main` | Lint (Pint), audit, test |
+| `deploy.yml` | Push `main` | Test → build image → deploy production → smoke test → rollback nếu lỗi |
+
+Deploy production: self-hosted runner checkout code tại
+`/home/minhnv/projects/homeWatt`, build multi-stage Docker image, chạy
+migration, recreate container, đợi healthy, smoke test. Nếu thất bại tự động
+rollback về image cũ.
+
+### Secrets và variables cần cấu hình
+
+| Name | Loại | Mô tả |
+| --- | --- | --- |
+| `TELEGRAM_BOT_TOKEN` | Secret | Bot token để gửi thông báo deploy |
+| `TELEGRAM_DEPLOY_CHAT_ID` | Secret | Chat ID nhận thông báo |
+| `PROJECT_DIR` | Variable | Đường dẫn checkout trên server (mặc định `/home/minhnv/projects/homeWatt`) |
+| `PRODUCTION_URL` | Variable | URL production để smoke test (mặc định `http://localhost:8087`) |
+
+## Kiến trúc module
+
+```
+Modules/
+├── Core/         Shared UI, health/version, application support
+├── Home/         Nhà, thành viên, vai trò, phân quyền
+├── Room/         Phòng và nhóm không gian trong nhà
+├── Device/       Danh mục thiết bị, loại thiết bị, thông số kỹ thuật
+├── Media/        Ảnh riêng tư, metadata, phân quyền, vòng đời
+├── AI/           Vision provider, phân tích ảnh, schema trích xuất, usage/cost
+├── Energy/       Hồ sơ sử dụng, chỉ số, ước tính, phương pháp tính
+├── Tariff/       Biểu giá versioned, bậc giá, thuế, ngày hiệu lực
+├── Dashboard/    Tổng hợp, biểu đồ, xếp hạng, chỉ báo chất lượng dữ liệu
+└── Admin/        Dữ liệu tham chiếu, biểu giá, quản lý AI usage
+```
+
+Mỗi module sở hữu routes, controllers, requests, policies, services, models,
+migrations, views, tests, config, và README riêng cho capability của nó.
+Cross-module access thông qua public contracts, actions, services, events,
+jobs, hoặc models.
+
+## Health check
+
+Endpoints công khai:
+
+| Endpoint | Mục đích |
+| --- | --- |
+| `GET /up` | Application health — trả về `{"status":"ok"}` |
+| `GET /version` | Release identity — trả về `{"release":"<git-sha>"}`, `Cache-Control: no-store` |
+
+## Deployment verification
+
+Sau deploy, smoke test tự động kiểm tra:
+
+1. `/up` trả về HTTP 200
+2. `/version` khớp với commit SHA được deploy, response có `Cache-Control: no-store`
+3. `/login` trả về HTML hợp lệ
+4. Ít nhất một asset Vite (`/build/assets/*.css` hoặc `*.js`) được load
+
+Rollback: workflow giữ lại image production hiện tại trước khi deploy. Nếu
+healthcheck hoặc smoke test thất bại, image cũ được retag và container được
+recreate.
+
+## Quy ước kỹ thuật
+
+- **Photos are private by default** — ảnh được serve qua authorized controller hoặc signed URL.
+- **AI proposes, user confirms** — output AI không ghi đè trực tiếp dữ liệu đã xác nhận.
+- **Measured ≠ Estimated** — dữ liệu đo và ước tính luôn được phân biệt rõ ràng.
+- **Tariffs are versioned data** — không hardcode giá điện.
+- **Home-level isolation** — mọi resource đều được scope theo `home_id` và kiểm tra membership.
+
+Xem chi tiết tại [`agent.md`](agent.md) và [`HOMEWATT_IMPLEMENTATION_PLAN.md`](HOMEWATT_IMPLEMENTATION_PLAN.md).
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Dự án nội bộ. Mã nguồn thuộc quyền sở hữu của tác giả.
