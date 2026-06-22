@@ -7,15 +7,15 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Modules\Home\Models\Home;
-use Modules\Room\Models\Room;
 use Modules\Room\Http\Requests\StoreRoomRequest;
 use Modules\Room\Http\Requests\UpdateRoomRequest;
+use Modules\Room\Models\Room;
 
-class RoomController extends \App\Http\Controllers\Controller
+class RoomController extends Controller
 {
     public function index(Request $request): View
     {
-        $rooms = Room::whereHas('home.members', fn($q) => $q->where('user_id', $request->user()->id))
+        $rooms = Room::whereHas('home.members', fn ($q) => $q->where('user_id', $request->user()->id))
             ->with('home')
             ->latest()
             ->paginate(20);
@@ -25,7 +25,7 @@ class RoomController extends \App\Http\Controllers\Controller
 
     public function create(Request $request): View
     {
-        $homes = Home::whereHas('members', fn($q) => $q->where('user_id', $request->user()->id)
+        $homes = Home::whereHas('members', fn ($q) => $q->where('user_id', $request->user()->id)
             ->whereIn('role', ['owner', 'manager']))
             ->get();
 
@@ -86,7 +86,7 @@ class RoomController extends \App\Http\Controllers\Controller
     {
         $member = $home->members()->where('user_id', $request->user()->id)->first();
 
-        if (!$member || !$member->canEdit()) {
+        if (! $member || ! $member->canEdit()) {
             abort(403);
         }
     }

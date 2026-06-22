@@ -7,16 +7,16 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Modules\Device\Models\Device;
-use Modules\Energy\Models\EnergyReading;
 use Modules\Energy\Models\EnergyEstimate;
+use Modules\Energy\Models\EnergyReading;
 use Modules\Energy\Services\EnergyCalculator;
 use Modules\Tariff\Models\TariffPlan;
 
-class EnergyController extends \App\Http\Controllers\Controller
+class EnergyController extends Controller
 {
     public function index(Request $request): View
     {
-        $devices = Device::whereHas('room.home.members', fn($q) => $q->where('user_id', $request->user()->id))
+        $devices = Device::whereHas('room.home.members', fn ($q) => $q->where('user_id', $request->user()->id))
             ->with(['specification', 'usageProfile', 'room.home'])
             ->get();
 
@@ -30,7 +30,7 @@ class EnergyController extends \App\Http\Controllers\Controller
 
     public function create(Request $request): View
     {
-        $devices = Device::whereHas('room.home.members', fn($q) => $q->where('user_id', $request->user()->id)
+        $devices = Device::whereHas('room.home.members', fn ($q) => $q->where('user_id', $request->user()->id)
             ->whereIn('role', ['owner', 'manager']))
             ->with('room.home')
             ->get();
@@ -51,7 +51,7 @@ class EnergyController extends \App\Http\Controllers\Controller
 
         $device = Device::findOrFail($request->device_id);
         $member = $device->room->home->members()->where('user_id', $request->user()->id)->first();
-        if (!$member || !$member->canEdit()) {
+        if (! $member || ! $member->canEdit()) {
             abort(403);
         }
 
@@ -66,6 +66,7 @@ class EnergyController extends \App\Http\Controllers\Controller
     public function show(EnergyReading $reading): View
     {
         $reading->load('device.room.home');
+
         return view('energy::show', compact('reading'));
     }
 

@@ -9,11 +9,12 @@ use Illuminate\View\View;
 use Modules\Tariff\Models\TariffPlan;
 use Modules\Tariff\Models\TariffTier;
 
-class TariffController extends \App\Http\Controllers\Controller
+class TariffController extends Controller
 {
     public function index(): View
     {
         $plans = TariffPlan::with('tiers')->latest()->paginate(20);
+
         return view('tariff::index', compact('plans'));
     }
 
@@ -50,12 +51,14 @@ class TariffController extends \App\Http\Controllers\Controller
     public function show(TariffPlan $plan): View
     {
         $plan->load('tiers');
+
         return view('tariff::show', compact('plan'));
     }
 
     public function destroy(TariffPlan $plan): RedirectResponse
     {
         $plan->delete();
+
         return redirect()->route('tariff.index')->with('success', 'Tariff plan deleted.');
     }
 }

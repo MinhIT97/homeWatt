@@ -3,9 +3,8 @@
 namespace Modules\Home\Policies;
 
 use App\Models\User;
-use Modules\Home\Models\Home;
-use Modules\Home\Models\HomeMember;
 use Illuminate\Auth\Access\HandlesAuthorization;
+use Modules\Home\Models\Home;
 
 class HomePolicy
 {
@@ -29,6 +28,7 @@ class HomePolicy
     public function update(User $user, Home $home): bool
     {
         $member = $home->members()->where('user_id', $user->id)->first();
+
         return $member && $member->canEdit();
     }
 
@@ -40,6 +40,7 @@ class HomePolicy
     public function manageMembers(User $user, Home $home): bool
     {
         $member = $home->members()->where('user_id', $user->id)->first();
+
         return $member && $member->canEdit();
     }
 }

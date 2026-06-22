@@ -66,6 +66,7 @@ RUN apk add --no-cache \
         su-exec \
     && apk add --no-cache --virtual .build-deps \
         $PHPIZE_DEPS \
+        curl-dev \
         freetype-dev \
         icu-dev \
         libjpeg-turbo-dev \

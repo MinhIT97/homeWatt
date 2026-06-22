@@ -31,6 +31,6 @@ class TariffPlan extends Model
     {
         return $query->where('status', 'active')
             ->where('effective_from', '<=', now())
-            ->where(fn($q) => $q->whereNull('effective_to')->orWhere('effective_to', '>=', now()));
+            ->where(fn ($q) => $q->whereNull('effective_to')->orWhere('effective_to', '>=', now()));
     }
 }

@@ -4,6 +4,7 @@ namespace Modules\Energy\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Modules\Device\Models\Device;
 
 class EnergyReading extends Model
 {
@@ -25,6 +26,6 @@ class EnergyReading extends Model
 
     public function device(): BelongsTo
     {
-        return $this->belongsTo(\Modules\Device\Models\Device::class);
+        return $this->belongsTo(Device::class);
     }
 }

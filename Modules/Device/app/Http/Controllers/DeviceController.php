@@ -5,23 +5,22 @@ namespace Modules\Device\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
-use Modules\Device\Models\Device;
-use Modules\Device\Models\DeviceType;
-use Modules\Device\Models\DeviceSpecification;
-use Modules\Device\Models\DeviceUsageProfile;
+use Modules\AI\Models\AiAnalysisRequest;
 use Modules\Device\Http\Requests\StoreDeviceRequest;
 use Modules\Device\Http\Requests\UpdateDeviceRequest;
-use Modules\AI\Models\AiAnalysisRequest;
+use Modules\Device\Models\Device;
+use Modules\Device\Models\DeviceSpecification;
+use Modules\Device\Models\DeviceType;
+use Modules\Device\Models\DeviceUsageProfile;
 use Modules\Room\Models\Room;
 
-class DeviceController extends \App\Http\Controllers\Controller
+class DeviceController extends Controller
 {
     public function index(Request $request): View
     {
-        $query = Device::whereHas('room.home.members', fn($q) => $q->where('user_id', $request->user()->id))
+        $query = Device::whereHas('room.home.members', fn ($q) => $q->where('user_id', $request->user()->id))
             ->with(['room.home', 'deviceType', 'specification']);
 
         if ($request->filled('room_id')) {
@@ -31,7 +30,7 @@ class DeviceController extends \App\Http\Controllers\Controller
             $query->where('device_type_id', $request->type_id);
         }
         if ($request->filled('search')) {
-            $query->where(fn($q) => $q->where('name', 'like', "%{$request->search}%")
+            $query->where(fn ($q) => $q->where('name', 'like', "%{$request->search}%")
                 ->orWhere('brand', 'like', "%{$request->search}%")
                 ->orWhere('model', 'like', "%{$request->search}%"));
         }
@@ -44,7 +43,7 @@ class DeviceController extends \App\Http\Controllers\Controller
 
     public function create(Request $request): View
     {
-        $rooms = Room::whereHas('home.members', fn($q) => $q->where('user_id', $request->user()->id)
+        $rooms = Room::whereHas('home.members', fn ($q) => $q->where('user_id', $request->user()->id)
             ->whereIn('role', ['owner', 'manager']))
             ->with('home')
             ->get();
@@ -93,7 +92,7 @@ class DeviceController extends \App\Http\Controllers\Controller
             'specification',
             'usageProfile',
             'energyReadings',
-            'media' => fn($q) => $q->latest(),
+            'media' => fn ($q) => $q->latest(),
         ]);
 
         $analyses = AiAnalysisRequest::whereIn('media_id', $device->media->pluck('id'))
@@ -171,7 +170,7 @@ class DeviceController extends \App\Http\Controllers\Controller
         ]);
 
         $file = $request->file('image');
-        $path = $file->store('devices/' . $device->id, 'private');
+        $path = $file->store('devices/'.$device->id, 'private');
 
         $device->media()->create([
             'disk' => 'private',
@@ -199,7 +198,7 @@ class DeviceController extends \App\Http\Controllers\Controller
     protected function authorizeRoomMember(Request $request, Room $room): void
     {
         $member = $room->home->members()->where('user_id', $request->user()->id)->first();
-        if (!$member || !$member->canEdit()) {
+        if (! $member || ! $member->canEdit()) {
             abort(403);
         }
     }

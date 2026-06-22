@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Modules\Media\Models\Media;
 
-class MediaController extends \App\Http\Controllers\Controller
+class MediaController extends Controller
 {
     public function store(Request $request): RedirectResponse
     {
@@ -20,7 +20,7 @@ class MediaController extends \App\Http\Controllers\Controller
 
         $file = $request->file('file');
 
-        $path = $file->store('media/' . date('Y/m'), 'private');
+        $path = $file->store('media/'.date('Y/m'), 'private');
 
         $media = Media::create([
             'owner_type' => $request->input('owner_type'),
@@ -39,7 +39,7 @@ class MediaController extends \App\Http\Controllers\Controller
 
     public function serve(Media $media)
     {
-        if (!Storage::disk($media->disk)->exists($media->path)) {
+        if (! Storage::disk($media->disk)->exists($media->path)) {
             abort(404);
         }
 

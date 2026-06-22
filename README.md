@@ -79,7 +79,7 @@ docker compose run --rm --no-deps app php artisan migrate --force --no-interacti
 docker compose up -d --force-recreate app queue queue-ai scheduler nginx
 ```
 
-Hoặc push lên `main` — GitHub Actions trên self-hosted runner sẽ tự động deploy.
+Hoặc push lên `master` — GitHub Actions trên self-hosted runner sẽ tự động deploy.
 
 ## CI/CD
 
@@ -87,8 +87,8 @@ Hai workflow chạy trên GitHub Actions:
 
 | Workflow | Kích hoạt | Mô tả |
 | --- | --- | --- |
-| `ci.yml` | Push `develop`, PR vào `main` | Lint (Pint), audit, test |
-| `deploy.yml` | Push `main` | Test → build image → deploy production → smoke test → rollback nếu lỗi |
+| `ci.yml` | Push `develop`, PR vào `master`, hoặc chạy thủ công | Lint (Pint), audit, test |
+| `deploy.yml` | Push `master` | Test → build image → deploy production → smoke test → rollback nếu lỗi |
 
 Deploy production: self-hosted runner checkout code tại
 `/home/minhnv/projects/homeWatt`, build multi-stage Docker image, chạy

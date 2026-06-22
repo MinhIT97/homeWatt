@@ -20,7 +20,9 @@ class AnalyzeDeviceImageJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $tries = 2;
+
     public $timeout = 600;
+
     public $backoff = 30;
 
     public function __construct(
@@ -44,7 +46,7 @@ class AnalyzeDeviceImageJob implements ShouldQueue
 
             $result = $analyzer->analyze($imageBase64);
 
-            $processingTimeMs = (int)((microtime(true) - $startTime) * 1000);
+            $processingTimeMs = (int) ((microtime(true) - $startTime) * 1000);
 
             $analysisResult = AiAnalysisResult::create([
                 'ai_analysis_request_id' => $this->analysisRequest->id,

@@ -6,12 +6,12 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Modules\AI\Jobs\AnalyzeDeviceImageJob;
 use Modules\AI\Models\AiAnalysisRequest;
 use Modules\AI\Models\DeviceExtraction;
-use Modules\AI\Jobs\AnalyzeDeviceImageJob;
 use Modules\Media\Models\Media;
 
-class AiAnalysisController extends \App\Http\Controllers\Controller
+class AiAnalysisController extends Controller
 {
     public function index(Request $request): View
     {

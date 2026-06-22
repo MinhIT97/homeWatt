@@ -3,8 +3,8 @@
 namespace Modules\Device\Policies;
 
 use App\Models\User;
-use Modules\Device\Models\Device;
 use Illuminate\Auth\Access\HandlesAuthorization;
+use Modules\Device\Models\Device;
 
 class DevicePolicy
 {
@@ -18,6 +18,7 @@ class DevicePolicy
     public function view(User $user, Device $device): bool
     {
         $device->loadMissing('room.home.members');
+
         return $device->room->home->members->contains('user_id', $user->id);
     }
 
@@ -30,6 +31,7 @@ class DevicePolicy
     {
         $device->loadMissing('room.home.members');
         $member = $device->room->home->members->firstWhere('user_id', $user->id);
+
         return $member && $member->canEdit();
     }
 
@@ -37,6 +39,7 @@ class DevicePolicy
     {
         $device->loadMissing('room.home.members');
         $member = $device->room->home->members->firstWhere('user_id', $user->id);
+
         return $member && $member->canEdit();
     }
 }

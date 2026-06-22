@@ -4,6 +4,9 @@ namespace Modules\Energy\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Modules\Device\Models\Device;
+use Modules\Home\Models\Home;
+use Modules\Room\Models\Room;
 
 class MonthlyEnergySummary extends Model
 {
@@ -28,16 +31,16 @@ class MonthlyEnergySummary extends Model
 
     public function home(): BelongsTo
     {
-        return $this->belongsTo(\Modules\Home\Models\Home::class);
+        return $this->belongsTo(Home::class);
     }
 
     public function room(): BelongsTo
     {
-        return $this->belongsTo(\Modules\Room\Models\Room::class);
+        return $this->belongsTo(Room::class);
     }
 
     public function device(): BelongsTo
     {
-        return $this->belongsTo(\Modules\Device\Models\Device::class);
+        return $this->belongsTo(Device::class);
     }
 }

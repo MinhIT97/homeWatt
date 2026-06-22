@@ -2,9 +2,9 @@ name: CI and Deploy
 
 on:
     pull_request:
-        branches: [main]
+        branches: [master]
     push:
-        branches: [main]
+        branches: [master]
     workflow_dispatch:
 
 permissions:
@@ -100,7 +100,7 @@ jobs:
 
     deploy:
         name: Deploy production
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
         needs: test
         runs-on: [self-hosted, linux, x64]
         timeout-minutes: 30
@@ -117,8 +117,13 @@ jobs:
                   command -v docker
                   command -v curl
                   docker compose version
+                  docker info >/dev/null
                   test -d "$PROJECT_DIR/.git" || {
                       echo "Git checkout not found: $PROJECT_DIR"
+                      exit 1
+                  }
+                  test -w "$PROJECT_DIR" || {
+                      echo "Runner cannot write to deployment checkout: $PROJECT_DIR"
                       exit 1
                   }
                   test -f "$PROJECT_DIR/.env" || {
@@ -129,8 +134,8 @@ jobs:
             - name: Update deployment checkout
               working-directory: ${{ env.PROJECT_DIR }}
               run: |
-                  git fetch --prune origin main
-                  git reset --hard origin/main
+                  git fetch --prune origin master
+                  git reset --hard origin/master
                   test -f .env
                   release=$(git rev-parse HEAD)
                   release_tag=$(git rev-parse --short=12 HEAD)
@@ -280,6 +285,9 @@ jobs:
                   done
 
                   docker compose ps
+                  scripts/deploy/smoke-test.sh \
+                      "$PRODUCTION_URL" \
+                      "${PREVIOUS_RELEASE:-rollback-unknown}"
                   echo "ROLLBACK_RESULT=restored-${PREVIOUS_RELEASE:-rollback-unknown}" >> "$GITHUB_ENV"
 
             - name: Notify failed deployment

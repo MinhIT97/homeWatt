@@ -9,12 +9,12 @@ use Modules\Device\Models\Device;
 use Modules\Energy\Models\MonthlyEnergySummary;
 use Modules\Home\Models\Home;
 
-class DashboardController extends \App\Http\Controllers\Controller
+class DashboardController extends Controller
 {
     public function index(Request $request): View
     {
         $user = $request->user();
-        $homes = Home::whereHas('members', fn($q) => $q->where('user_id', $user->id))->get();
+        $homes = Home::whereHas('members', fn ($q) => $q->where('user_id', $user->id))->get();
         $selectedHomeId = $request->get('home_id', $homes->first()?->id);
 
         $stats = [
@@ -33,7 +33,7 @@ class DashboardController extends \App\Http\Controllers\Controller
             if ($home && $home->members()->where('user_id', $user->id)->exists()) {
                 $now = now();
                 $stats['total_rooms'] = $home->rooms()->count();
-                $stats['total_devices'] = Device::whereHas('room', fn($q) => $q->where('home_id', $home->id))->count();
+                $stats['total_devices'] = Device::whereHas('room', fn ($q) => $q->where('home_id', $home->id))->count();
 
                 $summaries = MonthlyEnergySummary::where('home_id', $home->id)
                     ->where('year', $now->year)

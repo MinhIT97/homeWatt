@@ -1,27 +1,34 @@
 #!/usr/bin/env sh
 set -eu
 
-log() {
-    printf '[homewatt:healthcheck] %s\n' "$1"
+role="${CONTAINER_ROLE:-app}"
+
+process_is_running() {
+    pattern="$1"
+
+    for command_line in /proc/[0-9]*/cmdline; do
+        if tr '\000' ' ' <"$command_line" 2>/dev/null | grep -F "$pattern" >/dev/null 2>&1; then
+            return 0
+        fi
+    done
+
+    return 1
 }
 
-APP_ENV="${APP_ENV:-production}"
-
-case "${CONTAINER_ROLE:-app}" in
+case "$role" in
     app)
-        if [ "$APP_ENV" = "production" ]; then
-            SCRIPT_NAME=/ SCRIPT_FILENAME=/var/www/public/index.php REQUEST_METHOD=GET cgi-fcgi -bind -connect 127.0.0.1:9000 >/dev/null 2>&1
-        else
-            pgrep -x php-fpm >/dev/null 2>&1
-        fi
+        nc -z 127.0.0.1 9000
         ;;
-    queue|queue-ai)
-        pgrep -x php >/dev/null 2>&1 && pgrep -f "queue:work" >/dev/null 2>&1
+    queue)
+        process_is_running "artisan queue:work --queue=default"
+        ;;
+    queue-ai)
+        process_is_running "artisan queue:work --queue=ai"
         ;;
     scheduler)
-        pgrep -x php >/dev/null 2>&1 && pgrep -f "schedule:work" >/dev/null 2>&1
+        process_is_running "artisan schedule:work"
         ;;
     *)
-        exit 0
+        exit 1
         ;;
 esac

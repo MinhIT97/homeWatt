@@ -3,8 +3,8 @@
 namespace Modules\Media\Policies;
 
 use App\Models\User;
-use Modules\Media\Models\Media;
 use Illuminate\Auth\Access\HandlesAuthorization;
+use Modules\Media\Models\Media;
 
 class MediaPolicy
 {

@@ -10,6 +10,7 @@ use Nwidart\Modules\Support\ModuleServiceProvider;
 class AIServiceProvider extends ModuleServiceProvider
 {
     protected string $name = 'AI';
+
     protected string $nameLower = 'ai';
 
     protected array $providers = [
@@ -25,6 +26,7 @@ class AIServiceProvider extends ModuleServiceProvider
             if (config('ai.providers.fake.enabled', false) || $app->environment('testing')) {
                 return new FakeDeviceImageAnalyzer;
             }
+
             return new OpenAiVisionAnalyzer;
         });
     }

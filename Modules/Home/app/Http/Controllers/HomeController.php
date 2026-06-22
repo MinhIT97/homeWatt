@@ -7,17 +7,17 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
-use Modules\Home\Models\Home;
-use Modules\Home\Models\HomeMember;
+use Modules\Home\Http\Requests\InviteMemberRequest;
 use Modules\Home\Http\Requests\StoreHomeRequest;
 use Modules\Home\Http\Requests\UpdateHomeRequest;
-use Modules\Home\Http\Requests\InviteMemberRequest;
+use Modules\Home\Models\Home;
+use Modules\Home\Models\HomeMember;
 
-class HomeController extends \App\Http\Controllers\Controller
+class HomeController extends Controller
 {
     public function index(Request $request): View
     {
-        $homes = Home::whereHas('members', fn($q) => $q->where('user_id', $request->user()->id))
+        $homes = Home::whereHas('members', fn ($q) => $q->where('user_id', $request->user()->id))
             ->with('owner')
             ->latest()
             ->paginate(20);

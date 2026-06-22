@@ -4,6 +4,7 @@ namespace Modules\AI\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Modules\Device\Models\Device;
 
 class DeviceExtraction extends Model
 {
@@ -24,7 +25,7 @@ class DeviceExtraction extends Model
 
     public function device(): BelongsTo
     {
-        return $this->belongsTo(\Modules\Device\Models\Device::class);
+        return $this->belongsTo(Device::class);
     }
 
     public function isConfirmed(): bool

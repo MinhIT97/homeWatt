@@ -3,14 +3,13 @@
 namespace Modules\Admin\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Modules\AI\Models\AiAnalysisRequest;
 use Modules\Device\Models\DeviceType;
 use Modules\Home\Models\Home;
 use Modules\Tariff\Models\TariffPlan;
 
-class AdminController extends \App\Http\Controllers\Controller
+class AdminController extends Controller
 {
     public function index(): View
     {
@@ -23,7 +22,7 @@ class AdminController extends \App\Http\Controllers\Controller
             'ai_total_cost' => AiAnalysisRequest::whereHas('result')
                 ->with('result')
                 ->get()
-                ->sum(fn($r) => $r->result?->cost ?? 0),
+                ->sum(fn ($r) => $r->result?->cost ?? 0),
         ];
 
         $recentAnalyses = AiAnalysisRequest::with(['user', 'result'])

@@ -2,9 +2,9 @@
 
 namespace Modules\AI\Services;
 
-use Modules\AI\Contracts\DeviceImageAnalyzer;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Modules\AI\Contracts\DeviceImageAnalyzer;
 
 class OpenAiVisionAnalyzer implements DeviceImageAnalyzer
 {
@@ -35,9 +35,9 @@ class OpenAiVisionAnalyzer implements DeviceImageAnalyzer
                 'temperature' => 0.1,
             ]);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             Log::error('OpenAI Vision API error', ['status' => $response->status(), 'body' => $response->body()]);
-            throw new \RuntimeException('AI vision analysis failed: ' . $response->status());
+            throw new \RuntimeException('AI vision analysis failed: '.$response->status());
         }
 
         $data = $response->json();
@@ -106,6 +106,7 @@ PROMPT;
         if ($value === null || $value === '') {
             return null;
         }
+
         return is_numeric($value) ? (float) $value : null;
     }
 

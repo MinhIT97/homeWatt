@@ -10,6 +10,7 @@ use Nwidart\Modules\Support\ModuleServiceProvider;
 class DeviceServiceProvider extends ModuleServiceProvider
 {
     protected string $name = 'Device';
+
     protected string $nameLower = 'device';
 
     protected array $providers = [

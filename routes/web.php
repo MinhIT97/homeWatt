@@ -9,8 +9,11 @@ Route::get('/up', function () {
 
 Route::get('/version', function () {
     return response()->json([
+        'application' => config('app.name'),
         'release' => config('app.release', 'unknown'),
-    ])->header('Cache-Control', 'no-store');
+    ])->withHeaders([
+        'Cache-Control' => 'no-store, no-cache, must-revalidate',
+    ]);
 })->name('version');
 
 Route::get('/', function () {

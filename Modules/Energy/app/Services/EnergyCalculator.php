@@ -5,7 +5,6 @@ namespace Modules\Energy\Services;
 use Modules\Device\Models\Device;
 use Modules\Device\Models\DeviceUsageProfile;
 use Modules\Energy\Models\EnergyEstimate;
-use Modules\Energy\Models\EnergyReading;
 use Modules\Tariff\Models\TariffPlan;
 
 class EnergyCalculator
@@ -152,7 +151,9 @@ class EnergyCalculator
             $totalCost += $tierCost + $tax + (float) $tier->surcharge;
 
             $remainingKwh -= $tierKwh;
-            if ($remainingKwh <= 0) break;
+            if ($remainingKwh <= 0) {
+                break;
+            }
         }
 
         return round($totalCost, 2);
@@ -161,6 +162,7 @@ class EnergyCalculator
     protected function estimateRange(float $kwh, float $confidence): array
     {
         $margin = (1 - $confidence) * 0.5;
+
         return [
             'lower' => round($kwh * (1 - $margin), 4),
             'upper' => round($kwh * (1 + $margin), 4),

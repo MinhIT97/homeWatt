@@ -7,7 +7,7 @@ interface DeviceImageAnalyzer
     /**
      * Analyze a device image and return structured data.
      *
-     * @param string $imageBase64 Base64-encoded image
+     * @param  string  $imageBase64  Base64-encoded image
      * @return array{
      *   device_type: string|null,
      *   brand: string|null,

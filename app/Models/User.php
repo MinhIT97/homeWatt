@@ -9,6 +9,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Modules\AI\Models\AiAnalysisRequest;
+use Modules\Home\Models\Home;
+use Modules\Home\Models\HomeMember;
 
 #[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'remember_token'])]
@@ -27,16 +30,16 @@ class User extends Authenticatable
 
     public function homes(): HasMany
     {
-        return $this->hasMany(\Modules\Home\Models\Home::class, 'owner_id');
+        return $this->hasMany(Home::class, 'owner_id');
     }
 
     public function homeMembers(): HasMany
     {
-        return $this->hasMany(\Modules\Home\Models\HomeMember::class);
+        return $this->hasMany(HomeMember::class);
     }
 
     public function aiAnalysisRequests(): HasMany
     {
-        return $this->hasMany(\Modules\AI\Models\AiAnalysisRequest::class);
+        return $this->hasMany(AiAnalysisRequest::class);
     }
 }

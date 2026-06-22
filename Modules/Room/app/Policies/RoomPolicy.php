@@ -3,8 +3,8 @@
 namespace Modules\Room\Policies;
 
 use App\Models\User;
-use Modules\Room\Models\Room;
 use Illuminate\Auth\Access\HandlesAuthorization;
+use Modules\Room\Models\Room;
 
 class RoomPolicy
 {
@@ -18,6 +18,7 @@ class RoomPolicy
     public function view(User $user, Room $room): bool
     {
         $room->loadMissing('home.members');
+
         return $room->home->members->contains('user_id', $user->id);
     }
 
@@ -30,6 +31,7 @@ class RoomPolicy
     {
         $room->loadMissing('home.members');
         $member = $room->home->members->firstWhere('user_id', $user->id);
+
         return $member && $member->canEdit();
     }
 
@@ -37,6 +39,7 @@ class RoomPolicy
     {
         $room->loadMissing('home.members');
         $member = $room->home->members->firstWhere('user_id', $user->id);
+
         return $member && $member->canEdit();
     }
 }

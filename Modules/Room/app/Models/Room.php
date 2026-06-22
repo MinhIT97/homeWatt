@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Modules\Device\Models\Device;
+use Modules\Home\Models\Home;
 
 class Room extends Model
 {
@@ -31,11 +33,11 @@ class Room extends Model
 
     public function home(): BelongsTo
     {
-        return $this->belongsTo(\Modules\Home\Models\Home::class);
+        return $this->belongsTo(Home::class);
     }
 
     public function devices(): HasMany
     {
-        return $this->hasMany(\Modules\Device\Models\Device::class);
+        return $this->hasMany(Device::class);
     }
 }

@@ -4,6 +4,8 @@ namespace Modules\Energy\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Modules\Device\Models\Device;
+use Modules\Tariff\Models\TariffPlan;
 
 class EnergyEstimate extends Model
 {
@@ -35,11 +37,11 @@ class EnergyEstimate extends Model
 
     public function device(): BelongsTo
     {
-        return $this->belongsTo(\Modules\Device\Models\Device::class);
+        return $this->belongsTo(Device::class);
     }
 
     public function tariffPlan(): BelongsTo
     {
-        return $this->belongsTo(\Modules\Tariff\Models\TariffPlan::class);
+        return $this->belongsTo(TariffPlan::class);
     }
 }

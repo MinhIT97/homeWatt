@@ -8,6 +8,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Modules\Energy\Models\EnergyReading;
+use Modules\Media\Models\Media;
+use Modules\Room\Models\Room;
 
 class Device extends Model
 {
@@ -30,7 +33,7 @@ class Device extends Model
 
     public function room(): BelongsTo
     {
-        return $this->belongsTo(\Modules\Room\Models\Room::class);
+        return $this->belongsTo(Room::class);
     }
 
     public function deviceType(): BelongsTo
@@ -50,11 +53,11 @@ class Device extends Model
 
     public function energyReadings(): HasMany
     {
-        return $this->hasMany(\Modules\Energy\Models\EnergyReading::class);
+        return $this->hasMany(EnergyReading::class);
     }
 
     public function media(): MorphMany
     {
-        return $this->morphMany(\Modules\Media\Models\Media::class, 'owner');
+        return $this->morphMany(Media::class, 'owner');
     }
 }
