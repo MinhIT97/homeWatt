@@ -38,7 +38,7 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div>
                             <x-input-label for="brand" value="Thương hiệu" />
                             <x-text-input id="brand" name="brand" type="text" class="mt-1 block w-full" :value="old('brand')" placeholder="LG, Samsung..." />
@@ -52,7 +52,7 @@
                     <div class="pt-6 border-t border-slate-100">
                         <h3 class="font-outfit font-bold text-slate-700 text-sm uppercase tracking-wider border-b border-slate-100 pb-3 mb-4">Thông số công suất (Tùy chọn)</h3>
 
-                        <div class="grid grid-cols-2 gap-6">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             <div>
                                 <x-input-label for="rated_power" value="Công suất định mức (W)" />
                                 <x-text-input id="rated_power" name="rated_power" type="number" step="0.01" class="mt-1 block w-full" :value="old('rated_power')" placeholder="Ví dụ: 120" />
@@ -75,7 +75,7 @@
                     <div class="pt-6 border-t border-slate-100">
                         <h3 class="font-outfit font-bold text-slate-700 text-sm uppercase tracking-wider border-b border-slate-100 pb-3 mb-4">Tần suất sử dụng (Tùy chọn)</h3>
 
-                        <div class="grid grid-cols-2 gap-6">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             <div>
                                 <x-input-label for="hours_per_day" value="Số giờ/ngày" />
                                 <x-text-input id="hours_per_day" name="hours_per_day" type="number" step="0.5" max="24" class="mt-1 block w-full" :value="old('hours_per_day')" placeholder="Ví dụ: 8" />

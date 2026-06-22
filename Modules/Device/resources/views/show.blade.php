@@ -44,7 +44,7 @@
                                             <p class="text-sm font-semibold text-slate-700 group-hover:text-primary-700">Chụp hoặc tải ảnh tem nhãn</p>
                                             <p class="text-xs text-slate-400 mt-0.5">JPEG, PNG, WebP — tối đa 20MB</p>
                                         </div>
-                                        <input type="file" name="image" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="this.form.submit()" required />
+                                        <input type="file" name="image" accept="image/jpeg,image/png,image/webp" capture="environment" class="hidden" onchange="this.form.submit()" required />
                                     </label>
                                 </div>
                             </form>

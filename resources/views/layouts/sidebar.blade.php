@@ -1,4 +1,4 @@
-<div class="w-64 bg-white border-r border-slate-200/60 flex flex-col h-screen sticky top-0 shrink-0 select-none">
+<div class="hidden lg:flex w-64 bg-white border-r border-slate-200/60 flex-col h-screen sticky top-0 shrink-0 select-none">
     <!-- Logo Section -->
     <div class="h-16 flex items-center px-6 border-b border-slate-100">
         <a href="{{ route('dashboard') }}" class="flex items-center gap-2.5">

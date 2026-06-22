@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <h2 class="font-extrabold text-2xl text-slate-900 font-outfit leading-tight">Thành Viên — {{ $home->name }}</h2>
             <a href="{{ route('homes.show', $home) }}" class="text-sm text-slate-500 hover:text-slate-800 font-semibold transition">Quay lại chi tiết</a>
         </div>
@@ -19,7 +19,7 @@
             <div class="glass-panel rounded-2xl border border-slate-200/60 shadow-sm bg-white/70 mb-6">
                 <div class="p-6">
                     <h3 class="text-lg font-bold text-slate-850 font-outfit mb-4">Mời Thành Viên Mới</h3>
-                    <form method="POST" action="{{ route('homes.invite', $home) }}" class="flex flex-col sm:flex-row gap-4 items-end">
+                    <form method="POST" action="{{ route('homes.invite', $home) }}" class="flex flex-col sm:flex-row gap-4 items-stretch sm:items-end">
                         @csrf
                         <div class="flex-1 w-full">
                             <x-input-label for="email" :value="__('Email')" />

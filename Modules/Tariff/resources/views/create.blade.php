@@ -48,25 +48,25 @@
                         </div>
 
                         <template x-for="(tier, index) in tiers" :key="index">
-                            <div class="grid grid-cols-5 gap-3 mb-3 p-4 bg-slate-50/80 rounded-xl border border-slate-100">
-                                <div>
+                            <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-3 p-4 bg-slate-50/80 rounded-xl border border-slate-100">
+                                <div class="col-span-1">
                                     <label class="text-xs font-bold text-slate-400 uppercase">Bậc</label>
                                     <input type="number" :name="'tiers[' + index + '][tier_number]'" x-model="tier.tier_number" class="mt-1 block w-full text-sm border border-slate-300 rounded-lg px-2 py-1.5" readonly />
                                 </div>
-                                <div>
-                                    <label class="text-xs font-bold text-slate-400 uppercase">Giới hạn (kWh)</label>
-                                    <input type="number" step="0.01" :name="'tiers[' + index + '][limit_kwh]'" x-model="tier.limit_kwh" class="mt-1 block w-full text-sm border border-slate-300 rounded-lg px-2 py-1.5" placeholder="Bỏ trống = không giới hạn" />
-                                </div>
-                                <div>
-                                    <label class="text-xs font-bold text-slate-400 uppercase">Đơn giá (đ/kWh)</label>
-                                    <input type="number" step="0.01" :name="'tiers[' + index + '][rate]'" x-model="tier.rate" class="mt-1 block w-full text-sm border border-slate-300 rounded-lg px-2 py-1.5" required />
-                                </div>
-                                <div>
+                                <div class="col-span-1">
                                     <label class="text-xs font-bold text-slate-400 uppercase">Thuế (%)</label>
                                     <input type="number" step="0.01" :name="'tiers[' + index + '][tax_percent]'" x-model="tier.tax_percent" class="mt-1 block w-full text-sm border border-slate-300 rounded-lg px-2 py-1.5" />
                                 </div>
-                                <div class="flex items-end">
-                                    <button type="button" @click="tiers.splice(index, 1)" x-show="tiers.length > 1" class="text-xs text-red-500 hover:text-red-700 font-bold">Xóa</button>
+                                <div class="col-span-2 sm:col-span-1">
+                                    <label class="text-xs font-bold text-slate-400 uppercase">Giới hạn (kWh)</label>
+                                    <input type="number" step="0.01" :name="'tiers[' + index + '][limit_kwh]'" x-model="tier.limit_kwh" class="mt-1 block w-full text-sm border border-slate-300 rounded-lg px-2 py-1.5" placeholder="Bỏ trống = không giới hạn" />
+                                </div>
+                                <div class="col-span-2 sm:col-span-1">
+                                    <label class="text-xs font-bold text-slate-400 uppercase">Đơn giá (đ/kWh)</label>
+                                    <input type="number" step="0.01" :name="'tiers[' + index + '][rate]'" x-model="tier.rate" class="mt-1 block w-full text-sm border border-slate-300 rounded-lg px-2 py-1.5" required />
+                                </div>
+                                <div class="col-span-2 sm:col-span-1 flex items-end justify-end sm:justify-start pt-2 sm:pt-0">
+                                    <button type="button" @click="tiers.splice(index, 1)" x-show="tiers.length > 1" class="text-xs text-red-500 hover:text-red-700 font-bold px-3 py-1.5 border border-red-200 hover:bg-red-50/50 rounded-xl sm:border-0 sm:p-0">Xóa bậc</button>
                                 </div>
                             </div>
                         </template>

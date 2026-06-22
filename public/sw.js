@@ -1,30 +1,127 @@
-const CACHE = 'homewatt-v1';
-const ASSETS = ['/', '/dashboard', '/login', '/build/assets/'];
+const CACHE_NAME = 'homewatt-v1.0.0';
+const OFFLINE_URL = '/offline';
 
-self.addEventListener('install', (e) => {
-    self.skipWaiting();
-});
+const PRECACHE_ASSETS = [
+    OFFLINE_URL,
+    '/favicon.png',
+    '/manifest.json',
+    '/icons/icon-192.png',
+    '/icons/icon-512.png'
+];
 
-self.addEventListener('activate', (e) => {
-    e.waitUntil(
-        caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+// Sự kiện install: Lưu các asset cơ bản vào cache
+self.addEventListener('install', (event) => {
+    event.waitUntil(
+        caches.open(CACHE_NAME)
+            .then((cache) => {
+                console.log('[Service Worker] Đang tải các tài nguyên thiết yếu vào cache');
+                return cache.addAll(PRECACHE_ASSETS);
+            })
+            .then(() => self.skipWaiting())
     );
-    self.clients.claim();
 });
 
-self.addEventListener('fetch', (e) => {
-    if (e.request.method !== 'GET') return;
+// Sự kiện activate: Xóa sạch cache cũ để tránh xung đột phiên bản
+self.addEventListener('activate', (event) => {
+    event.waitUntil(
+        caches.keys().then((cacheNames) => {
+            return Promise.all(
+                cacheNames.map((cacheName) => {
+                    if (cacheName !== CACHE_NAME) {
+                        console.log('[Service Worker] Đang xóa cache cũ:', cacheName);
+                        return caches.delete(cacheName);
+                    }
+                })
+            );
+        }).then(() => self.clients.claim())
+    );
+});
 
-    if (e.request.url.includes('/build/assets/') || e.request.url.includes('/icons/') || e.request.url.endsWith('manifest.json') || e.request.url.endsWith('favicon.ico')) {
-        e.respondWith(caches.match(e.request).then((r) => r || fetch(e.request).then((res) => {
-            if (res.ok) {
-                const clone = res.clone();
-                caches.open(CACHE).then((c) => c.put(e.request, clone));
-            }
-            return res;
-        })));
+// Sự kiện fetch: Quản lý request và chiến lược tải cache
+self.addEventListener('fetch', (event) => {
+    // Chỉ xử lý các request GET
+    if (event.request.method !== 'GET') {
         return;
     }
 
-    e.respondWith(fetch(e.request));
+    const url = new URL(event.request.url);
+
+    // 1. Đối với tài nguyên điều hướng (HTML pages) -> Chiến lược Network-First
+    if (event.request.mode === 'navigate') {
+        event.respondWith(
+            fetch(event.request)
+                .then((networkResponse) => {
+                    // Nếu phản hồi tốt, lưu một bản copy vào cache
+                    if (networkResponse.status === 200) {
+                        const responseClone = networkResponse.clone();
+                        caches.open(CACHE_NAME).then((cache) => {
+                            cache.put(event.request, responseClone);
+                        });
+                    }
+                    return networkResponse;
+                })
+                .catch(() => {
+                    // Khi offline: Thử lấy trang từ cache
+                    return caches.match(event.request)
+                        .then((cachedResponse) => {
+                            if (cachedResponse) {
+                                return cachedResponse;
+                            }
+                            // Nếu trang chưa được cache, trả về trang offline fallback tuyệt đẹp
+                            return caches.match(OFFLINE_URL);
+                        });
+                })
+        );
+        return;
+    }
+
+    // 2. Đối với Static Assets (Vite CSS/JS, Fonts, Icons) -> Chiến lược Stale-While-Revalidate hoặc Cache-First
+    const isStaticAsset = 
+        url.pathname.startsWith('/build/') || 
+        url.pathname.startsWith('/icons/') || 
+        url.pathname.startsWith('/images/') || 
+        url.hostname.includes('fonts.bunny.net') ||
+        url.pathname.endsWith('manifest.json') ||
+        url.pathname.endsWith('favicon.png') ||
+        url.pathname.endsWith('favicon.ico');
+
+    if (isStaticAsset) {
+        event.respondWith(
+            caches.match(event.request)
+                .then((cachedResponse) => {
+                    if (cachedResponse) {
+                        // Trả về ngay lập tức, nhưng ngầm cập nhật cache từ network
+                        fetch(event.request).then((networkResponse) => {
+                            if (networkResponse.status === 200) {
+                                caches.open(CACHE_NAME).then((cache) => {
+                                    cache.put(event.request, networkResponse);
+                                });
+                            }
+                        }).catch(() => { /* Bỏ qua lỗi kết nối ngầm */ });
+                        
+                        return cachedResponse;
+                    }
+
+                    // Nếu chưa có trong cache, tải từ mạng và lưu vào cache
+                    return fetch(event.request).then((networkResponse) => {
+                        if (networkResponse.status === 200) {
+                            const responseClone = networkResponse.clone();
+                            caches.open(CACHE_NAME).then((cache) => {
+                                cache.put(event.request, responseClone);
+                            });
+                        }
+                        return networkResponse;
+                    });
+                })
+        );
+        return;
+    }
+
+    // 3. Các request khác (API, tải dữ liệu động): Chạy trực tiếp từ network
+    event.respondWith(
+        fetch(event.request).catch(() => {
+            // Khi mất mạng, thử phục vụ từ cache nếu có sẵn
+            return caches.match(event.request);
+        })
+    );
 });

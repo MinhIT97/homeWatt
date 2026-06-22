@@ -20,6 +20,10 @@ Route::get('/', function () {
     return view('core::welcome');
 })->name('home');
 
+Route::get('/offline', function () {
+    return view('errors.offline');
+})->name('offline');
+
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

@@ -35,7 +35,7 @@
 
             @if($analysis->result)
                 <!-- Confidence & Cost -->
-                <div class="grid grid-cols-3 gap-4 mb-6">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                     <div class="glass-panel rounded-xl border border-slate-200/60 p-4 text-center bg-white/70">
                         <p class="text-xs text-slate-400 font-bold uppercase">Độ tin cậy</p>
                         <p class="text-2xl font-extrabold text-slate-800 mt-1">{{ round($analysis->result->confidence * 100) }}%</p>

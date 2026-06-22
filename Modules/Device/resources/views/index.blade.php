@@ -20,37 +20,39 @@
                 </div>
             @else
                 <div class="glass-panel rounded-2xl border border-slate-200/60 shadow-sm bg-white/70 overflow-hidden">
-                    <table class="min-w-full divide-y divide-slate-100">
-                        <thead class="bg-slate-50/80">
-                            <tr>
-                                <th class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Thiết bị</th>
-                                <th class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Loại</th>
-                                <th class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Phòng</th>
-                                <th class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Công suất</th>
-                                <th class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Trạng thái</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            @foreach($devices as $device)
-                                <tr class="hover:bg-slate-50/50 transition">
-                                    <td class="px-6 py-4">
-                                        <a href="{{ route('devices.show', $device) }}" class="text-sm font-bold text-slate-800 hover:text-primary-600 transition">{{ $device->name }}</a>
-                                        <p class="text-xs text-slate-400 mt-0.5">{{ $device->brand }} {{ $device->model }}</p>
-                                    </td>
-                                    <td class="px-6 py-4 text-sm text-slate-600 font-medium">{{ $device->deviceType?->name }}</td>
-                                    <td class="px-6 py-4 text-sm text-slate-600 font-medium">{{ $device->room->name }}</td>
-                                    <td class="px-6 py-4 text-sm text-slate-650 font-semibold text-accent-600">
-                                        {{ $device->specification?->rated_power ? $device->specification->rated_power.' W' : '—' }}
-                                    </td>
-                                    <td class="px-6 py-4">
-                                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold border {{ $device->status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-slate-100 text-slate-600 border-slate-200' }}">
-                                            {{ $device->status }}
-                                        </span>
-                                    </td>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-slate-100">
+                            <thead class="bg-slate-50/80">
+                                <tr>
+                                    <th class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Thiết bị</th>
+                                    <th class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Loại</th>
+                                    <th class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Phòng</th>
+                                    <th class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Công suất</th>
+                                    <th class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Trạng thái</th>
                                 </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                @foreach($devices as $device)
+                                    <tr class="hover:bg-slate-50/50 transition">
+                                        <td class="px-6 py-4">
+                                            <a href="{{ route('devices.show', $device) }}" class="text-sm font-bold text-slate-800 hover:text-primary-600 transition">{{ $device->name }}</a>
+                                            <p class="text-xs text-slate-400 mt-0.5">{{ $device->brand }} {{ $device->model }}</p>
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-slate-600 font-medium">{{ $device->deviceType?->name }}</td>
+                                        <td class="px-6 py-4 text-sm text-slate-600 font-medium">{{ $device->room->name }}</td>
+                                        <td class="px-6 py-4 text-sm text-slate-650 font-semibold text-accent-600">
+                                            {{ $device->specification?->rated_power ? $device->specification->rated_power.' W' : '—' }}
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold border {{ $device->status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-slate-100 text-slate-600 border-slate-200' }}">
+                                                {{ $device->status }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
                 <div class="mt-4">{{ $devices->links() }}</div>
             @endif

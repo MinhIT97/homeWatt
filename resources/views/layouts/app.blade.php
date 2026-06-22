@@ -13,10 +13,27 @@
         <!-- PWA -->
         <link rel="manifest" href="{{ asset('manifest.json') }}">
         <meta name="theme-color" content="#3B82F6">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+        <meta name="apple-mobile-web-app-title" content="HomeWatt">
+        <link rel="apple-touch-icon" href="{{ asset('icons/icon-192.png') }}">
         <script>
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('/sw.js');
             }
+
+            // Lưu trữ sự kiện trước khi cài đặt để hiển thị nút cài đặt thủ công
+            window.deferredPrompt = null;
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                window.deferredPrompt = e;
+                // Phát tín hiệu cho Alpine.js biết app có thể cài đặt được
+                window.dispatchEvent(new CustomEvent('pwa-install-ready'));
+            });
+            window.addEventListener('appinstalled', () => {
+                window.deferredPrompt = null;
+                window.dispatchEvent(new CustomEvent('pwa-installed-success'));
+            });
         </script>
 
         <!-- Fonts -->

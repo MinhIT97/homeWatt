@@ -1,6 +1,29 @@
-<nav x-data="{ open: false }" class="backdrop-blur-md bg-white/70 border-b border-slate-200/50 sticky top-0 z-50 select-none h-16 flex items-center justify-between px-6">
+<nav x-data="{ 
+    open: false, 
+    showInstallBtn: false, 
+    initPWA() { 
+        window.addEventListener('pwa-install-ready', () => { 
+            this.showInstallBtn = true; 
+        }); 
+        if (window.deferredPrompt) { 
+            this.showInstallBtn = true; 
+        } 
+    }, 
+    triggerInstall() { 
+        if (window.deferredPrompt) { 
+            window.deferredPrompt.prompt(); 
+            window.deferredPrompt.userChoice.then((choiceResult) => { 
+                if (choiceResult.outcome === 'accepted') { 
+                    console.log('Người dùng đã cài đặt ứng dụng'); 
+                    this.showInstallBtn = false; 
+                } 
+                window.deferredPrompt = null; 
+            }); 
+        } 
+    } 
+}" x-init="initPWA()" class="backdrop-blur-md bg-white/70 border-b border-slate-200/50 sticky top-0 z-50 select-none h-16 flex items-center justify-between px-6">
     <!-- Mobile Menu Toggle & Brand Logo -->
-    <div class="flex items-center gap-4 sm:hidden">
+    <div class="flex items-center gap-4 lg:hidden">
         <button @click="open = ! open" class="inline-flex items-center justify-center p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 focus:outline-none transition">
             <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
                 <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -15,7 +38,7 @@
     </div>
 
     <!-- Spacer on Desktop -->
-    <div class="hidden sm:block"></div>
+    <div class="hidden lg:block"></div>
 
     <!-- Right Side Actions: Notification Bell + User Profile -->
     <div class="flex items-center gap-4">
@@ -68,9 +91,11 @@
     </div>
 
     <!-- Mobile Drawer Navigation -->
-    <div :class="{'block': open, 'hidden': ! open}" class="hidden fixed inset-y-0 left-0 w-64 bg-white shadow-2xl z-50 transition-transform duration-300 transform sm:hidden">
+    <div :class="open ? 'flex' : 'hidden'"
+         class="fixed inset-y-0 left-0 w-64 h-full shadow-2xl z-50 flex-col lg:hidden"
+         style="background-color: #ffffff; min-height: 100vh;">
         <!-- Close button & Logo -->
-        <div class="h-16 flex items-center justify-between px-6 border-b border-slate-100">
+        <div class="h-16 flex items-center justify-between px-6 border-b border-slate-100 shrink-0">
             <a href="{{ route('dashboard') }}" class="flex items-center gap-2">
                 <span class="p-1 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-lg text-white shadow-md shadow-blue-500/10">⚡</span>
                 <span class="text-lg font-bold text-slate-800 font-outfit">HomeWatt</span>
@@ -83,7 +108,7 @@
         </div>
 
         <!-- Navigation Links in Mobile -->
-        <div class="py-4 px-4 space-y-1">
+        <div class="flex-1 py-4 px-4 space-y-1 overflow-y-auto">
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 Tổng quan
             </x-responsive-nav-link>
@@ -105,16 +130,31 @@
             <x-responsive-nav-link :href="route('tariff.index')" :active="request()->routeIs('tariff.*')">
                 Hóa đơn điện
             </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('dashboard.compare')" :active="request()->routeIs('dashboard.compare')">
+                So sánh
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('profile.edit')" :active="request()->routeIs('profile.edit')">
+                Cài đặt
+            </x-responsive-nav-link>
+
+            <!-- PWA Install Button inside Mobile Drawer -->
+            <div x-show="showInstallBtn" class="mt-6 p-4 bg-gradient-to-br from-blue-50 to-indigo-50/50 border border-blue-100 rounded-2xl">
+                <div class="w-8 h-8 bg-blue-600/10 text-blue-600 rounded-lg flex items-center justify-center mb-3">
+                    <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                </div>
+                <h5 class="text-xs font-bold text-slate-800 font-outfit mb-1">Ứng dụng di động</h5>
+                <p class="text-[10px] text-slate-500 leading-relaxed mb-3">Cài đặt HomeWatt lên màn hình chính để truy cập nhanh chóng hơn.</p>
+                <button @click="triggerInstall()" class="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-lg shadow-sm transition">
+                    Cài đặt ứng dụng
+                </button>
+            </div>
         </div>
     </div>
     
     <!-- Mobile Drawer Overlay -->
-    <div x-show="open" @click="open = false" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 sm:hidden"
-         x-transition:enter="transition ease-out duration-300"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100"
-         x-transition:leave="transition ease-in duration-200"
-         x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0">
+    <div :class="open ? 'block' : 'hidden'" @click="open = false" class="fixed inset-0 z-40 lg:hidden"
+         style="background-color: rgba(15, 23, 42, 0.5);">
     </div>
 </nav>

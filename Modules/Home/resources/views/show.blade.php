@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <h2 class="font-extrabold text-2xl text-slate-900 font-outfit leading-tight">{{ $home->name }}</h2>
             <div class="flex gap-3">
                 <a href="{{ route('homes.edit', $home) }}" class="inline-flex items-center px-4 py-2 bg-white/80 border border-slate-300 hover:border-slate-400 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition">Chỉnh sửa</a>
