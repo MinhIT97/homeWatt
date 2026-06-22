@@ -5,7 +5,6 @@ namespace Modules\Energy\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Modules\Device\Models\Device;
 use Modules\Energy\Models\EnergyReading;
 
 class SmartPlugController extends Controller

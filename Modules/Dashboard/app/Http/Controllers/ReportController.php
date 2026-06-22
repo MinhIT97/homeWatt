@@ -4,7 +4,6 @@ namespace Modules\Dashboard\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Modules\Device\Models\Device;
 use Modules\Energy\Models\EnergyEstimate;

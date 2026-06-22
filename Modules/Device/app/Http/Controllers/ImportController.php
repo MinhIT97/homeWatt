@@ -5,12 +5,13 @@ namespace Modules\Device\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
 use Modules\Device\Imports\DevicesImport;
 
 class ImportController extends Controller
 {
-    public function showForm(): \Illuminate\View\View
+    public function showForm(): View
     {
         return view('device::import');
     }

@@ -139,7 +139,7 @@ class DashboardController extends Controller
                     ->with(['specification', 'usageProfile', 'deviceType'])
                     ->get();
 
-                $suggestions = (new SavingSuggestion())->analyze($devices, $stats['estimated_monthly_cost']);
+                $suggestions = (new SavingSuggestion)->analyze($devices, $stats['estimated_monthly_cost']);
             }
         }
 

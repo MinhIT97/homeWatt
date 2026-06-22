@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\AI\Models\AiAnalysisRequest;
-use Modules\AI\Models\DeviceExtraction;
 
 class AIController extends Controller
 {

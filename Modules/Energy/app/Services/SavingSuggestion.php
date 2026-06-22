@@ -2,8 +2,6 @@
 
 namespace Modules\Energy\Services;
 
-use Modules\Device\Models\Device;
-
 class SavingSuggestion
 {
     public function analyze($devices, float $monthlyCost): array
@@ -38,7 +36,7 @@ class SavingSuggestion
                     $suggestions[] = [
                         'icon' => $this->icon($device->name),
                         'title' => "Giảm giờ dùng {$device->name}",
-                        'detail' => "Đang chạy {$hoursPerDay}h/ngày. Nếu giảm xuống {$reducedHours}h/ngày, tiết kiệm ~" . number_format($savedCost) . 'đ/tháng.',
+                        'detail' => "Đang chạy {$hoursPerDay}h/ngày. Nếu giảm xuống {$reducedHours}h/ngày, tiết kiệm ~".number_format($savedCost).'đ/tháng.',
                         'saving_kwh' => round($savedKwh, 1),
                         'saving_cost' => round($savedCost),
                         'priority' => $savedKwh > 20 ? 'high' : 'medium',
@@ -58,7 +56,7 @@ class SavingSuggestion
                     $suggestions[] = [
                         'icon' => $this->icon($device->name),
                         'title' => "Tối ưu chu kỳ {$device->name}",
-                        'detail' => "{$device->name} không cần chạy liên tục. Giảm chu kỳ hoạt động có thể tiết kiệm ~" . number_format($savedCost) . 'đ/tháng.',
+                        'detail' => "{$device->name} không cần chạy liên tục. Giảm chu kỳ hoạt động có thể tiết kiệm ~".number_format($savedCost).'đ/tháng.',
                         'saving_kwh' => round($savedKwh, 1),
                         'saving_cost' => round($savedCost),
                         'priority' => 'medium',
@@ -90,7 +88,7 @@ class SavingSuggestion
             $suggestions[] = [
                 'icon' => '📊',
                 'title' => 'Tổng tiềm năng tiết kiệm',
-                'detail' => 'Thực hiện tất cả gợi ý trên có thể tiết kiệm ~' . number_format($totalPotentialSaving) . 'đ/tháng (khoảng ' . round(($totalPotentialSaving / max($monthlyCost, 1)) * 100) . '% hóa đơn).',
+                'detail' => 'Thực hiện tất cả gợi ý trên có thể tiết kiệm ~'.number_format($totalPotentialSaving).'đ/tháng (khoảng '.round(($totalPotentialSaving / max($monthlyCost, 1)) * 100).'% hóa đơn).',
                 'saving_kwh' => round($totalPotentialSaving / 2500, 1),
                 'saving_cost' => $totalPotentialSaving,
                 'priority' => 'high',
@@ -103,6 +101,7 @@ class SavingSuggestion
     private function icon(string $name): string
     {
         $n = strtolower($name);
+
         return match (true) {
             str_contains($n, 'máy lạnh') || str_contains($n, 'ac') || str_contains($n, 'air') => '❄️',
             str_contains($n, 'tủ lạnh') || str_contains($n, 'fridge') => '🥬',

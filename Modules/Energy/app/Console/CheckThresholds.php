@@ -3,13 +3,13 @@
 namespace Modules\Energy\Console;
 
 use Illuminate\Console\Command;
-use Modules\Device\Models\Device;
 use Modules\Energy\Models\MonthlyEnergySummary;
 use Modules\Home\Models\Home;
 
 class CheckThresholds extends Command
 {
     protected $signature = 'energy:check-thresholds';
+
     protected $description = 'Check home energy thresholds and log alerts';
 
     public function handle(): int
@@ -42,7 +42,7 @@ class CheckThresholds extends Command
         }
 
         if (count($alerts) > 0) {
-            $this->warn(count($alerts) . ' home(s) exceeded their monthly threshold:');
+            $this->warn(count($alerts).' home(s) exceeded their monthly threshold:');
             foreach ($alerts as $a) {
                 $this->line("  {$a['home_name']}: {$a['current_kwh']} kWh (threshold: {$a['threshold']} kWh, +{$a['pct_over']}%)");
             }

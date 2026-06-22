@@ -3,15 +3,13 @@
 namespace Modules\Energy\Console;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 use Modules\Device\Models\Device;
-use Modules\Energy\Models\EnergyEstimate;
-use Modules\Energy\Models\EnergyReading;
 use Modules\Energy\Models\MonthlyEnergySummary;
 
 class GenerateMonthlySummary extends Command
 {
     protected $signature = 'energy:summarize {year?} {month?}';
+
     protected $description = 'Generate monthly energy summaries for all homes';
 
     public function handle(): int
@@ -68,7 +66,7 @@ class GenerateMonthlySummary extends Command
             ['total_kwh', 'estimated_cost', 'reading_count', 'estimate_count', 'metadata'],
         );
 
-        $this->info("Generated " . count($summaries) . " summaries for {$year}-{$month}.");
+        $this->info('Generated '.count($summaries)." summaries for {$year}-{$month}.");
 
         return self::SUCCESS;
     }
