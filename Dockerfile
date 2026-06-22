@@ -22,11 +22,16 @@ FROM php:${PHP_VERSION}-cli-alpine AS vendor
 WORKDIR /var/www
 
 RUN apk add --no-cache \
+        freetype-dev \
         git \
         icu-dev \
+        libjpeg-turbo-dev \
+        libpng-dev \
+        libwebp-dev \
         libzip-dev \
         unzip \
-    && docker-php-ext-install -j"$(nproc)" intl zip
+    && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
+    && docker-php-ext-install -j"$(nproc)" gd intl zip
 
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 COPY . .
@@ -38,6 +43,7 @@ RUN composer install \
         --no-scripts \
         --prefer-dist \
         --optimize-autoloader \
+    && composer check-platform-reqs --no-dev \
     && composer clear-cache
 
 
