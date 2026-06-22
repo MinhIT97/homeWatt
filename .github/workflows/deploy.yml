@@ -227,7 +227,7 @@ jobs:
 
             - name: Run production smoke test
               working-directory: ${{ env.PROJECT_DIR }}
-              run: scripts/deploy/smoke-test.sh "$PRODUCTION_URL" "$APP_RELEASE"
+              run: sh scripts/deploy/smoke-test.sh "$PRODUCTION_URL" "$APP_RELEASE"
 
             - name: Show deployment status
               working-directory: ${{ env.PROJECT_DIR }}
@@ -241,7 +241,7 @@ jobs:
               env:
                   TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
                   TELEGRAM_DEPLOY_CHAT_ID: ${{ secrets.TELEGRAM_DEPLOY_CHAT_ID }}
-              run: scripts/deploy/notify-telegram.sh success "$APP_RELEASE" "Production smoke test passed."
+              run: sh scripts/deploy/notify-telegram.sh success "$APP_RELEASE" "Production smoke test passed."
 
             - name: Show failure logs
               if: failure()
@@ -285,7 +285,7 @@ jobs:
                   done
 
                   docker compose ps
-                  scripts/deploy/smoke-test.sh \
+                  sh scripts/deploy/smoke-test.sh \
                       "$PRODUCTION_URL" \
                       "${PREVIOUS_RELEASE:-rollback-unknown}"
                   echo "ROLLBACK_RESULT=restored-${PREVIOUS_RELEASE:-rollback-unknown}" >> "$GITHUB_ENV"
@@ -297,7 +297,7 @@ jobs:
               env:
                   TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
                   TELEGRAM_DEPLOY_CHAT_ID: ${{ secrets.TELEGRAM_DEPLOY_CHAT_ID }}
-              run: scripts/deploy/notify-telegram.sh failed "${APP_RELEASE:-unknown}" "${ROLLBACK_RESULT:-rollback-failed}; check workflow logs."
+              run: sh scripts/deploy/notify-telegram.sh failed "${APP_RELEASE:-unknown}" "${ROLLBACK_RESULT:-rollback-failed}; check workflow logs."
 
             - name: Clean unused images
               if: success()
