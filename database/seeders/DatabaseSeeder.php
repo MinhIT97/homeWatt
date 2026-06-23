@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Modules\Device\Database\Seeders\DeviceTypeSeeder;
+use Modules\Tariff\Database\Seeders\VietnamResidentialTariffSeeder;
 
 class DatabaseSeeder extends Seeder
 {
@@ -11,7 +12,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             DeviceTypeSeeder::class,
-            \Modules\Tariff\Database\Seeders\VietnamResidentialTariffSeeder::class,
+            VietnamResidentialTariffSeeder::class,
         ]);
     }
 }

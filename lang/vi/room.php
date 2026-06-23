@@ -9,5 +9,5 @@ return [
         'garage' => 'Nhà xe',
         'outdoor' => 'Ngoài trời',
         'other' => 'Khác',
-    ]
+    ],
 ];

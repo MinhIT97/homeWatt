@@ -9,5 +9,5 @@ return [
         'garage' => 'Garage',
         'outdoor' => 'Outdoor',
         'other' => 'Other',
-    ]
+    ],
 ];
