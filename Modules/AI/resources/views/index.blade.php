@@ -10,7 +10,7 @@
             @endif
 
             <div class="flex justify-end mb-6">
-                <a href="{{ route('ai.analyses.create') }}" class="inline-flex items-center px-5 py-2.5 bg-gradient-to-r from-primary-600 to-accent-500 hover:from-primary-500 hover:to-accent-400 text-white text-sm font-semibold rounded-xl shadow-md shadow-primary-500/15 hover:shadow-lg transition duration-150 hover:-translate-y-0.5 transform">
+                <a href="{{ route('ai.analyses.create') }}" class="inline-flex items-center justify-center px-5 py-2.5 bg-gradient-to-r from-primary-600 to-accent-500 hover:from-primary-500 hover:to-accent-400 text-white text-sm font-semibold rounded-xl shadow-md shadow-primary-500/15 hover:shadow-lg transition duration-150 hover:-translate-y-0.5 transform w-full sm:w-auto text-center">
                     + Phân tích ảnh mới
                 </a>
             </div>
@@ -26,7 +26,36 @@
                 </div>
             @else
                 <div class="glass-panel rounded-2xl border border-slate-200/60 shadow-sm bg-white/70 overflow-hidden">
-                    <div class="overflow-x-auto">
+                    <!-- Mobile Card List View -->
+                    <div class="block sm:hidden divide-y divide-slate-100">
+                        @foreach($analyses as $analysis)
+                            <a href="{{ route('ai.analyses.show', $analysis) }}" class="block p-4 hover:bg-slate-50/50 transition">
+                                <div class="flex justify-between items-start mb-2 gap-2">
+                                    <span class="text-sm font-bold text-slate-800 font-outfit">Phân tích #{{ $analysis->media_id }}</span>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border capitalize shrink-0
+                                        @if($analysis->status === 'completed') bg-green-50 text-green-700 border-green-200
+                                        @elseif($analysis->status === 'failed') bg-red-50 text-red-700 border-red-200
+                                        @elseif($analysis->status === 'processing') bg-blue-50 text-blue-700 border-blue-200
+                                        @else bg-amber-50 text-amber-700 border-amber-200
+                                        @endif">
+                                        {{ $analysis->status }}
+                                    </span>
+                                </div>
+                                <div class="flex justify-between items-center text-xs text-slate-500 mt-2">
+                                    <span class="font-medium text-slate-650">
+                                        Độ tin cậy: <span class="font-semibold text-slate-800">{{ $analysis->result ? round($analysis->result->confidence * 100) . '%' : '—' }}</span>
+                                    </span>
+                                    <span class="font-semibold text-slate-450">${{ number_format($analysis->result?->cost ?? 0, 6) }}</span>
+                                </div>
+                                <div class="text-[10px] text-slate-400 mt-1">
+                                    {{ $analysis->created_at->format('Y-m-d H:i') }}
+                                </div>
+                            </a>
+                        @endforeach
+                    </div>
+
+                    <!-- Desktop Table View -->
+                    <div class="hidden sm:block overflow-x-auto">
                         <table class="min-w-full divide-y divide-slate-100">
                             <thead class="bg-slate-50/80">
                                 <tr>

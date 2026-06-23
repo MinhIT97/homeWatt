@@ -33,6 +33,7 @@ class DashboardController extends Controller
         ];
 
         $topDevices = collect();
+        $roomsData = collect();
         $dailyLabels = [];
         $dailyData = [];
         $lastMonthDailyData = [];
@@ -144,7 +145,7 @@ class DashboardController extends Controller
         }
 
         return view('dashboard::index', compact(
-            'stats', 'homes', 'selectedHomeId', 'topDevices',
+            'stats', 'homes', 'selectedHomeId', 'topDevices', 'roomsData',
             'dailyLabels', 'dailyData', 'lastMonthDailyData', 'suggestions',
         ));
     }

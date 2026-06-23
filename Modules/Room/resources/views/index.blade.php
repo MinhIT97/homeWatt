@@ -2,7 +2,7 @@
     <x-slot name="header">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <h2 class="font-extrabold text-2xl text-slate-900 font-outfit leading-tight">Danh Sách Phòng</h2>
-            <a href="{{ route('rooms.create') }}" class="inline-flex items-center px-4 py-2.5 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-500 hover:to-primary-600 text-white text-sm font-semibold rounded-xl shadow-md shadow-primary-600/15 hover:shadow-lg transition duration-150 hover:-translate-y-0.5 transform">
+            <a href="{{ route('rooms.create') }}" class="inline-flex items-center justify-center px-4 py-2.5 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-500 hover:to-primary-600 text-white text-sm font-semibold rounded-xl shadow-md shadow-primary-600/15 hover:shadow-lg transition duration-150 hover:-translate-y-0.5 transform w-full sm:w-auto text-center">
                 + Thêm phòng
             </a>
         </div>
@@ -26,7 +26,7 @@
                             <div class="p-6">
                                 <div class="flex items-start justify-between">
                                     <h3 class="font-extrabold text-lg text-slate-850 font-outfit hover:text-primary-600 transition">{{ $room->name }}</h3>
-                                    <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200 capitalize">{{ str_replace('_', ' ', $room->type) }}</span>
+                                    <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200 capitalize">{{ __("room.types.{$room->type}") }}</span>
                                 </div>
                                 <div class="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-sm text-slate-500">
                                     <span class="font-medium">{{ $room->home->name }}</span>

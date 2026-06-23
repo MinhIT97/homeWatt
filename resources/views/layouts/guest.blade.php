@@ -19,6 +19,12 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans text-slate-100 antialiased bg-slate-950 min-h-screen relative overflow-x-hidden bg-grid-pattern">
+        <!-- Language Switcher -->
+        <div class="absolute top-4 right-4 z-50 flex gap-2">
+            <a href="{{ route('lang.switch', 'vi') }}" class="px-2.5 py-1 text-xs font-bold rounded-lg border {{ app()->getLocale() == 'vi' ? 'bg-primary-600/30 border-primary-500/50 text-white' : 'border-slate-800 bg-slate-900/40 text-slate-400 hover:text-white' }} transition">VI</a>
+            <a href="{{ route('lang.switch', 'en') }}" class="px-2.5 py-1 text-xs font-bold rounded-lg border {{ app()->getLocale() == 'en' ? 'bg-primary-600/30 border-primary-500/50 text-white' : 'border-slate-800 bg-slate-900/40 text-slate-400 hover:text-white' }} transition">EN</a>
+        </div>
+
         <!-- Floating glow circles in background -->
         <div class="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary-600/20 rounded-full blur-[100px] pointer-events-none animate-float"></div>
         <div class="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-[400px] h-[400px] bg-accent-500/10 rounded-full blur-[120px] pointer-events-none animate-float-delayed"></div>

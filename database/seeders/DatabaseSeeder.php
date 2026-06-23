@@ -11,7 +11,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             DeviceTypeSeeder::class,
-            \VietnamResidentialTariffSeeder::class,
+            \Modules\Tariff\Database\Seeders\VietnamResidentialTariffSeeder::class,
         ]);
     }
 }

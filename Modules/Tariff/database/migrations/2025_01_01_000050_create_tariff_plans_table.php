@@ -17,6 +17,7 @@ return new class extends Migration
             $table->date('effective_from');
             $table->date('effective_to')->nullable();
             $table->string('status')->default('active');
+            $table->boolean('is_system')->default(false);
             $table->timestamps();
         });
     }

@@ -21,7 +21,7 @@
             }); 
         } 
     } 
-}" x-init="initPWA()" class="backdrop-blur-md bg-white/70 border-b border-slate-200/50 sticky top-0 z-50 select-none h-16 flex items-center justify-between px-6">
+}" x-init="initPWA()" class="backdrop-blur-md bg-white/70 border-b border-slate-200/50 sticky top-0 z-50 select-none h-16 flex items-center justify-between px-3 sm:px-6">
     <!-- Mobile Menu Toggle & Brand Logo -->
     <div class="flex items-center gap-4 lg:hidden">
         <button @click="open = ! open" class="inline-flex items-center justify-center p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 focus:outline-none transition">
@@ -33,7 +33,7 @@
 
         <a href="{{ route('dashboard') }}" class="text-lg font-extrabold flex items-center gap-1.5">
             <span class="p-1 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-lg text-white shadow-md shadow-blue-500/10">⚡</span>
-            <span class="text-gradient-primary-accent font-outfit">HomeWatt</span>
+            <span class="text-gradient-primary-accent font-outfit hidden min-[360px]:inline">HomeWatt</span>
         </a>
     </div>
 
@@ -41,7 +41,7 @@
     <div class="hidden lg:block"></div>
 
     <!-- Right Side Actions: Notification Bell + User Profile -->
-    <div class="flex items-center gap-4">
+    <div class="flex items-center gap-2 sm:gap-4">
         <!-- Notification Bell -->
         <button class="relative p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition duration-150">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -49,13 +49,19 @@
             </svg>
         </button>
 
+        <!-- Language Switcher -->
+        <div class="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200/60">
+            <a href="{{ route('lang.switch', 'vi') }}" class="px-2 py-1 text-[10px] font-bold rounded {{ app()->getLocale() == 'vi' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600' }} transition">VI</a>
+            <a href="{{ route('lang.switch', 'en') }}" class="px-2 py-1 text-[10px] font-bold rounded {{ app()->getLocale() == 'en' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600' }} transition">EN</a>
+        </div>
+
         <!-- Divider -->
-        <div class="h-6 w-[1px] bg-slate-200/80"></div>
+        <div class="h-6 w-[1px] bg-slate-200/80 hidden min-[360px]:block"></div>
 
         <!-- User Profile Dropdown -->
         <x-dropdown align="right" width="48">
             <x-slot name="trigger">
-                <button class="flex items-center gap-2.5 hover:bg-slate-50 p-1.5 rounded-xl transition duration-150 text-slate-700">
+                <button class="flex items-center gap-1 sm:gap-2.5 hover:bg-slate-50 p-1.5 rounded-xl transition duration-150 text-slate-700">
                     <!-- Avatar -->
                     <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-cyan-400 text-white flex items-center justify-center text-xs font-bold font-outfit shadow-sm">
                         {{ strtoupper(substr(Auth::user()->name, 0, 2)) }}
@@ -66,7 +72,7 @@
                         <p class="text-[10px] text-slate-400 font-semibold leading-none mt-1">Người dùng</p>
                     </div>
                     <!-- Arrow icon -->
-                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-4 h-4 text-slate-400 hidden min-[360px]:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path>
                     </svg>
                 </button>
@@ -136,6 +142,15 @@
             <x-responsive-nav-link :href="route('profile.edit')" :active="request()->routeIs('profile.edit')">
                 Cài đặt
             </x-responsive-nav-link>
+
+            <!-- Mobile Language Switcher -->
+            <div class="pt-4 mt-4 border-t border-slate-100 px-4">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Ngôn ngữ / Language</p>
+                <div class="flex gap-2">
+                    <a href="{{ route('lang.switch', 'vi') }}" class="flex-1 py-1.5 text-center text-xs font-bold rounded-lg border {{ app()->getLocale() == 'vi' ? 'bg-blue-50 border-blue-200 text-blue-600' : 'border-slate-200 bg-white text-slate-500' }} transition">Tiếng Việt</a>
+                    <a href="{{ route('lang.switch', 'en') }}" class="flex-1 py-1.5 text-center text-xs font-bold rounded-lg border {{ app()->getLocale() == 'en' ? 'bg-blue-50 border-blue-200 text-blue-600' : 'border-slate-200 bg-white text-slate-500' }} transition">English</a>
+                </div>
+            </div>
 
             <!-- PWA Install Button inside Mobile Drawer -->
             <div x-show="showInstallBtn" class="mt-6 p-4 bg-gradient-to-br from-blue-50 to-indigo-50/50 border border-blue-100 rounded-2xl">

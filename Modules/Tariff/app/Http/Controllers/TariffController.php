@@ -48,16 +48,21 @@ class TariffController extends Controller
         return redirect()->route('tariff.index')->with('success', 'Tariff plan created.');
     }
 
-    public function show(TariffPlan $plan): View
+    public function show(TariffPlan $tariff): View
     {
-        $plan->load('tiers');
+        $tariff->load('tiers');
+        $plan = $tariff;
 
         return view('tariff::show', compact('plan'));
     }
 
-    public function destroy(TariffPlan $plan): RedirectResponse
+    public function destroy(TariffPlan $tariff): RedirectResponse
     {
-        $plan->delete();
+        if ($tariff->is_system) {
+            return redirect()->route('tariff.index')->with('error', 'Không thể xóa biểu giá mẫu của hệ thống.');
+        }
+
+        $tariff->delete();
 
         return redirect()->route('tariff.index')->with('success', 'Tariff plan deleted.');
     }

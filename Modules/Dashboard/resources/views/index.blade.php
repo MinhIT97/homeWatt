@@ -13,16 +13,16 @@
                         $greeting = 'Chào buổi tối';
                     }
                 @endphp
-                <h2 class="font-extrabold text-2xl text-slate-900 tracking-tight font-outfit">
+                <h2 class="font-extrabold text-xl sm:text-2xl text-slate-900 tracking-tight font-outfit">
                     {{ $greeting }}, {{ Auth::user()->name }}!
                 </h2>
                 <p class="text-xs text-slate-500 mt-1">Tổng quan mức tiêu thụ điện của gia đình bạn.</p>
             </div>
 
-            <div class="flex items-center gap-3">
+            <div class="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
                 @if($homes->isNotEmpty())
                     <form method="GET" class="flex items-center gap-2">
-                        <label for="home_select" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Ngôi nhà:</label>
+                        <label for="home_select" class="text-xs font-semibold text-slate-400 uppercase tracking-wider hidden min-[360px]:inline">Ngôi nhà:</label>
                         <select id="home_select" name="home_id" onchange="this.form.submit()" class="bg-white border-slate-200 rounded-xl shadow-sm text-xs focus:border-blue-500 focus:ring-blue-500/20 pl-3 pr-8 py-2 font-bold text-slate-700 transition">
                             @foreach($homes as $home)
                                 <option value="{{ $home->id }}" @selected($selectedHomeId == $home->id)>{{ $home->name }}</option>

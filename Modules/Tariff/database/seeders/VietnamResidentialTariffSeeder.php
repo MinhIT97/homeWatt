@@ -1,5 +1,7 @@
 <?php
 
+namespace Modules\Tariff\Database\Seeders;
+
 use Illuminate\Database\Seeder;
 use Modules\Tariff\Models\TariffPlan;
 use Modules\Tariff\Models\TariffTier;
@@ -15,6 +17,7 @@ class VietnamResidentialTariffSeeder extends Seeder
             'type' => 'residential',
             'effective_from' => '2024-10-11',
             'status' => 'active',
+            'is_system' => true,
         ]);
 
         $tiers = [

@@ -16,7 +16,7 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="glass-panel rounded-2xl border border-slate-200/60 shadow-sm bg-white/70 p-6">
                 <dl class="grid grid-cols-2 md:grid-cols-4 gap-6">
-                    <div><dt class="text-xs font-bold text-slate-400 uppercase tracking-wider">Loại phòng</dt><dd class="mt-1 text-sm font-semibold text-slate-800">{{ \Modules\Room\Models\Room::TYPES[$room->type] ?? $room->type }}</dd></div>
+                    <div><dt class="text-xs font-bold text-slate-400 uppercase tracking-wider">Loại phòng</dt><dd class="mt-1 text-sm font-semibold text-slate-800">{{ __("room.types.{$room->type}") }}</dd></div>
                     <div><dt class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tầng</dt><dd class="mt-1 text-sm font-semibold text-slate-800">{{ $room->floor ?? '—' }}</dd></div>
                     <div><dt class="text-xs font-bold text-slate-400 uppercase tracking-wider">Ngôi nhà</dt><dd class="mt-1 text-sm font-semibold text-slate-800">{{ $room->home->name }}</dd></div>
                     <div><dt class="text-xs font-bold text-slate-400 uppercase tracking-wider">Số thiết bị</dt><dd class="mt-1 text-sm font-semibold text-slate-800">{{ $room->devices->count() }}</dd></div>

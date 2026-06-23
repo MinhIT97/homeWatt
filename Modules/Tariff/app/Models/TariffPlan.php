@@ -15,11 +15,13 @@ class TariffPlan extends Model
         'effective_from',
         'effective_to',
         'status',
+        'is_system',
     ];
 
     protected $casts = [
         'effective_from' => 'date',
         'effective_to' => 'date',
+        'is_system' => 'boolean',
     ];
 
     public function tiers(): HasMany

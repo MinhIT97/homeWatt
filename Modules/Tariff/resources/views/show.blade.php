@@ -3,10 +3,14 @@
         <div class="flex justify-between items-center">
             <h2 class="font-extrabold text-2xl text-slate-900 font-outfit leading-tight">{{ $plan->name }}</h2>
             <div class="flex gap-2">
-                <form method="POST" action="{{ route('tariff.destroy', $plan) }}" onsubmit="return confirm('Xóa biểu giá này?')">
-                    @csrf @method('DELETE')
-                    <button class="text-sm text-red-500 hover:text-red-700 font-semibold transition">Xóa</button>
-                </form>
+                @if($plan->is_system)
+                    <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200">Biểu giá mẫu</span>
+                @else
+                    <form method="POST" action="{{ route('tariff.destroy', $plan) }}" onsubmit="return confirm('Xóa biểu giá này?')">
+                        @csrf @method('DELETE')
+                        <button class="text-sm text-red-500 hover:text-red-700 font-semibold transition">Xóa</button>
+                    </form>
+                @endif
             </div>
         </div>
     </x-slot>

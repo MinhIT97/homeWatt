@@ -31,7 +31,7 @@
                             <x-input-label for="type" value="Loại phòng" />
                             <select id="type" name="type" class="mt-1 block w-full bg-white/80 border border-slate-300 rounded-xl shadow-sm text-slate-800 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition duration-150 py-2.5 px-3.5">
                                 @foreach(\Modules\Room\Models\Room::TYPES as $key => $label)
-                                    <option value="{{ $key }}" @selected(old('type') == $key)>{{ $label }}</option>
+                                    <option value="{{ $key }}" @selected(old('type') == $key)>{{ __("room.types.{$key}") }}</option>
                                 @endforeach
                             </select>
                         </div>

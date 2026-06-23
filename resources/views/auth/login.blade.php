@@ -48,6 +48,12 @@
                 {{ __('Log in') }}
             </x-primary-button>
         </div>
+
+        <div class="text-center pt-2">
+            <a class="text-xs text-slate-400 hover:text-primary-400 transition focus:outline-none" href="{{ route('register') }}">
+                {{ __('Chưa có tài khoản? Đăng ký ngay') }}
+            </a>
+        </div>
     </form>
 </x-guest-layout>
 
