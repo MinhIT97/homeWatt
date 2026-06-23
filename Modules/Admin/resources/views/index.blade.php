@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-extrabold text-2xl text-slate-900 font-outfit leading-tight">Bảng Điều Khiển Admin</h2>
+        <h2 class="font-extrabold text-2xl text-slate-900 font-outfit leading-tight">{{ __('admin.title') }}</h2>
     </x-slot>
 
     <div class="py-12">
@@ -8,19 +8,19 @@
             <!-- Stats cards -->
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 <div class="glass-panel rounded-2xl border border-slate-200/60 p-5 shadow-sm bg-white/70 hover:scale-[1.02] transition duration-200">
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tổng ngôi nhà</p>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">{{ __('admin.total_homes') }}</p>
                     <p class="text-3xl font-extrabold text-gradient-purple-cyan font-outfit mt-1">{{ $stats['total_homes'] }}</p>
                 </div>
                 <div class="glass-panel rounded-2xl border border-slate-200/60 p-5 shadow-sm bg-white/70 hover:scale-[1.02] transition duration-200">
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Loại thiết bị</p>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">{{ __('admin.device_types') }}</p>
                     <p class="text-3xl font-extrabold text-primary-650 font-outfit mt-1">{{ $stats['total_device_types'] }}</p>
                 </div>
                 <div class="glass-panel rounded-2xl border border-slate-200/60 p-5 shadow-sm bg-white/70 hover:scale-[1.02] transition duration-200">
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Biểu giá điện</p>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">{{ __('admin.tariffs') }}</p>
                     <p class="text-3xl font-extrabold text-accent-650 font-outfit mt-1">{{ $stats['total_tariff_plans'] }}</p>
                 </div>
                 <div class="glass-panel rounded-2xl border border-slate-200/60 p-5 shadow-sm bg-white/70 hover:scale-[1.02] transition duration-200">
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Phân tích AI hôm nay</p>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">{{ __('admin.ai_today') }}</p>
                     <p class="text-3xl font-extrabold text-emerald-650 font-outfit mt-1">{{ $stats['ai_usage_today'] }}</p>
                 </div>
             </div>
@@ -28,19 +28,19 @@
             <!-- AI Analyses list -->
             <div class="glass-panel rounded-2xl border border-slate-200/60 shadow-sm bg-white/70 overflow-hidden">
                 <div class="px-6 py-4.5 border-b border-slate-100 bg-slate-50/40">
-                    <h3 class="font-bold text-slate-850 font-outfit">Lịch sử phân tích AI gần đây</h3>
+                    <h3 class="font-bold text-slate-850 font-outfit">{{ __('admin.recent_ai') }}</h3>
                 </div>
                 @if($recentAnalyses->isEmpty())
-                    <div class="p-8 text-slate-500 text-sm text-center">Chưa có hoạt động phân tích AI nào được ghi nhận.</div>
+                    <div class="p-8 text-slate-500 text-sm text-center">{{ __('admin.no_activity') }}</div>
                 @else
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-slate-100">
                             <thead class="bg-slate-50/80">
                                 <tr>
-                                    <th class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Người dùng</th>
-                                    <th class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Trạng thái</th>
-                                    <th class="px-6 py-3.5 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">Chi phí AI</th>
-                                    <th class="px-6 py-3.5 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">Thời gian</th>
+                                    <th class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">{{ __('admin.table_user') }}</th>
+                                    <th class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">{{ __('admin.table_status') }}</th>
+                                    <th class="px-6 py-3.5 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">{{ __('admin.table_ai_cost') }}</th>
+                                    <th class="px-6 py-3.5 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">{{ __('admin.table_time') }}</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100">

@@ -18,4 +18,13 @@ class DeviceType extends Model
     {
         return $this->hasMany(Device::class);
     }
+
+    public function getDisplayNameAttribute(): string
+    {
+        $translation = __("device.types.{$this->slug}");
+        if ($translation === "device.types.{$this->slug}") {
+            return $this->name;
+        }
+        return $translation;
+    }
 }

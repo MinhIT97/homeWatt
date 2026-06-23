@@ -35,8 +35,8 @@ class SavingSuggestion
                 if ($savedKwh > 5) {
                     $suggestions[] = [
                         'icon' => $this->icon($device->name),
-                        'title' => "Giảm giờ dùng {$device->name}",
-                        'detail' => "Đang chạy {$hoursPerDay}h/ngày. Nếu giảm xuống {$reducedHours}h/ngày, tiết kiệm ~".number_format($savedCost).'đ/tháng.',
+                        'title' => __('dashboard.suggest_reduce_hours')." {$device->name}",
+                        'detail' => "{$device->name} ".__('dashboard.suggest_reduce_hours_detail', ['hoursPerDay' => $hoursPerDay, 'reducedHours' => $reducedHours, 'savedCost' => number_format($savedCost)]),
                         'saving_kwh' => round($savedKwh, 1),
                         'saving_cost' => round($savedCost),
                         'priority' => $savedKwh > 20 ? 'high' : 'medium',
@@ -55,8 +55,8 @@ class SavingSuggestion
                 if ($savedKwh > 5) {
                     $suggestions[] = [
                         'icon' => $this->icon($device->name),
-                        'title' => "Tối ưu chu kỳ {$device->name}",
-                        'detail' => "{$device->name} không cần chạy liên tục. Giảm chu kỳ hoạt động có thể tiết kiệm ~".number_format($savedCost).'đ/tháng.',
+                        'title' => __('dashboard.suggest_optimize_cycle')." {$device->name}",
+                        'detail' => "{$device->name} ".__('dashboard.suggest_optimize_cycle_detail', ['savedCost' => number_format($savedCost)]),
                         'saving_kwh' => round($savedKwh, 1),
                         'saving_cost' => round($savedCost),
                         'priority' => 'medium',
@@ -73,8 +73,8 @@ class SavingSuggestion
                 if ($month >= 6 && $month <= 8) {
                     $suggestions[] = [
                         'icon' => '❄️',
-                        'title' => 'Đặt máy lạnh 26-28°C',
-                        'detail' => 'Mỗi độ tăng nhiệt độ tiết kiệm ~3% điện. Đặt 26°C thay vì 22°C tiết kiệm ~12% chi phí làm mát.',
+                        'title' => __('dashboard.suggest_ac_temp'),
+                        'detail' => __('dashboard.suggest_ac_temp_detail'),
                         'saving_kwh' => round($currentMonthlyKwh * 0.12, 1),
                         'saving_cost' => round($currentMonthlyKwh * 0.12 * 2500),
                         'priority' => 'high',
@@ -87,8 +87,8 @@ class SavingSuggestion
         if ($monthlyCost > 500000 && $totalPotentialSaving > 0) {
             $suggestions[] = [
                 'icon' => '📊',
-                'title' => 'Tổng tiềm năng tiết kiệm',
-                'detail' => 'Thực hiện tất cả gợi ý trên có thể tiết kiệm ~'.number_format($totalPotentialSaving).'đ/tháng (khoảng '.round(($totalPotentialSaving / max($monthlyCost, 1)) * 100).'% hóa đơn).',
+                'title' => __('dashboard.suggest_total_potential'),
+                'detail' => __('dashboard.suggest_total_potential_detail', ['saving' => number_format($totalPotentialSaving), 'pct' => round(($totalPotentialSaving / max($monthlyCost, 1)) * 100)]),
                 'saving_kwh' => round($totalPotentialSaving / 2500, 1),
                 'saving_cost' => $totalPotentialSaving,
                 'priority' => 'high',

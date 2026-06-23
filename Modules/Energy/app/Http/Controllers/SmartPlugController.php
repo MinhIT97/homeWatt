@@ -15,7 +15,7 @@ class SmartPlugController extends Controller
         $validKey = config('services.smartplug.api_key');
 
         if (! $validKey || $apiKey !== $validKey) {
-            return response()->json(['error' => 'Unauthorized'], 401);
+            return response()->json(['error' => __('messages.unauthorized')], 401);
         }
 
         $request->validate([

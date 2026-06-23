@@ -1,7 +1,7 @@
 <x-guest-layout>
     <div class="mb-6 text-center">
-        <h2 class="text-2xl font-extrabold font-outfit text-gradient-purple-cyan mb-1">Tạo Tài Khoản</h2>
-        <p class="text-xs text-slate-400">Khởi đầu hành trình quản lý năng lượng thông minh</p>
+        <h2 class="text-2xl font-extrabold font-outfit text-gradient-purple-cyan mb-1">{{ __('auth.register') }}</h2>
+        <p class="text-xs text-slate-400">{{ __('auth.register_subtitle') }}</p>
     </div>
 
     <form method="POST" action="{{ route('register') }}" class="space-y-4">

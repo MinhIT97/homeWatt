@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="utf-8">
-    <title>Báo Cáo Tiền Điện — {{ $home->name }} {{ $month }}/{{ $year }}</title>
+    <title>{{ __('dashboard.report_title') }} — {{ $home->name }} {{ $month }}/{{ $year }}</title>
     <style>
         body { font-family: DejaVu Sans, sans-serif; font-size: 12px; color: #1e293b; padding: 20px; }
         h1 { font-size: 20px; margin-bottom: 4px; }
@@ -18,34 +18,34 @@
     </style>
 </head>
 <body>
-    <h1>Báo Cáo Tiền Điện</h1>
-    <p class="sub">{{ $home->name }} — Tháng {{ $month }}/{{ $year }}</p>
+    <h1>{{ __('dashboard.report_heading') }}</h1>
+    <p class="sub">{{ $home->name }} — {{ __('dashboard.month_prefix') }} {{ $month }}/{{ $year }}</p>
 
     <div class="kpi">
         <div class="kpi-card">
             <div class="kpi-value">{{ number_format($monthlyKwh, 1) }} kWh</div>
-            <div class="kpi-label">Tổng tiêu thụ</div>
+            <div class="kpi-label">{{ __('dashboard.total_consumption') }}</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-value">{{ number_format($monthlyCost) }} đ</div>
-            <div class="kpi-label">Ước tính tiền điện</div>
+            <div class="kpi-value">{{ number_format($monthlyCost) }} {{ __('common.vnd_currency') }}</div>
+            <div class="kpi-label">{{ __('dashboard.estimated_bill') }}</div>
         </div>
         <div class="kpi-card">
             <div class="kpi-value">{{ $readings->count() }}</div>
-            <div class="kpi-label">Lần đo</div>
+            <div class="kpi-label">{{ __('dashboard.readings_count') }}</div>
         </div>
     </div>
 
     @if($readings->isNotEmpty())
-        <h3>Số đo đã ghi nhận</h3>
+        <h3>{{ __('dashboard.recorded_readings') }}</h3>
         <table>
             <thead>
                 <tr>
-                    <th>Thiết bị</th>
-                    <th>Thời gian</th>
-                    <th>Watt</th>
-                    <th>kWh</th>
-                    <th>Nguồn</th>
+                    <th>{{ __('device.table_device') }}</th>
+                    <th>{{ __('dashboard.table_time') }}</th>
+                    <th>{{ __('dashboard.table_watt') }}</th>
+                    <th>{{ __('dashboard.table_kwh') }}</th>
+                    <th>{{ __('dashboard.table_source') }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -63,15 +63,15 @@
     @endif
 
     @if($estimates->isNotEmpty())
-        <h3>Ước tính tiêu thụ</h3>
+        <h3>{{ __('dashboard.estimated_consumption') }}</h3>
         <table>
             <thead>
                 <tr>
-                    <th>Thiết bị</th>
-                    <th>Phương pháp</th>
-                    <th>kWh ước tính</th>
-                    <th>Chi phí</th>
-                    <th>Độ tin cậy</th>
+                    <th>{{ __('device.table_device') }}</th>
+                    <th>{{ __('dashboard.table_method') }}</th>
+                    <th>{{ __('dashboard.table_est_kwh') }}</th>
+                    <th>{{ __('common.cost') }}</th>
+                    <th>{{ __('dashboard.table_confidence') }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -80,7 +80,7 @@
                     <td>{{ $e->device?->name }}</td>
                     <td>{{ $e->method }}</td>
                     <td>{{ number_format($e->estimated_kwh, 1) }}</td>
-                    <td>{{ number_format($e->estimated_cost) }} đ</td>
+                    <td>{{ number_format($e->estimated_cost) }} {{ __('common.vnd_currency') }}</td>
                     <td>{{ round($e->confidence * 100) }}%</td>
                 </tr>
                 @endforeach
@@ -89,7 +89,7 @@
     @endif
 
     <div class="footer">
-        Xuất bởi HomeWatt — {{ now()->format('d/m/Y H:i') }}
+        {{ __('common.exported_by') }} — {{ now()->format('d/m/Y H:i') }}
     </div>
 </body>
 </html>

@@ -6,23 +6,23 @@
             <div>
                 @php
                     $hour = now()->hour;
-                    $greeting = 'Chào buổi sáng';
+                    $greeting = __('dashboard.greeting_morning');
                     if ($hour >= 12 && $hour < 18) {
-                        $greeting = 'Chào buổi chiều';
+                        $greeting = __('dashboard.greeting_afternoon');
                     } elseif ($hour >= 18 || $hour < 4) {
-                        $greeting = 'Chào buổi tối';
+                        $greeting = __('dashboard.greeting_evening');
                     }
                 @endphp
                 <h2 class="font-extrabold text-xl sm:text-2xl text-slate-900 tracking-tight font-outfit">
                     {{ $greeting }}, {{ Auth::user()->name }}!
                 </h2>
-                <p class="text-xs text-slate-500 mt-1">Tổng quan mức tiêu thụ điện của gia đình bạn.</p>
+                <p class="text-xs text-slate-500 mt-1">{{ __('dashboard.overview_desc') }}</p>
             </div>
 
             <div class="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
                 @if($homes->isNotEmpty())
                     <form method="GET" class="flex items-center gap-2">
-                        <label for="home_select" class="text-xs font-semibold text-slate-400 uppercase tracking-wider hidden min-[360px]:inline">Ngôi nhà:</label>
+                        <label for="home_select" class="text-xs font-semibold text-slate-400 uppercase tracking-wider hidden min-[360px]:inline">{{ __('dashboard.select_home') }}</label>
                         <select id="home_select" name="home_id" onchange="this.form.submit()" class="bg-white border-slate-200 rounded-xl shadow-sm text-xs focus:border-blue-500 focus:ring-blue-500/20 pl-3 pr-8 py-2 font-bold text-slate-700 transition">
                             @foreach($homes as $home)
                                 <option value="{{ $home->id }}" @selected($selectedHomeId == $home->id)>{{ $home->name }}</option>
@@ -55,10 +55,10 @@
                 <div class="glass-panel rounded-3xl p-12 text-center max-w-xl mx-auto border border-slate-200/60 shadow-xl relative overflow-hidden bg-white">
                     <div class="absolute -top-12 -right-12 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl"></div>
                     <div class="w-16 h-16 bg-blue-600/10 rounded-2xl flex items-center justify-center text-3xl text-blue-500 mx-auto mb-6 shadow-md shadow-blue-600/5">⚡</div>
-                    <h3 class="text-xl font-extrabold text-slate-800 mb-2 font-outfit">Chào mừng đến với HomeWatt!</h3>
-                    <p class="text-slate-500 text-sm mb-6 leading-relaxed">Hãy thêm ngôi nhà đầu tiên của bạn để bắt đầu theo dõi tiêu thụ điện.</p>
+                    <h3 class="text-xl font-extrabold text-slate-800 mb-2 font-outfit">{{ __('dashboard.welcome') }}</h3>
+                    <p class="text-slate-500 text-sm mb-6 leading-relaxed">{{ __('dashboard.welcome_desc') }}</p>
                     <a href="{{ route('homes.create') }}" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-xl hover:from-blue-500 hover:to-cyan-400 text-sm font-bold shadow-lg shadow-blue-600/15 transition hover:-translate-y-0.5">
-                        Thêm Ngôi Nhà Đầu Tiên
+                        {{ __('dashboard.add_first_home') }}
                     </a>
                 </div>
             @else
@@ -116,15 +116,15 @@
                     <!-- Budget Limit Setting Modal -->
                     <div x-show="showLimitModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" x-cloak style="display: none;">
                         <div @click.away="showLimitModal = false" class="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-sm w-full p-6 space-y-4">
-                            <h4 class="font-extrabold text-slate-800 font-outfit text-base">Cài đặt hạn mức chi tiêu</h4>
-                            <p class="text-xs text-slate-500 leading-relaxed">Đặt hạn mức tiền điện hàng tháng mong muốn. Hệ thống AI sẽ cảnh báo khi chi phí vượt hạn mức này.</p>
+                            <h4 class="font-extrabold text-slate-800 font-outfit text-base">{{ __('dashboard.set_budget') }}</h4>
+                            <p class="text-xs text-slate-500 leading-relaxed">{{ __('dashboard.set_budget_desc') }}</p>
                             <div>
-                                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Số tiền hạn mức (₫)</label>
-                                <input type="number" x-model="newLimitInput" class="w-full bg-slate-50 border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-850 transition" placeholder="Ví dụ: 700000">
+                                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{{ __('dashboard.budget_amount') }}</label>
+                                <input type="number" x-model="newLimitInput" class="w-full bg-slate-50 border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-850 transition" placeholder="{{ __('dashboard.budget_placeholder') }}">
                             </div>
                             <div class="flex gap-3 justify-end pt-2">
-                                <button @click="showLimitModal = false" class="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 transition">Hủy</button>
-                                <button @click="saveBudget()" class="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/10 transition">Lưu hạn mức</button>
+                                <button @click="showLimitModal = false" class="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 transition">{{ __('common.cancel') }}</button>
+                                <button @click="saveBudget()" class="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/10 transition">{{ __('dashboard.save_budget') }}</button>
                             </div>
                         </div>
                     </div>
@@ -134,7 +134,7 @@
                         <!-- Card 1: Today -->
                         <div class="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-sm hover:scale-[1.02] hover:shadow-md transition duration-200 flex flex-col justify-between h-32 relative overflow-hidden">
                             <div>
-                                <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Điện năng tiêu thụ hôm nay</p>
+                                <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{{ __('dashboard.today_consumption') }}</p>
                                 <h4 class="text-2xl font-extrabold text-slate-900 font-outfit mt-1.5">{{ number_format($todayKwh, 2) }} <span class="text-sm font-medium text-slate-400">kWh</span></h4>
                             </div>
                             <div class="flex items-center justify-between mt-2">
@@ -143,7 +143,7 @@
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="{{ $pctYesterday <= 0 ? 'M5 10l7-7m0 0l7 7m-7-7v18' : 'M19 14l-7 7m0 0l-7-7m7 7V3' }}"></path>
                                         </svg>
-                                        {{ abs($pctYesterday) }}% so với hôm qua
+                                        {{ abs($pctYesterday) }}% {{ __('dashboard.vs_yesterday') }}
                                     </span>
                                 @else
                                     <span class="text-xs font-semibold text-slate-400">—</span>
@@ -157,7 +157,7 @@
                         <!-- Card 2: Monthly -->
                         <div class="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-sm hover:scale-[1.02] hover:shadow-md transition duration-200 flex flex-col justify-between h-32 relative overflow-hidden">
                             <div>
-                                <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Điện năng tháng này</p>
+                                <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{{ __('dashboard.this_month') }}</p>
                                 <h4 class="text-2xl font-extrabold text-slate-900 font-outfit mt-1.5">{{ number_format($monthlyKwh, 1) }} <span class="text-sm font-medium text-slate-400">kWh</span></h4>
                             </div>
                             <div class="flex items-center justify-between mt-2">
@@ -166,7 +166,7 @@
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="{{ $pctLastMonth <= 0 ? 'M5 10l7-7m0 0l7 7m-7-7v18' : 'M19 14l-7 7m0 0l-7-7m7 7V3' }}"></path>
                                         </svg>
-                                        {{ abs($pctLastMonth) }}% so với tháng trước
+                                        {{ abs($pctLastMonth) }}% {{ __('dashboard.vs_last_month') }}
                                     </span>
                                 @else
                                     <span class="text-xs font-semibold text-slate-400">—</span>
@@ -184,8 +184,8 @@
                         <div class="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-sm hover:scale-[1.02] hover:shadow-md transition duration-200 flex flex-col justify-between h-32 relative overflow-hidden">
                             <div>
                                 <div class="flex justify-between items-start">
-                                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Ước tính tiền điện</p>
-                                    <button @click="showLimitModal = true" class="p-1 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-slate-600 transition" title="Đặt hạn mức">
+                                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{{ __('dashboard.estimated_bill') }}</p>
+                                    <button @click="showLimitModal = true" class="p-1 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-slate-600 transition" title="{{ __('dashboard.set_budget_btn') }}">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -193,15 +193,15 @@
                                     </button>
                                 </div>
                                 <div class="flex items-baseline gap-1 mt-1">
-                                    <h4 class="text-2xl font-extrabold text-slate-900 font-outfit">{{ number_format($monthlyCost) }} <span class="text-xs font-bold text-slate-500 font-sans">đ</span></h4>
+                                    <h4 class="text-2xl font-extrabold text-slate-900 font-outfit">{{ number_format($monthlyCost) }} <span class="text-xs font-bold text-slate-500 font-sans">{{ __('common.vnd_currency') }}</span></h4>
                                     <span x-show="estimatedCost > budgetLimit" class="ml-2 px-1.5 py-0.5 rounded bg-red-50 text-[9px] font-extrabold text-red-500 border border-red-100 uppercase tracking-wider animate-pulse">
-                                        ⚠️ Vượt hạn mức
+                                        ⚠️ {{ __('dashboard.over_budget_warning') }}
                                     </span>
                                 </div>
                             </div>
                             <div class="w-full">
                                 <div class="flex justify-between text-[9px] font-bold text-slate-400 mb-1">
-                                    <span>HẠN MỨC: <span x-text="Math.round(budgetLimit).toLocaleString()"></span>đ</span>
+                                    <span>{{ __('dashboard.budget_label') }} <span x-text="Math.round(budgetLimit).toLocaleString()"></span>{{ __('common.vnd_currency') }}</span>
                                     <span x-text="Math.round((estimatedCost / budgetLimit) * 100) + '%'"></span>
                                 </div>
                                 <div class="bg-slate-100 rounded-full h-1 overflow-hidden">
@@ -215,12 +215,12 @@
                         <!-- Card 4: Devices -->
                         <div class="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-sm hover:scale-[1.02] hover:shadow-md transition duration-200 flex flex-col justify-between h-32 relative overflow-hidden">
                             <div>
-                                <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Thiết bị đang hoạt động</p>
+                                <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{{ __('dashboard.active_devices') }}</p>
                                 <h4 class="text-2xl font-extrabold text-slate-900 font-outfit mt-1.5" x-text="activeDevices"></h4>
                             </div>
                             <div class="flex items-center justify-between mt-2">
                                 <span class="text-xs font-semibold text-slate-400">
-                                    trong tổng số <span x-text="totalDevices"></span> thiết bị
+                                    {{ __('dashboard.out_of') }} <span x-text="totalDevices"></span> {{ __('dashboard.devices') }}
                                 </span>
                                 <svg class="w-8 h-8 transform -rotate-90">
                                     <circle cx="16" cy="16" r="12" stroke="#E2E8F0" stroke-width="3.5" fill="transparent" />
@@ -236,8 +236,8 @@
                         <!-- Consumption Line Chart -->
                         <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200/60 shadow-sm p-6 flex flex-col justify-between">
                             <div class="flex justify-between items-center mb-6">
-                                <h3 class="font-extrabold text-slate-800 font-outfit text-base">Biểu đồ tiêu thụ điện</h3>
-                                <span class="bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 px-3 py-1.5 font-outfit">7 ngày qua</span>
+                                <h3 class="font-extrabold text-slate-800 font-outfit text-base">{{ __('dashboard.consumption_chart') }}</h3>
+                                <span class="bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 px-3 py-1.5 font-outfit">{{ __('dashboard.last_7_days') }}</span>
                             </div>
                             <div class="w-full">
                                 <canvas id="consumptionChart" class="h-64"></canvas>
@@ -248,19 +248,19 @@
                         <div class="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-6 flex flex-col justify-between">
                             <div>
                                 <div class="flex justify-between items-center mb-6">
-                                    <h3 class="font-extrabold text-slate-800 font-outfit text-base">Thiết bị tiêu thụ nhiều nhất</h3>
-                                    <a href="{{ route('devices.index') }}" class="text-xs font-bold text-blue-600 hover:underline">Xem tất cả</a>
+                                    <h3 class="font-extrabold text-slate-800 font-outfit text-base">{{ __('dashboard.top_devices') }}</h3>
+                                    <a href="{{ route('devices.index') }}" class="text-xs font-bold text-blue-600 hover:underline">{{ __('common.view_all') }}</a>
                                 </div>
 
                                 <div class="space-y-5">
                                     @if($topDevices->isNotEmpty())
                                         @php
                                             $maxKwh = $topDevices->max('total_kwh') ?: 1;
-                                            $icons = ['air' => '❄️', 'conditioner' => '❄️', 'lạnh' => '❄️', 'ac' => '❄️', 'fridge' => '🥬', 'tủ lạnh' => '🥬', 'freezer' => '🥬', 'tv' => '📺', 'tivi' => '📺', 'television' => '📺', 'washer' => '🧺', 'giặt' => '🧺', 'dryer' => '🧺', 'heater' => '🔥', 'nước nóng' => '🔥', 'bình nóng' => '🔥'];
+                                            $icons = ['air' => '❄️', 'conditioner' => '❄️', 'điều hòa' => '❄️', 'ac' => '❄️', 'fridge' => '🥬', 'tủ lạnh' => '🥬', 'freezer' => '🥬', 'tv' => '📺', 'tivi' => '📺', 'television' => '📺', 'washer' => '🧺', 'máy giặt' => '🧺', 'dryer' => '🧺', 'heater' => '🔥', 'nước nóng' => '🔥', 'bình nóng lạnh' => '🔥'];
                                         @endphp
                                         @foreach($topDevices as $summary)
                                             @php
-                                                $name = $summary->device?->name ?? 'Thiết bị';
+                                                $name = $summary->device?->name ?? __('device.table_device');
                                                 $lowerName = strtolower($name);
                                                 $icon = '🔌';
                                                 foreach($icons as $key => $emoji) {
@@ -285,8 +285,8 @@
                                     @else
                                         <div class="py-12 text-center flex flex-col items-center justify-center h-full">
                                             <span class="text-3xl mb-2">📊</span>
-                                            <p class="text-slate-400 text-sm font-bold">Chưa có dữ liệu tiêu thụ</p>
-                                            <p class="text-slate-400 text-xs mt-1">Ghi nhận số đo thiết bị để xem xếp hạng.</p>
+                                            <p class="text-slate-400 text-sm font-bold">{{ __('dashboard.no_consumption_data') }}</p>
+                                            <p class="text-slate-400 text-xs mt-1">{{ __('dashboard.no_consumption_desc') }}</p>
                                         </div>
                                     @endif
                                 </div>
@@ -300,13 +300,13 @@
                         <div class="lg:col-span-2 space-y-6">
                             <!-- Recently Added Devices -->
                             <div class="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-6">
-                                <h3 class="font-extrabold text-slate-800 font-outfit text-base mb-5">Thiết bị mới thêm</h3>
+                                <h3 class="font-extrabold text-slate-800 font-outfit text-base mb-5">{{ __('dashboard.new_devices') }}</h3>
 
                                 @php
                                     $recentDevices = $selectedHomeId
                                         ? \Modules\Device\Models\Device::whereHas('room', fn($q) => $q->where('home_id', $selectedHomeId))->latest()->take(3)->get()
                                         : collect();
-                                    $devIcons = ['air' => '❄️', 'conditioner' => '❄️', 'lạnh' => '❄️', 'ac' => '❄️', 'fridge' => '🥬', 'tủ lạnh' => '🥬', 'freezer' => '🥬', 'tv' => '📺', 'tivi' => '📺', 'television' => '📺', 'washer' => '🧺', 'giặt' => '🧺', 'dryer' => '🧺', 'heater' => '🔥', 'nước nóng' => '🔥', 'bình nóng' => '🔥'];
+                                    $devIcons = ['air' => '❄️', 'conditioner' => '❄️', 'điều hòa' => '❄️', 'ac' => '❄️', 'fridge' => '🥬', 'tủ lạnh' => '🥬', 'freezer' => '🥬', 'tv' => '📺', 'tivi' => '📺', 'television' => '📺', 'washer' => '🧺', 'máy giặt' => '🧺', 'dryer' => '🧺', 'heater' => '🔥', 'nước nóng' => '🔥', 'bình nóng lạnh' => '🔥'];
                                 @endphp
 
                                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -343,7 +343,7 @@
 
                                     <a href="{{ route('devices.create') }}" class="border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center gap-2 text-slate-400 hover:text-blue-500 hover:border-blue-400 hover:bg-blue-50/5 transition cursor-pointer h-40">
                                         <span class="w-9 h-9 bg-slate-50 rounded-full flex items-center justify-center border border-slate-150 shadow-sm text-base font-bold">+</span>
-                                        <span class="text-xs font-bold font-outfit">Thêm thiết bị</span>
+                                        <span class="text-xs font-bold font-outfit">{{ __('dashboard.add_device') }}</span>
                                     </a>
                                 </div>
                             </div>
@@ -354,12 +354,12 @@
                                 <div class="flex gap-3 min-w-0">
                                     <span class="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-lg text-blue-600 shrink-0 shadow-inner">💡</span>
                                     <div>
-                                        <h5 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider font-outfit">Đề xuất AI tối ưu</h5>
+                                        <h5 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider font-outfit">{{ __('dashboard.ai_suggestions') }}</h5>
                                         <p class="text-xs text-slate-500 mt-1 leading-relaxed">
                                             @if($recommendationDevice)
-                                                Chuyển hoạt động của <strong class="text-slate-700">{{ $recommendationDevice->name }}</strong> ({{ $recommendationDevice->specification?->rated_power ? number_format($recommendationDevice->specification->rated_power).'W' : 'công suất lớn' }}) từ 18:00 (giờ cao điểm) sang sau 22:00 (giờ thấp điểm) để tiết kiệm ước tính <strong class="text-blue-600">12,000₫/ngày</strong>.
+                                                {!! __('dashboard.ai_suggest_detail', ['name' => $recommendationDevice->name, 'power' => $recommendationDevice->specification?->rated_power ? number_format($recommendationDevice->specification->rated_power).'W' : __('dashboard.high_power')]) !!}
                                             @else
-                                                Thêm thiết bị công suất lớn (máy giặt, điều hòa, bình nóng lạnh) để nhận đề xuất tối ưu hóa điện năng từ AI.
+                                                {{ __('dashboard.ai_suggest_no_device') }}
                                             @endif
                                         </p>
                                     </div>
@@ -373,7 +373,7 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
                                             </svg>
                                         </span>
-                                        <span x-text="isScheduled ? 'Đã lên lịch tự động' : 'Lên lịch tự động'"></span>
+                                        <span x-text="isScheduled ? '{{ __('dashboard.auto_scheduled') }}' : '{{ __('dashboard.schedule_auto') }}'"></span>
                                     </button>
                                 @endif
                             </div>
@@ -383,7 +383,7 @@
                         <div class="space-y-6">
                             <!-- Room Allocation Donut -->
                             <div class="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-6 flex flex-col justify-between">
-                                <h3 class="font-extrabold text-slate-800 font-outfit text-base mb-5">Phân bố theo phòng</h3>
+                                <h3 class="font-extrabold text-slate-800 font-outfit text-base mb-5">{{ __('dashboard.room_distribution') }}</h3>
 
                                 @php
                                     $roomsData = collect();
@@ -415,13 +415,13 @@
                                     $strokeOffset = 276.46 * (1 - $ecoScore / 100);
                                     
                                     if ($ecoScore >= 80) {
-                                        $badgeTitle = 'Chiến binh xanh';
+                                        $badgeTitle = __('dashboard.badge_green_warrior');
                                         $badgeColorClass = 'text-emerald-600';
                                     } elseif ($ecoScore >= 60) {
-                                        $badgeTitle = 'Người bảo vệ';
+                                        $badgeTitle = __('dashboard.badge_protector');
                                         $badgeColorClass = 'text-blue-600';
                                     } else {
-                                        $badgeTitle = 'Mới bắt đầu';
+                                        $badgeTitle = __('dashboard.badge_beginner');
                                         $badgeColorClass = 'text-slate-600';
                                     }
                                 @endphp
@@ -454,15 +454,15 @@
                                 @else
                                     <div class="py-8 text-center flex flex-col items-center justify-center h-full w-full">
                                         <span class="text-3xl mb-2">🏘️</span>
-                                        <p class="text-slate-400 text-sm font-bold animate-pulse">Chưa có dữ liệu phân bố</p>
-                                        <p class="text-slate-400 text-xs mt-1">Ghi nhận số đo thiết bị để xem phân bổ theo phòng.</p>
+                                        <p class="text-slate-400 text-sm font-bold animate-pulse">{{ __('dashboard.no_distribution_data') }}</p>
+                                        <p class="text-slate-400 text-xs mt-1">{{ __('dashboard.no_distribution_desc') }}</p>
                                     </div>
                                 @endif
                             </div>
 
                             <!-- Eco-Score Card -->
                             <div class="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-6 flex flex-col justify-between relative overflow-hidden">
-                                <h3 class="font-extrabold text-slate-800 font-outfit text-base mb-5">Chỉ số tiết kiệm xanh</h3>
+                                <h3 class="font-extrabold text-slate-800 font-outfit text-base mb-5">{{ __('dashboard.green_score') }}</h3>
                                 
                                 <div class="flex items-center gap-4">
                                     <!-- Gauge circular chart -->
@@ -474,7 +474,7 @@
                                         </svg>
                                         <div class="absolute inset-0 flex flex-col items-center justify-center">
                                             <span class="text-2xl font-extrabold text-slate-800 font-outfit">{{ $ecoScore }}</span>
-                                            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Điểm</span>
+                                            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wide">{{ __('dashboard.points') }}</span>
                                         </div>
                                     </div>
 
@@ -483,28 +483,28 @@
                                         <div class="flex items-center gap-2">
                                             <span class="text-base">🌳</span>
                                             <div class="min-w-0">
-                                                <p class="text-[10px] text-slate-400 font-semibold leading-none">Giảm thiểu CO2</p>
+                                                <p class="text-[10px] text-slate-400 font-semibold leading-none">{{ __('dashboard.co2_reduction') }}</p>
                                                 <p class="text-xs font-bold text-slate-800 mt-1 truncate">{{ number_format($co2Saved, 1) }} kg CO2</p>
                                             </div>
                                         </div>
                                         <div class="flex items-center gap-2">
                                             <span class="text-base">🌱</span>
                                             <div class="min-w-0">
-                                                <p class="text-[10px] text-slate-400 font-semibold leading-none">Cây tương đương</p>
-                                                <p class="text-xs font-bold text-slate-800 mt-1 truncate">{{ $trees }} cây xanh</p>
+                                                <p class="text-[10px] text-slate-400 font-semibold leading-none">{{ __('dashboard.trees_equivalent') }}</p>
+                                                <p class="text-xs font-bold text-slate-800 mt-1 truncate">{{ $trees }} {{ __('common.trees_unit') }}</p>
                                             </div>
                                         </div>
                                         <div class="flex items-center gap-2">
                                             <span class="text-base">🏆</span>
                                             <div class="min-w-0">
-                                                <p class="text-[10px] text-slate-400 font-semibold leading-none">Danh hiệu</p>
+                                                <p class="text-[10px] text-slate-400 font-semibold leading-none">{{ __('dashboard.badge') }}</p>
                                                 <p class="text-xs font-bold {{ $badgeColorClass }} mt-1 truncate">{{ $badgeTitle }}</p>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                                 <p class="text-[10px] text-slate-400 leading-relaxed mt-4 pt-4 border-t border-slate-100">
-                                    Hành vi sử dụng điện của bạn đang tốt hơn {{ $ecoScore }}% số hộ gia đình xung quanh. Tiếp tục phát huy!
+                                    {{ __('dashboard.green_behavior_message', ['score' => $ecoScore]) }}
                                 </p>
                             </div>
                         </div>
@@ -514,7 +514,7 @@
                             <div class="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl border border-emerald-200/60 shadow-sm p-6">
                                 <div class="flex items-center gap-2 mb-4">
                                     <span class="text-xl">💡</span>
-                                    <h3 class="font-extrabold text-slate-800 font-outfit text-base">Gợi ý tiết kiệm điện</h3>
+                                    <h3 class="font-extrabold text-slate-800 font-outfit text-base">{{ __('dashboard.saving_tips') }}</h3>
                                 </div>
                                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     @foreach($suggestions as $s)
@@ -523,7 +523,7 @@
                                             <div class="min-w-0">
                                                 <h5 class="text-sm font-bold text-slate-800">{{ $s['title'] }}</h5>
                                                 <p class="text-xs text-slate-500 mt-1 leading-relaxed">{{ $s['detail'] }}</p>
-                                                <p class="text-xs font-bold text-emerald-600 mt-2">~{{ number_format($s['saving_cost']) }}đ/tháng</p>
+                                                <p class="text-xs font-bold text-emerald-600 mt-2">~{{ number_format($s['saving_cost']) }}{{ __('common.vnd_per_month') }}</p>
                                             </div>
                                         </div>
                                     @endforeach
@@ -563,7 +563,7 @@
                     data: {
                         labels: labels,
                         datasets: [{
-                            label: 'Tháng này',
+                            label: '{{ __('dashboard.this_month_label') }}',
                             data: data,
                             borderColor: '#3B82F6',
                             borderWidth: 3,
@@ -580,7 +580,7 @@
                             pointHoverBorderWidth: 2
                         @if(!empty(array_filter($lastMonthDailyData)))
                         }, {
-                            label: 'Tháng trước',
+                            label: '{{ __('dashboard.last_month_label') }}',
                             data: lastMonthData,
                             borderColor: '#94A3B8',
                             borderWidth: 2,

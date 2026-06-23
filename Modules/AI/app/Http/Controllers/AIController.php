@@ -21,7 +21,7 @@ class AIController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        return response()->json(['message' => 'Use /ai/analyses endpoint'], 400);
+        return response()->json(['message' => __('ai.use_endpoint')], 400);
     }
 
     public function show(Request $request, $id): JsonResponse
@@ -37,7 +37,7 @@ class AIController extends Controller
 
     public function update(Request $request, $id): JsonResponse
     {
-        return response()->json(['message' => 'Not implemented'], 405);
+        return response()->json(['message' => __('ai.not_implemented')], 405);
     }
 
     public function destroy(Request $request, $id): JsonResponse

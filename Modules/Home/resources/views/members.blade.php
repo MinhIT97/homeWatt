@@ -1,8 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <h2 class="font-extrabold text-2xl text-slate-900 font-outfit leading-tight">Thành Viên — {{ $home->name }}</h2>
-            <a href="{{ route('homes.show', $home) }}" class="text-sm text-slate-500 hover:text-slate-800 font-semibold transition">Quay lại chi tiết</a>
+            <h2 class="font-extrabold text-2xl text-slate-900 font-outfit leading-tight">{{ __('home.members_title') }} — {{ $home->name }}</h2>
+            <a href="{{ route('homes.show', $home) }}" class="text-sm text-slate-500 hover:text-slate-800 font-semibold transition">{{ __('home.back_to_detail') }}</a>
         </div>
     </x-slot>
 
@@ -18,23 +18,23 @@
             <!-- Invite form -->
             <div class="glass-panel rounded-2xl border border-slate-200/60 shadow-sm bg-white/70 mb-6">
                 <div class="p-6">
-                    <h3 class="text-lg font-bold text-slate-850 font-outfit mb-4">Mời Thành Viên Mới</h3>
+                    <h3 class="text-lg font-bold text-slate-850 font-outfit mb-4">{{ __('home.invite_member') }}</h3>
                     <form method="POST" action="{{ route('homes.invite', $home) }}" class="flex flex-col sm:flex-row gap-4 items-stretch sm:items-end">
                         @csrf
                         <div class="flex-1 w-full">
                             <x-input-label for="email" :value="__('Email')" />
-                            <x-text-input id="email" name="email" type="email" class="mt-1 block w-full" :value="old('email')" required placeholder="email@example.com" />
+                            <x-text-input id="email" name="email" type="email" class="mt-1 block w-full" :value="old('email')" required placeholder="{{ __('home.email_placeholder') }}" />
                             <x-input-error :messages="$errors->get('email')" class="mt-2" />
                         </div>
                         <div class="w-full sm:w-48">
-                            <x-input-label for="role" value="Vai trò" />
+                            <x-input-label for="role" value="{{ __('home.role_label') }}" />
                             <select id="role" name="role" class="mt-1 block w-full bg-white/80 border border-slate-300 rounded-xl shadow-sm text-slate-800 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition duration-150 py-2.5 px-3.5 text-sm">
-                                <option value="manager">Manager</option>
-                                <option value="member" selected>Member</option>
-                                <option value="viewer">Viewer</option>
+                                <option value="manager">{{ __('home.role_manager') }}</option>
+                                <option value="member" selected>{{ __('home.role_member') }}</option>
+                                <option value="viewer">{{ __('home.role_viewer') }}</option>
                             </select>
                         </div>
-                        <x-primary-button class="w-full sm:w-auto h-[46px] justify-center">Mời thành viên</x-primary-button>
+                        <x-primary-button class="w-full sm:w-auto h-[46px] justify-center">{{ __('home.invite_button') }}</x-primary-button>
                     </form>
                 </div>
             </div>
@@ -42,7 +42,7 @@
             <!-- Members list -->
             <div class="glass-panel rounded-2xl border border-slate-200/60 shadow-sm bg-white/70">
                 <div class="p-6">
-                    <h3 class="text-lg font-bold text-slate-850 font-outfit mb-4">Danh Sách Thành Viên</h3>
+                    <h3 class="text-lg font-bold text-slate-850 font-outfit mb-4">{{ __('home.members_list') }}</h3>
                     <div class="divide-y divide-slate-100">
                         @foreach($home->members as $member)
                             <div class="py-4 flex justify-between items-center">
@@ -60,10 +60,10 @@
                                         {{ $member->role }}
                                     </span>
                                     @if($member->role !== 'owner')
-                                        <form method="POST" action="{{ route('homes.members.remove', [$home, $member]) }}" onsubmit="return confirm('Xóa thành viên này khỏi nhà?')">
+                                        <form method="POST" action="{{ route('homes.members.remove', [$home, $member]) }}" onsubmit="return confirm('{{ __('common.remove_member_confirm') }}')">
                                             @csrf
                                             @method('DELETE')
-                                            <button class="text-xs font-semibold text-red-500 hover:text-red-700 border border-red-200 hover:bg-red-50/50 rounded-xl px-3 py-1.5 transition">Xóa</button>
+                                            <button class="text-xs font-semibold text-red-500 hover:text-red-700 border border-red-200 hover:bg-red-50/50 rounded-xl px-3 py-1.5 transition">{{ __('common.remove') }}</button>
                                         </form>
                                     @endif
                                 </div>

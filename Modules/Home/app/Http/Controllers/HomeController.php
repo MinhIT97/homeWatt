@@ -44,7 +44,7 @@ class HomeController extends Controller
         ]);
 
         return redirect()->route('homes.show', $home)
-            ->with('success', 'Home created successfully.');
+            ->with('success', __('home.created'));
     }
 
     public function show(Request $request, Home $home): View
@@ -70,7 +70,7 @@ class HomeController extends Controller
         $home->update($request->validated());
 
         return redirect()->route('homes.show', $home)
-            ->with('success', 'Home updated successfully.');
+            ->with('success', __('home.updated'));
     }
 
     public function destroy(Request $request, Home $home): RedirectResponse
@@ -80,7 +80,7 @@ class HomeController extends Controller
         $home->delete();
 
         return redirect()->route('homes.index')
-            ->with('success', 'Home deleted.');
+            ->with('success', __('home.deleted'));
     }
 
     public function members(Request $request, Home $home): View
@@ -99,7 +99,7 @@ class HomeController extends Controller
         $user = User::where('email', $request->validated('email'))->firstOrFail();
 
         if ($home->members()->where('user_id', $user->id)->exists()) {
-            return back()->with('error', 'User is already a member.');
+            return back()->with('error', __('home.user_already_member'));
         }
 
         HomeMember::create([
@@ -108,7 +108,7 @@ class HomeController extends Controller
             'role' => $request->validated('role'),
         ]);
 
-        return back()->with('success', 'Member invited successfully.');
+        return back()->with('success', __('home.member_invited'));
     }
 
     public function removeMember(Request $request, Home $home, HomeMember $member): RedirectResponse
@@ -120,11 +120,11 @@ class HomeController extends Controller
         }
 
         if ($member->role === 'owner') {
-            return back()->with('error', 'Cannot remove the owner.');
+            return back()->with('error', __('common.cannot_remove_owner'));
         }
 
         $member->delete();
 
-        return back()->with('success', 'Member removed.');
+        return back()->with('success', __('home.member_removed'));
     }
 }

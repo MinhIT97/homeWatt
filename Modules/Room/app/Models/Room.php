@@ -21,16 +21,6 @@ class Room extends Model
         'sort_order',
     ];
 
-    public const TYPES = [
-        'living_room' => 'Living Room',
-        'bedroom' => 'Bedroom',
-        'kitchen' => 'Kitchen',
-        'bathroom' => 'Bathroom',
-        'garage' => 'Garage',
-        'outdoor' => 'Outdoor',
-        'other' => 'Other',
-    ];
-
     public function home(): BelongsTo
     {
         return $this->belongsTo(Home::class);

@@ -1,7 +1,7 @@
 <x-guest-layout>
     <div class="mb-6 text-center">
-        <h2 class="text-xl font-bold font-outfit text-gradient-purple-cyan mb-1">Đặt Lại Mật Khẩu</h2>
-        <p class="text-xs text-slate-400">Thiết lập mật khẩu mới cho tài khoản của bạn</p>
+        <h2 class="text-xl font-bold font-outfit text-gradient-purple-cyan mb-1">{{ __('auth.reset_password') }}</h2>
+        <p class="text-xs text-slate-400">{{ __('auth.reset_password_message') }}</p>
     </div>
 
     <form method="POST" action="{{ route('password.store') }}" class="space-y-4">

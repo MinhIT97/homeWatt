@@ -50,7 +50,7 @@ class AiAnalysisController extends Controller
         AnalyzeDeviceImageJob::dispatch($analysis)->onQueue('ai');
 
         return redirect()->route('ai.analyses.show', $analysis)
-            ->with('success', 'Analysis started. Results will appear shortly.');
+            ->with('success', __('ai.analysis_started'));
     }
 
     public function show(Request $request, AiAnalysisRequest $analysis): View
@@ -79,6 +79,6 @@ class AiAnalysisController extends Controller
             'status' => 'confirmed',
         ]);
 
-        return back()->with('success', 'Value confirmed.');
+        return back()->with('success', __('ai.value_confirmed'));
     }
 }

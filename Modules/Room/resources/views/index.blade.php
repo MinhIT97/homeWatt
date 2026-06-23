@@ -1,9 +1,9 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <h2 class="font-extrabold text-2xl text-slate-900 font-outfit leading-tight">Danh Sách Phòng</h2>
+            <h2 class="font-extrabold text-2xl text-slate-900 font-outfit leading-tight">{{ __('room.room_list') }}</h2>
             <a href="{{ route('rooms.create') }}" class="inline-flex items-center justify-center px-4 py-2.5 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-500 hover:to-primary-600 text-white text-sm font-semibold rounded-xl shadow-md shadow-primary-600/15 hover:shadow-lg transition duration-150 hover:-translate-y-0.5 transform w-full sm:w-auto text-center">
-                + Thêm phòng
+                {{ __('room.add_new') }}
             </a>
         </div>
     </x-slot>
@@ -13,10 +13,10 @@
             @if($rooms->isEmpty())
                 <div class="glass-panel rounded-3xl border border-slate-200/60 shadow-sm p-12 text-center max-w-md mx-auto">
                     <div class="text-6xl mb-6 animate-float">🚪</div>
-                    <h3 class="text-xl font-bold text-slate-800 font-outfit mb-2">Chưa có phòng nào</h3>
-                    <p class="text-slate-500 text-sm mb-6">Tạo phòng đầu tiên để sắp xếp thiết bị theo không gian.</p>
+                    <h3 class="text-xl font-bold text-slate-800 font-outfit mb-2">{{ __('room.no_rooms') }}</h3>
+                    <p class="text-slate-500 text-sm mb-6">{{ __('room.no_rooms_desc') }}</p>
                     <a href="{{ route('rooms.create') }}" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-500 hover:to-primary-600 text-white text-sm font-semibold rounded-xl shadow-md shadow-primary-600/15 hover:shadow-lg transition duration-150 hover:-translate-y-0.5 transform">
-                        Thêm phòng đầu tiên
+                        {{ __('room.add_first') }}
                     </a>
                 </div>
             @else
@@ -31,7 +31,7 @@
                                 <div class="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-sm text-slate-500">
                                     <span class="font-medium">{{ $room->home->name }}</span>
                                     @if($room->floor)
-                                        <span class="text-xs">Tầng {{ $room->floor }}</span>
+                                        <span class="text-xs">{{ __('room.floor_prefix') }} {{ $room->floor }}</span>
                                     @endif
                                 </div>
                             </div>

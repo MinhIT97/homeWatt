@@ -79,7 +79,7 @@ class DeviceController extends Controller
         }
 
         return redirect()->route('devices.show', $device)
-            ->with('success', 'Device created successfully.');
+            ->with('success', __('device.created'));
     }
 
     public function show(Request $request, Device $device): View
@@ -147,7 +147,7 @@ class DeviceController extends Controller
         }
 
         return redirect()->route('devices.show', $device)
-            ->with('success', 'Device updated successfully.');
+            ->with('success', __('device.updated'));
     }
 
     public function destroy(Request $request, Device $device): RedirectResponse
@@ -158,7 +158,7 @@ class DeviceController extends Controller
         $device->delete();
 
         return redirect()->route('rooms.show', $room)
-            ->with('success', 'Device deleted.');
+            ->with('success', __('device.deleted'));
     }
 
     public function uploadImage(Request $request, Device $device): RedirectResponse
@@ -181,7 +181,7 @@ class DeviceController extends Controller
             'status' => 'ready',
         ]);
 
-        return back()->with('success', 'Ảnh đã được tải lên. Nhấn "AI Phân tích" để trích xuất thông số.');
+        return back()->with('success', __('device.image_uploaded'));
     }
 
     public function deleteImage(Request $request, Device $device, $mediaId): RedirectResponse
@@ -192,7 +192,7 @@ class DeviceController extends Controller
         Storage::disk($media->disk)->delete($media->path);
         $media->delete();
 
-        return back()->with('success', 'Đã xóa ảnh.');
+        return back()->with('success', __('device.image_deleted'));
     }
 
     protected function authorizeRoomMember(Request $request, Room $room): void

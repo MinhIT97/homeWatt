@@ -1,8 +1,8 @@
 <x-guest-layout>
     <div class="mb-6 text-center">
-        <h2 class="text-xl font-bold font-outfit text-gradient-purple-cyan mb-1">Xác Nhận Mật Khẩu</h2>
+        <h2 class="text-xl font-bold font-outfit text-gradient-purple-cyan mb-1">{{ __('auth.confirm_password') }}</h2>
         <p class="text-xs text-slate-400 leading-relaxed px-2">
-            Đây là khu vực bảo mật của ứng dụng. Vui lòng xác nhận mật khẩu của bạn trước khi tiếp tục.
+            {{ __('auth.confirm_password_message') }}
         </p>
     </div>
 

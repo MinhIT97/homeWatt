@@ -1,5 +1,5 @@
 <x-media::layouts.master>
-    <h1>Hello World</h1>
+    <h1>{{ __('messages.media_hello') }}</h1>
 
-    <p>Module: {!! config('media.name') !!}</p>
+    <p>{{ __('messages.media_module') }}: {!! config('media.name') !!}</p>
 </x-media::layouts.master>

@@ -14,7 +14,7 @@
             window.deferredPrompt.prompt(); 
             window.deferredPrompt.userChoice.then((choiceResult) => { 
                 if (choiceResult.outcome === 'accepted') { 
-                    console.log('Người dùng đã cài đặt ứng dụng'); 
+                    console.log('{{ __('navigation.user_installed_app') }}'); 
                     this.showInstallBtn = false; 
                 } 
                 window.deferredPrompt = null; 
@@ -69,7 +69,7 @@
                     <!-- User name -->
                     <div class="hidden sm:block text-start">
                         <p class="text-xs font-bold text-slate-800 leading-none font-outfit">{{ Auth::user()->name }}</p>
-                        <p class="text-[10px] text-slate-400 font-semibold leading-none mt-1">Người dùng</p>
+                        <p class="text-[10px] text-slate-400 font-semibold leading-none mt-1">{{ __('navigation.user') }}</p>
                     </div>
                     <!-- Arrow icon -->
                     <svg class="w-4 h-4 text-slate-400 hidden min-[360px]:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -116,39 +116,36 @@
         <!-- Navigation Links in Mobile -->
         <div class="flex-1 py-4 px-4 space-y-1 overflow-y-auto">
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                Tổng quan
-            </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('homes.index')" :active="request()->routeIs('homes.*')">
-                Ngôi nhà
+                {{ __('navigation.overview') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('devices.index')" :active="request()->routeIs('devices.*')">
-                Thiết bị
+                {{ __('navigation.devices') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('rooms.index')" :active="request()->routeIs('rooms.*')">
-                Phòng
+                {{ __('navigation.rooms') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('ai.analyses.index')" :active="request()->routeIs('ai.*')">
-                AI Nhận diện
+                {{ __('navigation.ai_recognition') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('energy.index')" :active="request()->routeIs('energy.*')">
-                Thống kê
+                {{ __('navigation.statistics') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('tariff.index')" :active="request()->routeIs('tariff.*')">
-                Hóa đơn điện
+                {{ __('navigation.electricity_bill') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('dashboard.compare')" :active="request()->routeIs('dashboard.compare')">
-                So sánh
+                {{ __('navigation.compare') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('profile.edit')" :active="request()->routeIs('profile.edit')">
-                Cài đặt
+                {{ __('navigation.settings') }}
             </x-responsive-nav-link>
 
             <!-- Mobile Language Switcher -->
             <div class="pt-4 mt-4 border-t border-slate-100 px-4">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Ngôn ngữ / Language</p>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{{ __('navigation.language') }}</p>
                 <div class="flex gap-2">
-                    <a href="{{ route('lang.switch', 'vi') }}" class="flex-1 py-1.5 text-center text-xs font-bold rounded-lg border {{ app()->getLocale() == 'vi' ? 'bg-blue-50 border-blue-200 text-blue-600' : 'border-slate-200 bg-white text-slate-500' }} transition">Tiếng Việt</a>
-                    <a href="{{ route('lang.switch', 'en') }}" class="flex-1 py-1.5 text-center text-xs font-bold rounded-lg border {{ app()->getLocale() == 'en' ? 'bg-blue-50 border-blue-200 text-blue-600' : 'border-slate-200 bg-white text-slate-500' }} transition">English</a>
+                    <a href="{{ route('lang.switch', 'vi') }}" class="flex-1 py-1.5 text-center text-xs font-bold rounded-lg border {{ app()->getLocale() == 'vi' ? 'bg-blue-50 border-blue-200 text-blue-600' : 'border-slate-200 bg-white text-slate-500' }} transition">{{ __('navigation.vietnamese') }}</a>
+                    <a href="{{ route('lang.switch', 'en') }}" class="flex-1 py-1.5 text-center text-xs font-bold rounded-lg border {{ app()->getLocale() == 'en' ? 'bg-blue-50 border-blue-200 text-blue-600' : 'border-slate-200 bg-white text-slate-500' }} transition">{{ __('navigation.english') }}</a>
                 </div>
             </div>
 
@@ -159,10 +156,10 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                     </svg>
                 </div>
-                <h5 class="text-xs font-bold text-slate-800 font-outfit mb-1">Ứng dụng di động</h5>
-                <p class="text-[10px] text-slate-500 leading-relaxed mb-3">Cài đặt HomeWatt lên màn hình chính để truy cập nhanh chóng hơn.</p>
+                <h5 class="text-xs font-bold text-slate-800 font-outfit mb-1">{{ __('navigation.mobile_app') }}</h5>
+                <p class="text-[10px] text-slate-500 leading-relaxed mb-3">{{ __('navigation.install_app_desc') }}</p>
                 <button @click="triggerInstall()" class="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-lg shadow-sm transition">
-                    Cài đặt ứng dụng
+                    {{ __('navigation.install_app') }}
                 </button>
             </div>
         </div>

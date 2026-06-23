@@ -45,7 +45,7 @@ class TariffController extends Controller
             TariffTier::create([...$tier, 'tariff_plan_id' => $plan->id]);
         }
 
-        return redirect()->route('tariff.index')->with('success', 'Tariff plan created.');
+        return redirect()->route('tariff.index')->with('success', __('tariff.created'));
     }
 
     public function show(TariffPlan $tariff): View
@@ -59,11 +59,11 @@ class TariffController extends Controller
     public function destroy(TariffPlan $tariff): RedirectResponse
     {
         if ($tariff->is_system) {
-            return redirect()->route('tariff.index')->with('error', 'Không thể xóa biểu giá mẫu của hệ thống.');
+            return redirect()->route('tariff.index')->with('error', __('tariff.cannot_delete_template'));
         }
 
         $tariff->delete();
 
-        return redirect()->route('tariff.index')->with('success', 'Tariff plan deleted.');
+        return redirect()->route('tariff.index')->with('success', __('tariff.deleted'));
     }
 }

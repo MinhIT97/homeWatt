@@ -1,8 +1,8 @@
 <x-guest-layout>
     <div class="mb-6 text-center">
-        <h2 class="text-xl font-bold font-outfit text-gradient-purple-cyan mb-1">Khôi Phục Mật Khẩu</h2>
+        <h2 class="text-xl font-bold font-outfit text-gradient-purple-cyan mb-1">{{ __('auth.forgot_password') }}</h2>
         <p class="text-xs text-slate-400 leading-relaxed px-2">
-            Nhập email của bạn và chúng tôi sẽ gửi liên kết để đặt lại mật khẩu mới.
+            {{ __('auth.forgot_password_message') }}
         </p>
     </div>
 
@@ -21,7 +21,7 @@
 
         <div class="pt-2">
             <x-primary-button class="w-full justify-center">
-                Gửi liên kết khôi phục
+                {{ __('auth.send_reset_link') }}
             </x-primary-button>
         </div>
     </form>

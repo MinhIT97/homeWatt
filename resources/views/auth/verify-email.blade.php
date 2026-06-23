@@ -1,8 +1,8 @@
 <x-guest-layout>
     <div class="mb-6 text-center">
-        <h2 class="text-xl font-bold font-outfit text-gradient-purple-cyan mb-1">Xác Thực Email</h2>
+        <h2 class="text-xl font-bold font-outfit text-gradient-purple-cyan mb-1">{{ __('auth.verify_email') }}</h2>
         <p class="text-xs text-slate-400 leading-relaxed px-2">
-            Cảm ơn bạn đã đăng ký! Vui lòng xác thực tài khoản của bạn bằng cách nhấp vào liên kết chúng tôi vừa gửi qua email.
+            {{ __('auth.verify_email_message') }}
         </p>
     </div>
 

@@ -33,7 +33,7 @@ class MediaController extends Controller
             'status' => 'ready',
         ]);
 
-        return back()->with('success', 'File uploaded.')
+        return back()->with('success', __('messages.file_uploaded'))
             ->with('media_id', $media->id);
     }
 
@@ -58,6 +58,6 @@ class MediaController extends Controller
         Storage::disk($media->disk)->delete($media->path);
         $media->delete();
 
-        return back()->with('success', 'File deleted.');
+        return back()->with('success', __('messages.file_deleted'));
     }
 }

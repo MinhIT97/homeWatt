@@ -3,8 +3,8 @@
     <x-auth-session-status class="mb-4" :status="session('status')" />
 
     <div class="mb-6 text-center">
-        <h2 class="text-2xl font-extrabold font-outfit text-gradient-purple-cyan mb-1">Đăng Nhập</h2>
-        <p class="text-xs text-slate-400">Quản lý và tối ưu điện năng gia đình bạn</p>
+        <h2 class="text-2xl font-extrabold font-outfit text-gradient-purple-cyan mb-1">{{ __('auth.login') }}</h2>
+        <p class="text-xs text-slate-400">{{ __('auth.login_subtitle') }}</p>
     </div>
 
     <form method="POST" action="{{ route('login') }}" class="space-y-5">
@@ -51,7 +51,7 @@
 
         <div class="text-center pt-2">
             <a class="text-xs text-slate-400 hover:text-primary-400 transition focus:outline-none" href="{{ route('register') }}">
-                {{ __('Chưa có tài khoản? Đăng ký ngay') }}
+                {{ __('auth.no_account_register') }}
             </a>
         </div>
     </form>

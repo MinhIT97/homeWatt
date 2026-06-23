@@ -29,6 +29,6 @@ class ImportController extends Controller
         );
 
         return redirect()->route('devices.index')
-            ->with('success', 'Import completed.');
+            ->with('success', __('device.import_completed'));
     }
 }

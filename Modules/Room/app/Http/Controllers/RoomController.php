@@ -42,7 +42,7 @@ class RoomController extends Controller
         $room = Room::create($request->validated());
 
         return redirect()->route('homes.show', $home)
-            ->with('success', 'Room created successfully.');
+            ->with('success', __('room.created'));
     }
 
     public function show(Request $request, Room $room): View
@@ -68,7 +68,7 @@ class RoomController extends Controller
         $room->update($request->validated());
 
         return redirect()->route('rooms.show', $room)
-            ->with('success', 'Room updated successfully.');
+            ->with('success', __('room.updated'));
     }
 
     public function destroy(Request $request, Room $room): RedirectResponse
@@ -79,7 +79,7 @@ class RoomController extends Controller
         $room->delete();
 
         return redirect()->route('homes.show', $home)
-            ->with('success', 'Room deleted.');
+            ->with('success', __('room.deleted'));
     }
 
     protected function authorizeHomeMember(Request $request, Home $home): void

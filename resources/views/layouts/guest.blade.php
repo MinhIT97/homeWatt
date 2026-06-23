@@ -4,9 +4,9 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
-        <meta name="description" content="Đăng nhập hoặc đăng ký tài khoản HomeWatt để bắt đầu theo dõi thiết bị, điện năng và tính hóa đơn điện bằng AI.">
+        <meta name="description" content="{{ __('navigation.guest_meta_desc') }}">
 
-        <title>{{ config('app.name', 'HomeWatt') }} - Xác thực hệ thống</title>
+        <title>{{ config('app.name', 'HomeWatt') }} - {{ __('navigation.auth_system') }}</title>
 
         <!-- Favicon -->
         <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">

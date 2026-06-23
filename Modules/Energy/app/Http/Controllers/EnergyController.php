@@ -60,7 +60,7 @@ class EnergyController extends Controller
         ]));
 
         return redirect()->route('energy.index')
-            ->with('success', 'Reading recorded.');
+            ->with('success', __('energy.reading_recorded'));
     }
 
     public function show(EnergyReading $reading): View
@@ -87,6 +87,6 @@ class EnergyController extends Controller
         $estimate->save();
 
         return redirect()->route('energy.index')
-            ->with('success', "Estimate: {$estimate->estimated_kwh} kWh, {$estimate->estimated_cost} cost.");
+            ->with('success', __('energy.estimate_result', ['kwh' => $estimate->estimated_kwh, 'cost' => $estimate->estimated_cost]));
     }
 }

@@ -1,9 +1,9 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <h2 class="font-extrabold text-2xl text-slate-900 font-outfit leading-tight">Ngôi Nhà Của Tôi</h2>
+            <h2 class="font-extrabold text-2xl text-slate-900 font-outfit leading-tight">{{ __('home.my_home') }}</h2>
             <a href="{{ route('homes.create') }}" class="inline-flex items-center justify-center px-4 py-2.5 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-500 hover:to-primary-600 text-white text-sm font-semibold rounded-xl shadow-md shadow-primary-600/15 hover:shadow-lg transition duration-150 hover:-translate-y-0.5 transform w-full sm:w-auto text-center">
-                + Thêm nhà mới
+                + {{ __('home.add_new') }}
             </a>
         </div>
     </x-slot>
@@ -14,10 +14,10 @@
                 <div class="glass-panel rounded-3xl border border-slate-200/60 shadow-sm">
                     <div class="p-12 text-center max-w-md mx-auto">
                         <div class="text-6xl mb-6 animate-float">🏠</div>
-                        <h3 class="text-xl font-bold text-slate-800 font-outfit mb-2">Chưa có ngôi nhà nào</h3>
-                        <p class="text-slate-500 text-sm mb-6">Tạo ngôi nhà đầu tiên của bạn để bắt đầu quản lý và theo dõi điện năng tiêu thụ.</p>
+                        <h3 class="text-xl font-bold text-slate-800 font-outfit mb-2">{{ __('home.no_homes') }}</h3>
+                        <p class="text-slate-500 text-sm mb-6">{{ __('home.no_homes_desc') }}</p>
                         <a href="{{ route('homes.create') }}" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-500 hover:to-primary-600 text-white text-sm font-semibold rounded-xl shadow-md shadow-primary-600/15 hover:shadow-lg transition duration-150 hover:-translate-y-0.5 transform">
-                            Thêm ngôi nhà đầu tiên
+                            {{ __('home.add_first') }}
                         </a>
                     </div>
                 </div>
@@ -36,10 +36,10 @@
                                 <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-sm text-slate-500">
                                     <span class="font-medium flex items-center gap-1">
                                         <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-                                        {{ $home->rooms_count ?? 0 }} phòng
+                                        {{ $home->rooms_count ?? 0 }} {{ __('navigation.rooms') }}
                                     </span>
                                     <span class="capitalize px-2.5 py-1 rounded-full text-xs font-semibold border {{ $home->status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-slate-100 text-slate-600 border-slate-200' }}">
-                                        {{ $home->status }}
+                                        {{ __('common.'.$home->status) }}
                                     </span>
                                 </div>
                             </div>
