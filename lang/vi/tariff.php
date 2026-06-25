@@ -40,5 +40,6 @@ return [
     'cannot_delete_template' => 'Không thể xóa biểu giá mẫu của hệ thống.',
     'created' => 'Đã tạo biểu giá thành công.',
     'deleted' => 'Đã xóa biểu giá.',
+    'overlap_detected' => 'Đã có biểu giá đang hoạt động cho khu vực/loại này trong khoảng thời gian đã chọn.',
     'effective_from' => 'Hiệu lực từ',
 ];

@@ -6,4 +6,5 @@ return [
     'file_uploaded' => 'File uploaded.',
     'file_deleted' => 'File deleted.',
     'unauthorized' => 'Unauthorized',
+    'invalid_signature' => 'Invalid or expired link signature.',
 ];

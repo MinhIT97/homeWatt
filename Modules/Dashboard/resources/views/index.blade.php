@@ -357,7 +357,14 @@
                                         <h5 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider font-outfit">{{ __('dashboard.ai_suggestions') }}</h5>
                                         <p class="text-xs text-slate-500 mt-1 leading-relaxed">
                                             @if($recommendationDevice)
-                                                {!! __('dashboard.ai_suggest_detail', ['name' => $recommendationDevice->name, 'power' => $recommendationDevice->specification?->rated_power ? number_format($recommendationDevice->specification->rated_power).'W' : __('dashboard.high_power')]) !!}
+                                                {!! str_replace(
+                                                    [':name', ':power'],
+                                                    [
+                                                        '<strong class="text-slate-700">' . e($recommendationDevice->name) . '</strong>',
+                                                        e($recommendationDevice->specification?->rated_power ? number_format($recommendationDevice->specification->rated_power).'W' : __('dashboard.high_power')),
+                                                    ],
+                                                    __('dashboard.ai_suggest_detail')
+                                                ) !!}
                                             @else
                                                 {{ __('dashboard.ai_suggest_no_device') }}
                                             @endif

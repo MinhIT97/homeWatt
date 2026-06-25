@@ -17,7 +17,7 @@ class HomePolicy
 
     public function view(User $user, Home $home): bool
     {
-        return $home->members()->where('user_id', $user->id)->exists();
+        return $home->isMember($user->id);
     }
 
     public function create(User $user): bool
@@ -27,7 +27,7 @@ class HomePolicy
 
     public function update(User $user, Home $home): bool
     {
-        $member = $home->members()->where('user_id', $user->id)->first();
+        $member = $home->member($user->id);
 
         return $member && $member->canEdit();
     }
@@ -39,7 +39,7 @@ class HomePolicy
 
     public function manageMembers(User $user, Home $home): bool
     {
-        $member = $home->members()->where('user_id', $user->id)->first();
+        $member = $home->member($user->id);
 
         return $member && $member->canEdit();
     }

@@ -9,6 +9,8 @@ class SavingSuggestion
         $suggestions = [];
         $totalPotentialSaving = 0;
 
+        $avgKwhCost = $this->getAverageKwhCost($monthlyCost, $devices);
+
         foreach ($devices as $device) {
             $spec = $device->specification;
             $profile = $device->usageProfile;
@@ -29,8 +31,8 @@ class SavingSuggestion
             if ($hoursPerDay >= 10 && $watts > 500) {
                 $reducedHours = max(4, $hoursPerDay - 4);
                 $reducedKwh = ($watts * $reducedHours * $daysPerWeek * 4.33 * $dutyCycle) / 1000;
-                $savedKwh = $currentMonthlyKwh - $reducedKwh;
-                $savedCost = $savedKwh * 2500; // Approx VND per kWh
+                $savedKwh = max(0, $currentMonthlyKwh - $reducedKwh);
+                $savedCost = $savedKwh * $avgKwhCost;
 
                 if ($savedKwh > 5) {
                     $suggestions[] = [
@@ -49,8 +51,8 @@ class SavingSuggestion
             if ($dutyCycle >= 0.8 && $watts > 200 && $hoursPerDay >= 6) {
                 $optimizedDutyCycle = max(0.3, $dutyCycle - 0.3);
                 $optimizedKwh = ($watts * $hoursPerDay * $daysPerWeek * 4.33 * $optimizedDutyCycle) / 1000;
-                $savedKwh = $currentMonthlyKwh - $optimizedKwh;
-                $savedCost = $savedKwh * 2500;
+                $savedKwh = max(0, $currentMonthlyKwh - $optimizedKwh);
+                $savedCost = $savedKwh * $avgKwhCost;
 
                 if ($savedKwh > 5) {
                     $suggestions[] = [
@@ -71,12 +73,13 @@ class SavingSuggestion
 
             if ((str_contains($name, 'máy lạnh') || str_contains($name, 'ac') || str_contains($name, 'air')) && $watts > 1000) {
                 if ($month >= 6 && $month <= 8) {
+                    $seasonalSaving = max(0, $currentMonthlyKwh * 0.12);
                     $suggestions[] = [
                         'icon' => '❄️',
                         'title' => __('dashboard.suggest_ac_temp'),
                         'detail' => __('dashboard.suggest_ac_temp_detail'),
-                        'saving_kwh' => round($currentMonthlyKwh * 0.12, 1),
-                        'saving_cost' => round($currentMonthlyKwh * 0.12 * 2500),
+                        'saving_kwh' => round($seasonalSaving, 1),
+                        'saving_cost' => round($seasonalSaving * $avgKwhCost),
                         'priority' => 'high',
                     ];
                     break; // Only add this once
@@ -89,13 +92,44 @@ class SavingSuggestion
                 'icon' => '📊',
                 'title' => __('dashboard.suggest_total_potential'),
                 'detail' => __('dashboard.suggest_total_potential_detail', ['saving' => number_format($totalPotentialSaving), 'pct' => round(($totalPotentialSaving / max($monthlyCost, 1)) * 100)]),
-                'saving_kwh' => round($totalPotentialSaving / 2500, 1),
+                'saving_kwh' => $avgKwhCost > 0 ? round($totalPotentialSaving / $avgKwhCost, 1) : 0,
                 'saving_cost' => $totalPotentialSaving,
                 'priority' => 'high',
             ];
         }
 
         return $suggestions;
+    }
+
+    /**
+     * Estimate the average cost per kWh from monthly cost + total estimated kWh.
+     * Falls back to a config-defined default when input is invalid.
+     */
+    protected function getAverageKwhCost(float $monthlyCost, $devices): float
+    {
+        $totalKwh = 0;
+        foreach ($devices as $device) {
+            $spec = $device->specification;
+            $profile = $device->usageProfile;
+            $type = $device->deviceType;
+
+            if (! $spec || ! $spec->rated_power) {
+                continue;
+            }
+
+            $hoursPerDay = $profile?->hours_per_day ?? ($type?->default_duty_cycle ? 24 : 8);
+            $daysPerWeek = $profile?->days_per_week ?? 7;
+            $dutyCycle = $profile?->duty_cycle ?? $type?->default_duty_cycle ?? 1.0;
+            $watts = (float) $spec->rated_power;
+
+            $totalKwh += ($watts * $hoursPerDay * $daysPerWeek * 4.33 * $dutyCycle) / 1000;
+        }
+
+        if ($totalKwh > 0 && $monthlyCost > 0) {
+            return round($monthlyCost / $totalKwh, 2);
+        }
+
+        return (float) config('energy.default_kwh_cost', 2500);
     }
 
     private function icon(string $name): string

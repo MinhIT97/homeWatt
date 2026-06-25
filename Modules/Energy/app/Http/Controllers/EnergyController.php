@@ -5,12 +5,14 @@ namespace Modules\Energy\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Modules\Device\Models\Device;
 use Modules\Energy\Models\EnergyEstimate;
 use Modules\Energy\Models\EnergyReading;
 use Modules\Energy\Services\EnergyCalculator;
 use Modules\Tariff\Models\TariffPlan;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class EnergyController extends Controller
 {
@@ -49,23 +51,38 @@ class EnergyController extends Controller
             'measurement_type' => ['nullable', 'string', 'in:instant,cumulative'],
         ]);
 
-        $device = Device::findOrFail($request->device_id);
-        $member = $device->room->home->members()->where('user_id', $request->user()->id)->first();
-        if (! $member || ! $member->canEdit()) {
-            abort(403);
-        }
+        try {
+            DB::transaction(function () use ($request) {
+                $device = Device::where('id', $request->device_id)
+                    ->lockForUpdate()
+                    ->with('room.home.members')
+                    ->firstOrFail();
 
-        EnergyReading::create($request->only([
-            'device_id', 'recorded_at', 'watts', 'kwh', 'source', 'measurement_type',
-        ]));
+                $member = $device->room?->home?->members
+                    ->where('user_id', $request->user()->id)
+                    ->first();
+
+                if (! $member || ! $member->canEdit()) {
+                    abort(403);
+                }
+
+                EnergyReading::create($request->only([
+                    'device_id', 'recorded_at', 'watts', 'kwh', 'source', 'measurement_type',
+                ]));
+            });
+        } catch (HttpException $e) {
+            throw $e;
+        }
 
         return redirect()->route('energy.index')
             ->with('success', __('energy.reading_recorded'));
     }
 
-    public function show(EnergyReading $reading): View
+    public function show(Request $request, EnergyReading $reading): View
     {
-        $reading->load('device.room.home');
+        $this->authorize('view', $reading);
+
+        $reading->loadMissing('device.room.home');
 
         return view('energy::show', compact('reading'));
     }
@@ -79,12 +96,42 @@ class EnergyController extends Controller
             'tariff_plan_id' => ['nullable', 'exists:tariff_plans,id'],
         ]);
 
-        $device = Device::findOrFail($request->device_id);
-        $tariffPlan = $request->tariff_plan_id ? TariffPlan::find($request->tariff_plan_id) : null;
+        $estimate = DB::transaction(function () use ($request) {
+            $device = Device::where('id', $request->device_id)
+                ->lockForUpdate()
+                ->with('room.home.members')
+                ->firstOrFail();
 
-        $calculator = app(EnergyCalculator::class);
-        $estimate = $calculator->estimateMonthly($device, (int) $request->year, (int) $request->month, $tariffPlan);
-        $estimate->save();
+            $member = $device->room?->home?->members
+                ->where('user_id', $request->user()->id)
+                ->first();
+
+            if (! $member || ! $member->canEdit()) {
+                abort(403);
+            }
+
+            $tariffPlan = $request->tariff_plan_id
+                ? TariffPlan::find($request->tariff_plan_id)
+                : null;
+
+            $calculator = app(EnergyCalculator::class);
+            $estimate = $calculator->estimateMonthly($device, (int) $request->year, (int) $request->month, $tariffPlan);
+
+            $existing = EnergyEstimate::where('device_id', $device->id)
+                ->where('period_type', $estimate->period_type)
+                ->where('period_start', $estimate->period_start)
+                ->first();
+
+            if ($existing) {
+                $existing->update($estimate->getAttributes());
+
+                return $existing->fresh();
+            }
+
+            $estimate->save();
+
+            return $estimate;
+        });
 
         return redirect()->route('energy.index')
             ->with('success', __('energy.estimate_result', ['kwh' => $estimate->estimated_kwh, 'cost' => $estimate->estimated_cost]));

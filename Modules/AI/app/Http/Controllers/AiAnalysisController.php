@@ -5,6 +5,7 @@ namespace Modules\AI\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Modules\AI\Jobs\AnalyzeDeviceImageJob;
 use Modules\AI\Models\AiAnalysisRequest;
@@ -25,7 +26,19 @@ class AiAnalysisController extends Controller
 
     public function create(Request $request): View
     {
+        $userHomeIds = $request->user()
+            ->homeMembers()
+            ->pluck('home_id')
+            ->all();
+
         $media = Media::where('owner_type', 'device')
+            ->whereIn('owner_id', function ($query) use ($userHomeIds) {
+                $query->select('id')
+                    ->from('devices')
+                    ->whereIn('room_id', function ($q) use ($userHomeIds) {
+                        $q->select('id')->from('rooms')->whereIn('home_id', $userHomeIds);
+                    });
+            })
             ->latest()
             ->limit(50)
             ->get();
@@ -39,18 +52,51 @@ class AiAnalysisController extends Controller
             'media_id' => ['required', 'exists:media,id'],
         ]);
 
-        $analysis = AiAnalysisRequest::create([
-            'user_id' => $request->user()->id,
-            'media_id' => $request->input('media_id'),
-            'provider' => config('ai.default', 'openai'),
-            'model' => config('ai.providers.openai.vision_model', 'gpt-4o-mini'),
-            'status' => 'pending',
-        ]);
+        $media = Media::findOrFail($request->input('media_id'));
 
-        AnalyzeDeviceImageJob::dispatch($analysis)->onQueue('ai');
+        if (! $this->userCanAccessMedia($request, $media)) {
+            abort(403);
+        }
+
+        $analysis = AiAnalysisRequest::firstOrCreate(
+            [
+                'media_id' => $media->id,
+                'status' => 'pending',
+            ],
+            [
+                'user_id' => $request->user()->id,
+                'provider' => config('ai.default', 'openai'),
+                'model' => config('ai.providers.openai.vision_model', 'gpt-4o-mini'),
+            ]
+        );
+
+        if ($analysis->wasRecentlyCreated) {
+            AnalyzeDeviceImageJob::dispatch($analysis)->onQueue('ai');
+        }
 
         return redirect()->route('ai.analyses.show', $analysis)
             ->with('success', __('ai.analysis_started'));
+    }
+
+    private function userCanAccessMedia(Request $request, Media $media): bool
+    {
+        if ($media->owner_type === 'device') {
+            $homeId = DB::table('rooms')
+                ->join('devices', 'devices.room_id', '=', 'rooms.id')
+                ->where('devices.id', $media->owner_id)
+                ->value('rooms.home_id');
+
+            if (! $homeId) {
+                return false;
+            }
+
+            return DB::table('home_members')
+                ->where('home_id', $homeId)
+                ->where('user_id', $request->user()->id)
+                ->exists();
+        }
+
+        return false;
     }
 
     public function show(Request $request, AiAnalysisRequest $analysis): View

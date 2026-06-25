@@ -37,4 +37,6 @@ return [
     'use_endpoint' => 'Sử dụng /ai/analyses endpoint',
     'not_implemented' => 'Chưa được triển khai',
     'analysis_n' => 'Phân tích #:id',
+    'rate_limit_user_exceeded' => 'Bạn đã đạt giới hạn phân tích AI trong giờ này. Vui lòng thử lại sau.',
+    'rate_limit_home_exceeded' => 'Ngôi nhà của bạn đã đạt giới hạn phân tích AI trong giờ này. Vui lòng thử lại sau.',
 ];

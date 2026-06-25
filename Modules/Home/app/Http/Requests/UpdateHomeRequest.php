@@ -8,7 +8,15 @@ class UpdateHomeRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        $home = $this->route('home');
+
+        if (! $home || ! $this->user()) {
+            return false;
+        }
+
+        $member = $home->members()->where('user_id', $this->user()->id)->first();
+
+        return $member && $member->canEdit();
     }
 
     public function rules(): array
@@ -18,7 +26,6 @@ class UpdateHomeRequest extends FormRequest
             'address' => ['nullable', 'string', 'max:500'],
             'timezone' => ['nullable', 'string', 'max:50'],
             'currency' => ['nullable', 'string', 'size:3'],
-            'status' => ['sometimes', 'string', 'in:active,inactive'],
         ];
     }
 }

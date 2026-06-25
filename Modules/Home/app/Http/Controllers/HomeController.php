@@ -3,22 +3,28 @@
 namespace Modules\Home\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
+use App\Support\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Modules\Home\Http\Requests\InviteMemberRequest;
 use Modules\Home\Http\Requests\StoreHomeRequest;
 use Modules\Home\Http\Requests\UpdateHomeRequest;
 use Modules\Home\Models\Home;
 use Modules\Home\Models\HomeMember;
+use Modules\Home\Services\MemberService;
 
 class HomeController extends Controller
 {
+    public function __construct(private readonly MemberService $memberService) {}
+
     public function index(Request $request): View
     {
-        $homes = Home::whereHas('members', fn ($q) => $q->where('user_id', $request->user()->id))
-            ->with('owner')
+        $userId = $request->user()->id;
+        $homes = Home::whereHas('members', fn ($q) => $q->where('user_id', $userId))
+            ->with(['owner', 'members'])
+            ->withCount('rooms')
             ->latest()
             ->paginate(20);
 
@@ -32,16 +38,16 @@ class HomeController extends Controller
 
     public function store(StoreHomeRequest $request): RedirectResponse
     {
-        $home = Home::create([
-            ...$request->validated(),
-            'owner_id' => $request->user()->id,
-        ]);
+        $home = DB::transaction(function () use ($request) {
+            $home = Home::create([
+                ...$request->validated(),
+                'owner_id' => $request->user()->id,
+            ]);
 
-        HomeMember::create([
-            'home_id' => $home->id,
-            'user_id' => $request->user()->id,
-            'role' => 'owner',
-        ]);
+            $this->memberService->createOwnerMembership($home, $request->user());
+
+            return $home;
+        });
 
         return redirect()->route('homes.show', $home)
             ->with('success', __('home.created'));
@@ -77,7 +83,10 @@ class HomeController extends Controller
     {
         $this->authorize('delete', $home);
 
+        $homeId = $home->id;
         $home->delete();
+
+        AuditLogger::log('home.deleted', ['home_id' => $homeId]);
 
         return redirect()->route('homes.index')
             ->with('success', __('home.deleted'));
@@ -96,16 +105,19 @@ class HomeController extends Controller
     {
         $this->authorize('manageMembers', $home);
 
-        $user = User::where('email', $request->validated('email'))->firstOrFail();
+        $requestedRole = $request->validated('role');
+        $email = $request->validated('email');
 
-        if ($home->members()->where('user_id', $user->id)->exists()) {
-            return back()->with('error', __('home.user_already_member'));
+        try {
+            $membership = $this->memberService->invite($home, $request->user(), $email, $requestedRole);
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
         }
 
-        HomeMember::create([
+        AuditLogger::log('home.member_invited', [
             'home_id' => $home->id,
-            'user_id' => $user->id,
-            'role' => $request->validated('role'),
+            'invited_user_id' => $membership->user_id,
+            'role' => $requestedRole,
         ]);
 
         return back()->with('success', __('home.member_invited'));
@@ -115,15 +127,16 @@ class HomeController extends Controller
     {
         $this->authorize('manageMembers', $home);
 
-        if ($member->home_id !== $home->id) {
-            abort(404);
+        try {
+            $this->memberService->remove($home, $member, $request->user());
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
         }
 
-        if ($member->role === 'owner') {
-            return back()->with('error', __('common.cannot_remove_owner'));
-        }
-
-        $member->delete();
+        AuditLogger::log('home.member_removed', [
+            'home_id' => $home->id,
+            'removed_user_id' => $member->user_id,
+        ]);
 
         return back()->with('success', __('home.member_removed'));
     }

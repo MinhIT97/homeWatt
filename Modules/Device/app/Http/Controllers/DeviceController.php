@@ -5,6 +5,7 @@ namespace Modules\Device\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Modules\AI\Models\AiAnalysisRequest;
@@ -59,24 +60,28 @@ class DeviceController extends Controller
         $room = Room::findOrFail($request->validated('room_id'));
         $this->authorizeRoomMember($request, $room);
 
-        $device = Device::create($request->safe()->only([
-            'room_id', 'device_type_id', 'name', 'brand', 'model', 'serial', 'status', 'purchased_at',
-        ]));
+        $device = DB::transaction(function () use ($request) {
+            $created = Device::create($request->safe()->only([
+                'room_id', 'device_type_id', 'name', 'brand', 'model', 'serial', 'purchased_at',
+            ]));
 
-        if ($request->hasAny(['rated_power', 'max_power', 'standby_power', 'voltage', 'current'])) {
-            DeviceSpecification::create([
-                'device_id' => $device->id,
-                ...$request->safe()->only(['voltage', 'current', 'rated_power', 'max_power', 'standby_power', 'capacity']),
-            ]);
-        }
+            if ($request->hasAny(['rated_power', 'max_power', 'standby_power', 'voltage', 'current'])) {
+                DeviceSpecification::create([
+                    'device_id' => $created->id,
+                    ...$request->safe()->only(['voltage', 'current', 'rated_power', 'max_power', 'standby_power', 'capacity']),
+                ]);
+            }
 
-        if ($request->hasAny(['hours_per_day', 'duty_cycle'])) {
-            DeviceUsageProfile::create([
-                'device_id' => $device->id,
-                ...$request->safe()->only(['hours_per_day', 'days_per_week', 'duty_cycle', 'season']),
-                'source' => 'manual',
-            ]);
-        }
+            if ($request->hasAny(['hours_per_day', 'duty_cycle'])) {
+                DeviceUsageProfile::create([
+                    'device_id' => $created->id,
+                    ...$request->safe()->only(['hours_per_day', 'days_per_week', 'duty_cycle', 'season']),
+                    'source' => 'manual',
+                ]);
+            }
+
+            return $created;
+        });
 
         return redirect()->route('devices.show', $device)
             ->with('success', __('device.created'));
@@ -119,32 +124,39 @@ class DeviceController extends Controller
     {
         $this->authorize('update', $device);
 
-        $device->update($request->safe()->only([
-            'device_type_id', 'name', 'brand', 'model', 'serial', 'status', 'purchased_at',
-        ]));
+        DB::transaction(function () use ($request, $device) {
+            $lockedDevice = Device::where('id', $device->id)->lockForUpdate()->first();
+            if (! $lockedDevice) {
+                abort(404);
+            }
 
-        if ($device->specification) {
-            $device->specification->update($request->safe()->only([
-                'voltage', 'current', 'rated_power', 'max_power', 'standby_power', 'capacity',
+            $lockedDevice->update($request->safe()->only([
+                'device_type_id', 'name', 'brand', 'model', 'serial', 'purchased_at',
             ]));
-        } elseif ($request->hasAny(['rated_power', 'max_power', 'standby_power', 'voltage', 'current'])) {
-            DeviceSpecification::create([
-                'device_id' => $device->id,
-                ...$request->safe()->only(['voltage', 'current', 'rated_power', 'max_power', 'standby_power', 'capacity']),
-            ]);
-        }
 
-        if ($device->usageProfile) {
-            $device->usageProfile->update($request->safe()->only([
-                'hours_per_day', 'days_per_week', 'duty_cycle', 'season',
-            ]));
-        } elseif ($request->hasAny(['hours_per_day', 'duty_cycle'])) {
-            DeviceUsageProfile::create([
-                'device_id' => $device->id,
-                ...$request->safe()->only(['hours_per_day', 'days_per_week', 'duty_cycle', 'season']),
-                'source' => 'manual',
-            ]);
-        }
+            if ($lockedDevice->specification) {
+                $lockedDevice->specification->update($request->safe()->only([
+                    'voltage', 'current', 'rated_power', 'max_power', 'standby_power', 'capacity',
+                ]));
+            } elseif ($request->hasAny(['rated_power', 'max_power', 'standby_power', 'voltage', 'current'])) {
+                DeviceSpecification::create([
+                    'device_id' => $lockedDevice->id,
+                    ...$request->safe()->only(['voltage', 'current', 'rated_power', 'max_power', 'standby_power', 'capacity']),
+                ]);
+            }
+
+            if ($lockedDevice->usageProfile) {
+                $lockedDevice->usageProfile->update($request->safe()->only([
+                    'hours_per_day', 'days_per_week', 'duty_cycle', 'season',
+                ]));
+            } elseif ($request->hasAny(['hours_per_day', 'duty_cycle'])) {
+                DeviceUsageProfile::create([
+                    'device_id' => $lockedDevice->id,
+                    ...$request->safe()->only(['hours_per_day', 'days_per_week', 'duty_cycle', 'season']),
+                    'source' => 'manual',
+                ]);
+            }
+        });
 
         return redirect()->route('devices.show', $device)
             ->with('success', __('device.updated'));
@@ -155,7 +167,19 @@ class DeviceController extends Controller
         $this->authorize('delete', $device);
 
         $room = $device->room;
-        $device->delete();
+
+        DB::transaction(function () use ($device) {
+            $locked = Device::where('id', $device->id)->lockForUpdate()->first();
+            if (! $locked) {
+                abort(404);
+            }
+
+            $locked->specification?->delete();
+            $locked->usageProfile?->delete();
+            $locked->media()->delete();
+            $locked->energyReadings()->delete();
+            $locked->delete();
+        });
 
         return redirect()->route('rooms.show', $room)
             ->with('success', __('device.deleted'));

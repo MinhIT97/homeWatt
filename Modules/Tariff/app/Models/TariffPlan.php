@@ -35,4 +35,30 @@ class TariffPlan extends Model
             ->where('effective_from', '<=', now())
             ->where(fn ($q) => $q->whereNull('effective_to')->orWhere('effective_to', '>=', now()));
     }
+
+    public function scopeEffectiveFor($query, $date)
+    {
+        return $query->where('status', 'active')
+            ->where('effective_from', '<=', $date)
+            ->where(fn ($q) => $q->whereNull('effective_to')->orWhere('effective_to', '>=', $date));
+    }
+
+    public static function findEffectiveFor($date, ?string $region = null, ?string $type = null): ?self
+    {
+        $query = static::query()->effectiveFor($date);
+
+        if ($region) {
+            $query->where('region', $region);
+        }
+
+        if ($type) {
+            $query->where('type', $type);
+        }
+
+        // Prefer system templates first, then most recent
+        return $query
+            ->orderByDesc('is_system')
+            ->orderByDesc('effective_from')
+            ->first();
+    }
 }

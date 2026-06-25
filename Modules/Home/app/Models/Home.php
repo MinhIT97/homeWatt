@@ -3,6 +3,7 @@
 namespace Modules\Home\Models;
 
 use App\Models\User;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -11,6 +12,7 @@ use Modules\Room\Models\Room;
 
 class Home extends Model
 {
+    use HasFactory;
     use SoftDeletes;
 
     protected $fillable = [
@@ -19,8 +21,25 @@ class Home extends Model
         'address',
         'timezone',
         'currency',
-        'status',
     ];
+
+    public const STATUSES = ['active', 'inactive'];
+
+    protected function casts(): array
+    {
+        return [
+            'status' => 'string',
+        ];
+    }
+
+    public function updateStatus(string $status): bool
+    {
+        if (! in_array($status, self::STATUSES, true)) {
+            throw new \InvalidArgumentException("Invalid status: {$status}");
+        }
+
+        return $this->forceFill(['status' => $status])->save();
+    }
 
     public function owner(): BelongsTo
     {
@@ -40,5 +59,25 @@ class Home extends Model
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
+    }
+
+    public function isMember(int|string $userId): bool
+    {
+        return $this->members()->where('user_id', $userId)->exists();
+    }
+
+    public function member(int|string $userId): ?HomeMember
+    {
+        return $this->members()->where('user_id', $userId)->first();
+    }
+
+    public function hasMemberWithRole(int|string $userId, array|string $roles): bool
+    {
+        $roles = is_array($roles) ? $roles : [$roles];
+
+        return $this->members()
+            ->where('user_id', $userId)
+            ->whereIn('role', $roles)
+            ->exists();
     }
 }

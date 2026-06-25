@@ -14,6 +14,11 @@ return [
         ],
     ],
 
+    'pricing' => [
+        'gpt-4o' => ['prompt' => 0.0025, 'completion' => 0.01],
+        'gpt-4o-mini' => ['prompt' => 0.00015, 'completion' => 0.0006],
+    ],
+
     'rate_limits' => [
         'per_user_per_hour' => 20,
         'per_home_per_hour' => 50,

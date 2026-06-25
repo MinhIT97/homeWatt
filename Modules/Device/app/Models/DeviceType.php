@@ -25,6 +25,7 @@ class DeviceType extends Model
         if ($translation === "device.types.{$this->slug}") {
             return $this->name;
         }
+
         return $translation;
     }
 }

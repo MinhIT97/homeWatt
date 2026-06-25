@@ -40,5 +40,6 @@ return [
     'cannot_delete_template' => 'Cannot delete system template tariffs.',
     'created' => 'Tariff plan created.',
     'deleted' => 'Tariff plan deleted.',
+    'overlap_detected' => 'An active tariff plan already exists for this region/type during the selected period.',
     'effective_from' => 'Effective from',
 ];

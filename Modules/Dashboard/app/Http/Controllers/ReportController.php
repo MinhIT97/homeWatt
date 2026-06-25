@@ -5,6 +5,8 @@ namespace Modules\Dashboard\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Modules\Device\Models\Device;
 use Modules\Energy\Models\EnergyEstimate;
 use Modules\Energy\Models\EnergyReading;
@@ -16,9 +18,20 @@ class ReportController extends Controller
     public function export(Request $request)
     {
         $user = $request->user();
-        $homeId = $request->get('home_id');
-        $month = $request->get('month', now()->month);
-        $year = $request->get('year', now()->year);
+
+        try {
+            $validated = $request->validate([
+                'home_id' => ['required', 'integer'],
+                'month' => ['nullable', 'integer', 'min:1', 'max:12'],
+                'year' => ['nullable', 'integer', 'min:2020', 'max:2099'],
+            ]);
+        } catch (ValidationException $e) {
+            abort(422, 'Invalid export parameters');
+        }
+
+        $homeId = $validated['home_id'];
+        $month = $validated['month'] ?? now()->month;
+        $year = $validated['year'] ?? now()->year;
 
         $home = Home::findOrFail($homeId);
         if (! $home->members()->where('user_id', $user->id)->exists()) {
@@ -51,10 +64,24 @@ class ReportController extends Controller
             ->where('month', $month)
             ->sum('estimated_cost');
 
-        $pdf = Pdf::loadView('dashboard::report', compact(
-            'home', 'readings', 'estimates', 'monthlyKwh', 'monthlyCost', 'month', 'year'
-        ));
+        try {
+            $pdf = Pdf::loadView('dashboard::report', compact(
+                'home', 'readings', 'estimates', 'monthlyKwh', 'monthlyCost', 'month', 'year'
+            ));
 
-        return $pdf->download("bao-cao-dien-{$home->name}-{$year}-{$month}.pdf");
+            $safeHomeName = preg_replace('/[^A-Za-z0-9_\-]/', '_', $home->name);
+            $safeHomeName = mb_substr($safeHomeName ?? 'home', 0, 50);
+            $filename = "bao-cao-dien-{$safeHomeName}-{$year}-{$month}.pdf";
+
+            return $pdf->download($filename);
+        } catch (\Throwable $e) {
+            Log::error('PDF generation failed', [
+                'user_id' => $user->id,
+                'home_id' => $home->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            abort(500, 'Report generation failed');
+        }
     }
 }

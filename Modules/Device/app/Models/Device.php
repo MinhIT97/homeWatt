@@ -2,6 +2,7 @@
 
 namespace Modules\Device\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -14,6 +15,7 @@ use Modules\Room\Models\Room;
 
 class Device extends Model
 {
+    use HasFactory;
     use SoftDeletes;
 
     protected $fillable = [
@@ -23,9 +25,19 @@ class Device extends Model
         'brand',
         'model',
         'serial',
-        'status',
         'purchased_at',
     ];
+
+    public const STATUSES = ['active', 'inactive', 'broken'];
+
+    public function updateStatus(string $status): bool
+    {
+        if (! in_array($status, self::STATUSES, true)) {
+            throw new \InvalidArgumentException("Invalid status: {$status}");
+        }
+
+        return $this->forceFill(['status' => $status])->save();
+    }
 
     protected $casts = [
         'purchased_at' => 'date',

@@ -13,6 +13,10 @@ class OpenAiVisionAnalyzer implements DeviceImageAnalyzer
         $apiKey = config('ai.providers.openai.api_key');
         $model = config('ai.providers.openai.vision_model', 'gpt-4o-mini');
 
+        if (empty($apiKey)) {
+            throw new \RuntimeException('OpenAI API key is not configured');
+        }
+
         $response = Http::withToken($apiKey)
             ->timeout(120)
             ->post('https://api.openai.com/v1/chat/completions', [
@@ -36,17 +40,28 @@ class OpenAiVisionAnalyzer implements DeviceImageAnalyzer
             ]);
 
         if (! $response->successful()) {
-            Log::error('OpenAI Vision API error', ['status' => $response->status(), 'body' => $response->body()]);
-            throw new \RuntimeException('AI vision analysis failed: '.$response->status());
+            Log::error('OpenAI Vision API error', [
+                'status' => $response->status(),
+                'error_type' => $response->json('error.type'),
+                'error_code' => $response->json('error.code'),
+            ]);
+            throw new \RuntimeException('AI vision analysis failed: HTTP '.$response->status());
         }
 
         $data = $response->json();
         $content = $data['choices'][0]['message']['content'] ?? '{}';
-        $parsed = json_decode($content, true) ?: [];
+        $parsed = json_decode($content, true);
+
+        if (! is_array($parsed)) {
+            Log::warning('OpenAI returned non-JSON content', [
+                'content_preview' => mb_substr($content, 0, 200),
+            ]);
+            $parsed = [];
+        }
 
         $usage = $data['usage'] ?? [];
-        $promptTokens = $usage['prompt_tokens'] ?? 0;
-        $completionTokens = $usage['completion_tokens'] ?? 0;
+        $promptTokens = (int) ($usage['prompt_tokens'] ?? 0);
+        $completionTokens = (int) ($usage['completion_tokens'] ?? 0);
         $cost = $this->calculateCost($model, $promptTokens, $completionTokens);
 
         return [
@@ -59,7 +74,7 @@ class OpenAiVisionAnalyzer implements DeviceImageAnalyzer
             'voltage' => $this->parseNumeric($parsed['voltage'] ?? null),
             'current' => $this->parseNumeric($parsed['current'] ?? null),
             'capacity' => $this->parseNumeric($parsed['capacity'] ?? null),
-            'confidence' => $parsed['overall_confidence'] ?? 0.5,
+            'confidence' => $this->clampConfidence($parsed['overall_confidence'] ?? 0.5),
             'fields_confidence' => $parsed['fields_confidence'] ?? [],
             'raw_response' => $content,
             'prompt_tokens' => $promptTokens,
@@ -107,19 +122,39 @@ PROMPT;
             return null;
         }
 
-        return is_numeric($value) ? (float) $value : null;
+        if (! is_numeric($value)) {
+            return null;
+        }
+
+        $float = (float) $value;
+
+        // Reject infinity or NaN
+        if (! is_finite($float)) {
+            return null;
+        }
+
+        return $float;
+    }
+
+    protected function clampConfidence($confidence): float
+    {
+        $float = is_numeric($confidence) ? (float) $confidence : 0.5;
+
+        return max(0.0, min(1.0, $float));
     }
 
     protected function calculateCost(string $model, int $promptTokens, int $completionTokens): float
     {
-        $pricing = [
+        $pricing = config('ai.pricing', [
             'gpt-4o' => ['prompt' => 0.0025, 'completion' => 0.01],
             'gpt-4o-mini' => ['prompt' => 0.00015, 'completion' => 0.0006],
-        ];
+        ]);
 
         $rates = $pricing[$model] ?? ['prompt' => 0.0025, 'completion' => 0.01];
 
-        return ($promptTokens / 1000) * $rates['prompt']
+        $cost = ($promptTokens / 1000) * $rates['prompt']
             + ($completionTokens / 1000) * $rates['completion'];
+
+        return round($cost, 6);
     }
 }

@@ -5,6 +5,7 @@ namespace Modules\Media\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\URL;
 
 class Media extends Model
 {
@@ -37,8 +38,12 @@ class Media extends Model
         return str_starts_with($this->mime_type, 'image/');
     }
 
-    public function url(): string
+    public function url(?int $expirationMinutes = 30): string
     {
-        return route('media.serve', $this);
+        return URL::temporarySignedRoute(
+            'media.serve',
+            now()->addMinutes($expirationMinutes ?? 30),
+            ['media' => $this->id]
+        );
     }
 }

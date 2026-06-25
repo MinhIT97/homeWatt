@@ -37,4 +37,6 @@ return [
     'use_endpoint' => 'Use /ai/analyses endpoint',
     'not_implemented' => 'Not implemented',
     'analysis_n' => 'Analysis #:id',
+    'rate_limit_user_exceeded' => 'You have reached the AI analysis limit for this hour. Please try again later.',
+    'rate_limit_home_exceeded' => 'Your home has reached the AI analysis limit for this hour. Please try again later.',
 ];

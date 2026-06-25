@@ -65,17 +65,25 @@ class AnalyzeDeviceImageJob implements ShouldQueue
         } catch (\Throwable $e) {
             Log::error('AI analysis job failed', [
                 'request_id' => $this->analysisRequest->id,
+                'attempts' => $this->attempts(),
                 'error' => $e->getMessage(),
             ]);
 
+            $sanitizedError = $this->sanitizeErrorMessage($e->getMessage());
+
             $this->analysisRequest->update([
                 'status' => 'failed',
-                'error' => $e->getMessage(),
+                'error' => $sanitizedError,
             ]);
 
             if ($this->attempts() < $this->tries) {
                 $this->release($this->backoff);
+
+                return;
             }
+
+            // Re-throw on final attempt so Laravel marks the job as failed
+            throw $e;
         }
     }
 
@@ -102,5 +110,21 @@ class AnalyzeDeviceImageJob implements ShouldQueue
                 'status' => 'pending',
             ]);
         }
+    }
+
+    protected function sanitizeErrorMessage(string $message): string
+    {
+        // Strip API keys, tokens, and credentials from error messages
+        $patterns = [
+            '/sk-[A-Za-z0-9_-]+/',
+            '/Bearer\s+[A-Za-z0-9_-]+/',
+            '/api[_-]?key["\s:=]+[A-Za-z0-9_-]+/i',
+            '/token["\s:=]+[A-Za-z0-9_-]+/i',
+        ];
+
+        $cleaned = preg_replace($patterns, '[REDACTED]', $message);
+
+        // Truncate long messages
+        return mb_substr($cleaned ?? $message, 0, 500);
     }
 }

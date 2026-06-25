@@ -5,9 +5,10 @@ namespace Modules\Dashboard\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Modules\Device\Models\Device;
-use Modules\Energy\Models\EnergyReading;
 use Modules\Energy\Models\MonthlyEnergySummary;
 use Modules\Energy\Services\SavingSuggestion;
 use Modules\Home\Models\Home;
@@ -43,104 +44,155 @@ class DashboardController extends Controller
             $home = Home::find($selectedHomeId);
             if ($home && $home->members()->where('user_id', $user->id)->exists()) {
                 $now = Carbon::now();
-                $deviceIds = Device::whereHas('room', fn ($q) => $q->where('home_id', $home->id))
-                    ->pluck('id');
-
-                $stats['total_rooms'] = $home->rooms()->count();
-                $stats['total_devices'] = $deviceIds->count();
-
-                $summaries = MonthlyEnergySummary::where('home_id', $home->id)
-                    ->where('year', $now->year)
-                    ->where('month', $now->month)
-                    ->get();
-
-                $stats['estimated_monthly_kwh'] = $summaries->sum('total_kwh');
-                $stats['estimated_monthly_cost'] = $summaries->sum('estimated_cost');
-
-                $measuredCount = $summaries->where('reading_count', '>', 0)->count();
-                $totalCount = $summaries->count();
-                $stats['measured_ratio'] = $totalCount > 0 ? $measuredCount / $totalCount : 0;
-
-                $topDevices = $summaries->sortByDesc('total_kwh')->take(5);
-
-                // Daily chart — this month vs last month
-                $dailyLabels = [];
-                $dailyData = [];
-                $lastMonthDailyData = [];
-                $daysInMonth = $now->daysInMonth;
                 $lastMonth = $now->copy()->subMonth();
+                $cacheKey = "dashboard:home:{$home->id}:".$now->format('Ym');
 
-                for ($i = 6; $i >= 0; $i--) {
-                    $date = $now->copy()->subDays($i);
-                    $dailyLabels[] = $date->format('d/m');
+                $payload = Cache::remember($cacheKey, now()->addMinutes(5), function () use ($home, $now, $lastMonth) {
+                    $deviceIds = DB::table('devices')
+                        ->join('rooms', 'rooms.id', '=', 'devices.room_id')
+                        ->where('rooms.home_id', $home->id)
+                        ->pluck('devices.id');
 
-                    $dayKwh = EnergyReading::whereIn('device_id', $deviceIds)
-                        ->whereDate('recorded_at', $date)
-                        ->sum('kwh');
+                    $deviceIdsArr = $deviceIds->all();
+                    $deviceCount = count($deviceIdsArr);
 
-                    if ($dayKwh <= 0 && $stats['estimated_monthly_kwh'] > 0) {
-                        $dayKwh = $stats['estimated_monthly_kwh'] / $daysInMonth;
-                    }
+                    $roomCount = DB::table('rooms')->where('home_id', $home->id)->count();
 
-                    $dailyData[] = round($dayKwh, 2);
+                    $currentSummary = DB::table('monthly_energy_summaries')
+                        ->where('home_id', $home->id)
+                        ->where('year', $now->year)
+                        ->where('month', $now->month)
+                        ->selectRaw('COALESCE(SUM(total_kwh), 0) as total_kwh, COALESCE(SUM(estimated_cost), 0) as total_cost, SUM(CASE WHEN reading_count > 0 THEN 1 ELSE 0 END) as measured_count, COUNT(*) as total_count')
+                        ->first();
 
-                    // Last month same day-of-week
-                    $lastDate = $date->copy()->subMonth();
-                    $lastDay = EnergyReading::whereIn('device_id', $deviceIds)
-                        ->whereDate('recorded_at', $lastDate)
-                        ->sum('kwh');
-
-                    $lmSummaries = MonthlyEnergySummary::where('home_id', $home->id)
+                    $lastMonthKwh = DB::table('monthly_energy_summaries')
+                        ->where('home_id', $home->id)
                         ->where('year', $lastMonth->year)
                         ->where('month', $lastMonth->month)
                         ->sum('total_kwh');
 
-                    if ($lastDay <= 0 && $lmSummaries > 0) {
-                        $lastDay = $lmSummaries / $lastMonth->daysInMonth;
+                    $topDevicesRows = DB::table('monthly_energy_summaries')
+                        ->where('home_id', $home->id)
+                        ->where('year', $now->year)
+                        ->where('month', $now->month)
+                        ->orderByDesc('total_kwh')
+                        ->limit(5)
+                        ->get();
+
+                    $daysInMonth = $now->daysInMonth;
+                    $lastMonthDays = $lastMonth->daysInMonth;
+
+                    // Aggregate all 7 days readings in one query
+                    $startDate = $now->copy()->subDays(6)->startOfDay();
+                    $endDate = $now->copy()->endOfDay();
+
+                    $dailyReadings = DB::table('energy_readings')
+                        ->whereIn('device_id', $deviceIdsArr)
+                        ->whereBetween('recorded_at', [$startDate, $endDate])
+                        ->selectRaw('DATE(recorded_at) as day, SUM(kwh) as total_kwh')
+                        ->groupBy(DB::raw('DATE(recorded_at)'))
+                        ->pluck('total_kwh', 'day');
+
+                    $lastStartDate = $startDate->copy()->subMonth();
+                    $lastEndDate = $endDate->copy()->subMonth();
+
+                    $lastMonthDailyReadings = DB::table('energy_readings')
+                        ->whereIn('device_id', $deviceIdsArr)
+                        ->whereBetween('recorded_at', [$lastStartDate, $lastEndDate])
+                        ->selectRaw('DATE(recorded_at) as day, SUM(kwh) as total_kwh')
+                        ->groupBy(DB::raw('DATE(recorded_at)'))
+                        ->pluck('total_kwh', 'day');
+
+                    $dailyLabels = [];
+                    $dailyData = [];
+                    $lastMonthDailyData = [];
+                    $fallbackDaily = $daysInMonth > 0 && $currentSummary->total_kwh > 0
+                        ? $currentSummary->total_kwh / $daysInMonth
+                        : 0;
+                    $fallbackLastDaily = $lastMonthDays > 0 && $lastMonthKwh > 0
+                        ? $lastMonthKwh / $lastMonthDays
+                        : 0;
+
+                    for ($i = 6; $i >= 0; $i--) {
+                        $date = $now->copy()->subDays($i);
+                        $dailyLabels[] = $date->format('d/m');
+
+                        $dayKey = $date->format('Y-m-d');
+                        $dayKwh = (float) ($dailyReadings[$dayKey] ?? 0);
+                        if ($dayKwh <= 0 && $fallbackDaily > 0) {
+                            $dayKwh = $fallbackDaily;
+                        }
+                        $dailyData[] = round($dayKwh, 2);
+
+                        $lastDate = $date->copy()->subMonth();
+                        $lastKey = $lastDate->format('Y-m-d');
+                        $lastDay = (float) ($lastMonthDailyReadings[$lastKey] ?? 0);
+                        if ($lastDay <= 0 && $fallbackLastDaily > 0) {
+                            $lastDay = $fallbackLastDaily;
+                        }
+                        $lastMonthDailyData[] = round($lastDay, 2);
                     }
 
-                    $lastMonthDailyData[] = round($lastDay, 2);
+                    $todayKwh = (float) ($dailyReadings[$now->format('Y-m-d')] ?? 0);
+                    if ($todayKwh <= 0 && $fallbackDaily > 0) {
+                        $todayKwh = $fallbackDaily;
+                    }
+
+                    $yesterdayKwh = (float) ($dailyReadings[$now->copy()->subDay()->format('Y-m-d')] ?? 0);
+                    if ($yesterdayKwh <= 0 && $fallbackDaily > 0) {
+                        $yesterdayKwh = $fallbackDaily;
+                    }
+
+                    $pctYesterday = $yesterdayKwh > 0
+                        ? round((($todayKwh - $yesterdayKwh) / $yesterdayKwh) * 100)
+                        : null;
+
+                    $pctLastMonth = $lastMonthKwh > 0
+                        ? round((($currentSummary->total_kwh - $lastMonthKwh) / $lastMonthKwh) * 100)
+                        : null;
+
+                    $measuredRatio = $currentSummary->total_count > 0
+                        ? $currentSummary->measured_count / $currentSummary->total_count
+                        : 0;
+
+                    return [
+                        'room_count' => $roomCount,
+                        'device_count' => $deviceCount,
+                        'device_ids' => $deviceIdsArr,
+                        'estimated_monthly_kwh' => (float) $currentSummary->total_kwh,
+                        'estimated_monthly_cost' => (float) $currentSummary->total_cost,
+                        'measured_ratio' => $measuredRatio,
+                        'today_kwh' => $todayKwh,
+                        'pct_vs_yesterday' => $pctYesterday,
+                        'pct_vs_last_month' => $pctLastMonth,
+                        'top_devices' => $topDevicesRows,
+                        'daily_labels' => $dailyLabels,
+                        'daily_data' => $dailyData,
+                        'last_month_daily_data' => $lastMonthDailyData,
+                    ];
+                });
+
+                $stats['total_rooms'] = $payload['room_count'];
+                $stats['total_devices'] = $payload['device_count'];
+                $stats['estimated_monthly_kwh'] = $payload['estimated_monthly_kwh'];
+                $stats['estimated_monthly_cost'] = $payload['estimated_monthly_cost'];
+                $stats['measured_ratio'] = $payload['measured_ratio'];
+                $stats['today_kwh'] = $payload['today_kwh'];
+                $stats['pct_vs_yesterday'] = $payload['pct_vs_yesterday'];
+                $stats['pct_vs_last_month'] = $payload['pct_vs_last_month'];
+
+                $topDevices = $payload['top_devices'];
+                $dailyLabels = $payload['daily_labels'];
+                $dailyData = $payload['daily_data'];
+                $lastMonthDailyData = $payload['last_month_daily_data'];
+
+                if (! empty($payload['device_ids'])) {
+                    $devices = Device::whereIn('id', $payload['device_ids'])
+                        ->with(['specification', 'usageProfile', 'deviceType'])
+                        ->get();
+
+                    $suggestions = (new SavingSuggestion)->analyze($devices, $stats['estimated_monthly_cost']);
                 }
-
-                // Today's kWh
-                $todayKwh = EnergyReading::whereIn('device_id', $deviceIds)
-                    ->whereDate('recorded_at', $now)
-                    ->sum('kwh');
-
-                if ($todayKwh <= 0 && $stats['estimated_monthly_kwh'] > 0) {
-                    $todayKwh = $stats['estimated_monthly_kwh'] / $daysInMonth;
-                }
-                $stats['today_kwh'] = $todayKwh;
-
-                // Yesterday comparison
-                $yesterdayKwh = EnergyReading::whereIn('device_id', $deviceIds)
-                    ->whereDate('recorded_at', $now->copy()->subDay())
-                    ->sum('kwh');
-
-                if ($yesterdayKwh <= 0 && $stats['estimated_monthly_kwh'] > 0) {
-                    $yesterdayKwh = $stats['estimated_monthly_kwh'] / $daysInMonth;
-                }
-
-                if ($yesterdayKwh > 0) {
-                    $stats['pct_vs_yesterday'] = round((($todayKwh - $yesterdayKwh) / $yesterdayKwh) * 100);
-                }
-
-                // Last month comparison
-                $lastMonthSummaries = MonthlyEnergySummary::where('home_id', $home->id)
-                    ->where('year', $lastMonth->year)
-                    ->where('month', $lastMonth->month)
-                    ->sum('total_kwh');
-
-                if ($lastMonthSummaries > 0) {
-                    $stats['pct_vs_last_month'] = round((($stats['estimated_monthly_kwh'] - $lastMonthSummaries) / $lastMonthSummaries) * 100);
-                }
-
-                // Saving suggestions
-                $devices = Device::whereHas('room', fn ($q) => $q->where('home_id', $home->id))
-                    ->with(['specification', 'usageProfile', 'deviceType'])
-                    ->get();
-
-                $suggestions = (new SavingSuggestion)->analyze($devices, $stats['estimated_monthly_cost']);
             }
         }
 
@@ -164,20 +216,26 @@ class DashboardController extends Controller
             $deviceIds = Device::whereHas('room', fn ($q) => $q->where('home_id', $home->id))->pluck('id');
             $deviceCount = $deviceIds->count();
 
-            $monthlyKwh = MonthlyEnergySummary::where('home_id', $home->id)
-                ->where('year', $now->year)
-                ->where('month', $now->month)
-                ->sum('total_kwh');
+            // Aggregate current + last month summaries in one query
+            $summaries = DB::table('monthly_energy_summaries')
+                ->where('home_id', $home->id)
+                ->where(function ($q) use ($now) {
+                    $q->where(function ($q1) use ($now) {
+                        $q1->where('year', $now->year)->where('month', $now->month);
+                    })->orWhere(function ($q1) use ($now) {
+                        $lastMonth = $now->copy()->subMonth();
+                        $q1->where('year', $lastMonth->year)->where('month', $lastMonth->month);
+                    });
+                })
+                ->get()
+                ->groupBy(fn ($row) => $row->year.'-'.$row->month);
 
-            $monthlyCost = MonthlyEnergySummary::where('home_id', $home->id)
-                ->where('year', $now->year)
-                ->where('month', $now->month)
-                ->sum('estimated_cost');
+            $currentKey = $now->year.'-'.$now->month;
+            $lastKey = $now->copy()->subMonth()->year.'-'.$now->copy()->subMonth()->month;
 
-            $lastMonthKwh = MonthlyEnergySummary::where('home_id', $home->id)
-                ->where('year', $now->copy()->subMonth()->year)
-                ->where('month', $now->copy()->subMonth()->month)
-                ->sum('total_kwh');
+            $monthlyKwh = (float) ($summaries[$currentKey]->sum('total_kwh') ?? 0);
+            $monthlyCost = (float) ($summaries[$currentKey]->sum('estimated_cost') ?? 0);
+            $lastMonthKwh = (float) ($summaries[$lastKey]->sum('total_kwh') ?? 0);
 
             $pctChange = $lastMonthKwh > 0
                 ? round((($monthlyKwh - $lastMonthKwh) / $lastMonthKwh) * 100)
