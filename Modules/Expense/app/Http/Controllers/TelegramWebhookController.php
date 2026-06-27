@@ -35,6 +35,19 @@ class TelegramWebhookController extends Controller
                 return response()->json(['ok' => true]);
             }
 
+            // Handle /help command
+            $cleanTextLower = mb_strtolower($text, 'UTF-8');
+            if ($cleanTextLower === '/help' || $cleanTextLower === 'help' || $cleanTextLower === '/trogiup' || $cleanTextLower === 'tro giup') {
+                $this->handleHelpCommand($chatId);
+                return response()->json(['ok' => true]);
+            }
+
+            // Handle /wallets or /vi command
+            if ($cleanTextLower === '/wallets' || $cleanTextLower === '/vi' || $cleanTextLower === 'vi' || $cleanTextLower === '/balance' || $cleanTextLower === '/sodu' || $cleanTextLower === 'so du') {
+                $this->handleWalletsCommand($chatId);
+                return response()->json(['ok' => true]);
+            }
+
             // Handle general transaction input
             $this->handleTransactionCommand($chatId, $text, $parser, $expenseService);
         } catch (\Throwable $e) {
@@ -85,10 +98,13 @@ class TelegramWebhookController extends Controller
         $msg = "🎉 Liên kết tài khoản thành công!\n\n"
              . "Tài khoản HomeWatt của bạn: *" . e($user->name) . "* (" . e($user->email) . ")\n\n"
              . "Bây giờ bạn có thể nhập chi tiêu nhanh qua đây bất cứ lúc nào bằng cú pháp thông minh. Ví dụ:\n"
-             . "• `chi 50k ăn sáng`\n"
+             . "• `chi 50k ăn sáng` (Mặc định ghi vào ví Tiền mặt)\n"
+             . "• `chi 150k vcb ăn tối` (Ghi nhận vào ví Vietcombank/vcb)\n"
+             . "• `chi 100k vpbank xăng xe` (Ghi nhận vào ví VPBank)\n"
              . "• `thu 2.5tr bán điện mặt trời`\n"
              . "• `cho vay 500k cho bạn Nam`\n"
-             . "• `đi vay 1m từ anh Ba`";
+             . "• `đi vay 1m từ anh Ba`\n\n"
+             . "💡 *Mẹo:* Bạn chỉ cần gõ thêm tên ví hoặc tên viết tắt (như `vcb`, `tech`, `momo`, `tm`...) vào tin nhắn để hệ thống tự nhận diện đúng ví ghi nhận!";
         
         $this->sendMessage($chatId, $msg);
     }
@@ -176,12 +192,13 @@ class TelegramWebhookController extends Controller
 
         if (!$parsed) {
             $msg = "❓ Cú pháp không hợp lệ. Vui lòng nhập theo các ví dụ sau:\n\n"
-                 . "• *Chi tiêu*: `chi 75k mua rau quả` hoặc `tieu 200k xang xe`\n"
-                 . "• *Thu nhập*: `thu 12tr luong thang` hoặc `thu 500k bán đồ cũ`\n"
+                 . "• *Chi tiêu*: `chi 75k mua rau quả` hoặc `tieu 200k vcb xang xe`\n"
+                 . "• *Thu nhập*: `thu 12tr luong thang` hoặc `thu 500k momo bán đồ cũ`\n"
                  . "• *Cho vay*: `cho vay 200k cho bạn`\n"
                  . "• *Đi vay*: `vay 1tr mua đồ ăn`\n"
                  . "• *Trả nợ*: `trả nợ 100k`\n"
-                 . "• *Thu nợ*: `thu nợ 300k từ Nam`";
+                 . "• *Thu nợ*: `thu nợ 300k từ Nam`\n\n"
+                 . "💡 *Lưu ý:* Hệ thống tự động ghi nhận vào ví đúng nếu bạn ghi tên ví hoặc tên viết tắt (như vcb, tech, momo, tm) trong nội dung tin nhắn.";
             $this->sendMessage($chatId, $msg);
             return;
         }
@@ -209,6 +226,75 @@ class TelegramWebhookController extends Controller
                     . "*Ví*: " . $selectedWallet->name . " (Số dư: " . number_format((float) $selectedWallet->fresh()->calculatedBalance(), 0, ',', '.') . " đ)";
 
         $this->sendMessage($chatId, $confirmMsg);
+    }
+
+    private function handleHelpCommand(int $chatId): void
+    {
+        $msg = "ℹ️ *HƯỚNG DẪN SỬ DỤNG HOMEWATT BOT*\n\n"
+             . "🤖 Bot giúp ghi chép nhanh giao dịch bằng cú pháp tiếng Việt thông minh.\n\n"
+             . "🔑 *CÁC LỆNH HỆ THỐNG:*\n"
+             . "• `/help` hoặc `help`: Hiển thị hướng dẫn này\n"
+             . "• `/vi` hoặc `/wallets` hoặc `vi`: Xem danh sách các ví và số dư hiện tại\n\n"
+             . "📝 *CÚ PHÁP GHI CHÉP GIAO DỊCH:*\n"
+             . "Gõ theo định dạng: `[Hành động] [Số tiền] [Tên ví (nếu có)] [Mô tả/Hạng mục]`\n\n"
+             . "• 🔴 *Chi tiêu*: `chi 75k mua rau` hoặc `tieu 200k vcb xang xe`\n"
+             . "• 🟢 *Thu nhập*: `thu 12tr luong` hoặc `thu 500k momo ban do`\n"
+             . "• 🤝 *Cho vay*: `cho vay 200k cho ban`\n"
+             . "• 💸 *Trả nợ*: `tra no 100k`\n"
+             . "• 🏦 *Đi vay*: `vay 1tr mua do`\n"
+             . "• 🪙 *Thu nợ*: `thu no 300k tu Nam`\n\n"
+             . "💡 *Mẹo nhận diện ví:* Thêm tên ví hoặc viết tắt của ví (như `vcb`, `tech`, `momo`, `tm`) để hệ thống tự khớp. Mặc định sẽ ghi vào ví *Tiền mặt* nếu không ghi tên ví.";
+
+        $this->sendMessage($chatId, $msg);
+    }
+
+    private function handleWalletsCommand(int $chatId): void
+    {
+        $user = User::where('telegram_chat_id', $chatId)->first();
+
+        if (!$user) {
+            $msg = "❌ Tài khoản Telegram của bạn chưa được liên kết với HomeWatt.\n\n"
+                 . "Vui lòng đăng nhập vào trang web, vào trang Cá nhân và lấy mã để liên kết tài khoản.";
+            $this->sendMessage($chatId, $msg);
+            return;
+        }
+
+        $memberships = $user->homeMembers()->with('home')->get();
+
+        if ($memberships->isEmpty()) {
+            $this->sendMessage($chatId, '❌ Bạn chưa tham gia vào bất kỳ ngôi nhà nào trên HomeWatt.');
+            return;
+        }
+
+        $homeIds = $memberships->pluck('home_id');
+        $wallets = Wallet::whereIn('home_id', $homeIds)->where('is_archived', false)->get();
+
+        if ($wallets->isEmpty()) {
+            $this->sendMessage($chatId, '❌ Bạn chưa tạo ví tiền nào. Vui lòng tạo ví trên website.');
+            return;
+        }
+
+        $msg = "💰 *DANH SÁCH VÍ & SỐ DƯ HIỆN TẠI:*\n\n";
+        
+        $grouped = $wallets->groupBy('home_id');
+        foreach ($grouped as $homeId => $homeWallets) {
+            $homeName = $memberships->firstWhere('home_id', $homeId)?->home?->name ?? 'Nhà';
+            $msg .= "🏠 *{$homeName}:*\n";
+            foreach ($homeWallets as $w) {
+                $typeEmoji = $w->type === Wallet::TYPE_CREDIT_CARD ? '💳' : ($w->type === Wallet::TYPE_BANK ? '🏦' : '💵');
+                $balanceStr = number_format($w->calculatedBalance(), 0, ',', '.') . ' ' . $w->currency;
+                
+                if ($w->type === Wallet::TYPE_CREDIT_CARD) {
+                    $debt = (float) $w->opening_balance - $w->calculatedBalance();
+                    $msg .= "  • {$typeEmoji} *{$w->name}*: Hạn mức " . number_format($w->opening_balance, 0, ',', '.') . " | Đang nợ: " . number_format($debt, 0, ',', '.') . " {$w->currency}\n";
+                } else {
+                    $msg .= "  • {$typeEmoji} *{$w->name}*: {$balanceStr}\n";
+                }
+            }
+            $msg .= "\n";
+        }
+
+        $this->sendMessage($chatId, trim($msg));
     }
 
     private function sendMessage(int $chatId, string $text): void
