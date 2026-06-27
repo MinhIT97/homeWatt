@@ -17,6 +17,8 @@
                           maxPower: '{{ old('max_power') }}',
                           standbyPower: '{{ old('standby_power') }}',
                           voltage: '{{ old('voltage') }}',
+                          warrantyDuration: '{{ old('warranty_duration') }}',
+                          warrantyUnit: '{{ old('warranty_unit', 'month') }}',
                           isAnalyzing: false,
                           statusMessage: '',
                           statusType: '',
@@ -188,6 +190,20 @@
                             <div>
                                 <x-input-label for="purchased_at" value="{{ __('device.purchased_at_label') }}" />
                                 <x-text-input id="purchased_at" name="purchased_at" type="date" class="mt-1 block w-full" :value="old('purchased_at')" />
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
+                            <div>
+                                <x-input-label for="warranty_duration" value="Thời hạn bảo hành" />
+                                <div class="flex gap-2">
+                                    <x-text-input id="warranty_duration" name="warranty_duration" type="number" min="0" class="mt-1 block w-full" x-model="warrantyDuration" placeholder="Ví dụ: 12, 2..." />
+                                    <select id="warranty_unit" name="warranty_unit" x-model="warrantyUnit" class="mt-1 block bg-white/80 border border-slate-300 rounded-xl shadow-sm text-slate-800 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition duration-150 py-2.5 px-3.5 w-32">
+                                        <option value="month">Tháng</option>
+                                        <option value="year">Năm</option>
+                                    </select>
+                                </div>
+                                <x-input-error :messages="$errors->get('warranty_duration')" class="mt-2" />
                             </div>
                         </div>
                     </div>

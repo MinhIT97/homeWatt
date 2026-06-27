@@ -14,6 +14,7 @@ use Modules\AI\Models\AiAnalysisRequest;
 use Modules\Device\Http\Requests\StoreDeviceRequest;
 use Modules\Device\Http\Requests\UpdateDeviceRequest;
 use Modules\Device\Models\Device;
+use Modules\Device\Models\DeviceRepair;
 use Modules\Device\Models\DeviceSpecification;
 use Modules\Device\Models\DeviceType;
 use Modules\Device\Models\DeviceUsageProfile;
@@ -64,7 +65,7 @@ class DeviceController extends Controller
 
         $device = DB::transaction(function () use ($request) {
             $created = Device::create($request->safe()->only([
-                'room_id', 'device_type_id', 'name', 'brand', 'model', 'location', 'serial', 'purchased_at', 'purchase_price',
+                'room_id', 'device_type_id', 'name', 'brand', 'model', 'location', 'serial', 'purchased_at', 'purchase_price', 'warranty_duration', 'warranty_unit',
             ]));
 
             if ($request->hasAny(['rated_power', 'max_power', 'standby_power', 'voltage', 'current'])) {
@@ -100,6 +101,7 @@ class DeviceController extends Controller
             'usageProfile',
             'energyReadings',
             'media' => fn ($q) => $q->latest(),
+            'repairs' => fn ($q) => $q->latest(),
         ]);
 
         $analyses = AiAnalysisRequest::whereIn('media_id', $device->media->pluck('id'))
@@ -133,7 +135,7 @@ class DeviceController extends Controller
             }
 
             $lockedDevice->update($request->safe()->only([
-                'device_type_id', 'name', 'brand', 'model', 'location', 'serial', 'purchased_at', 'purchase_price',
+                'device_type_id', 'name', 'brand', 'model', 'location', 'serial', 'purchased_at', 'purchase_price', 'warranty_duration', 'warranty_unit',
             ]));
 
             if ($lockedDevice->specification) {
@@ -255,5 +257,21 @@ class DeviceController extends Controller
         if (! $member || ! $member->canEdit()) {
             abort(403);
         }
+    }
+
+    public function storeRepair(Request $request, Device $device): RedirectResponse
+    {
+        $this->authorize('update', $device);
+
+        $validated = $request->validate([
+            'repaired_at' => ['required', 'date'],
+            'cost' => ['required', 'numeric', 'min:0'],
+            'description' => ['required', 'string', 'max:1000'],
+            'repairer' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $device->repairs()->create($validated);
+
+        return back()->with('success', 'Đã lưu lịch sử sửa chữa thiết bị thành công!');
     }
 }

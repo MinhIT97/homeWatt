@@ -195,6 +195,118 @@
                             <p class="text-xs text-blue-500 mt-1">{{ __('device.ai_analyzing_desc') }}</p>
                         </div>
                     @endif
+                    <!-- Repair History Section -->
+                    <div class="glass-panel rounded-2xl border border-slate-200/60 shadow-sm bg-white/70 overflow-hidden mt-6" 
+                         x-data="{ 
+                             showRepairModal: false, 
+                             repairCostRaw: '', 
+                             repairCostDisplay: '',
+                             formatCost(val) {
+                                 if (!val) return '';
+                                 let clean = val.toString().replace(/[^0-9]/g, '');
+                                 clean = clean.replace(/^0+/, '');
+                                 if (clean === '') return '';
+                                 return clean.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                             },
+                             updateCost(val) {
+                                 let clean = val.replace(/[^0-9]/g, '');
+                                 clean = clean.replace(/^0+/, '');
+                                 this.repairCostRaw = clean;
+                                 this.repairCostDisplay = this.formatCost(clean);
+                             }
+                         }">
+                        <div class="px-6 py-4.5 border-b border-slate-100 bg-slate-50/40 flex justify-between items-center">
+                            <h3 class="font-bold text-slate-800 font-outfit flex items-center gap-2">
+                                <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                </svg>
+                                Lịch sử sửa chữa
+                            </h3>
+                            <button @click="showRepairModal = true" type="button" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-primary-600 to-accent-500 hover:from-primary-500 hover:to-accent-400 text-white text-xs font-bold rounded-xl shadow-md transition">
+                                + Ghi nhận sửa chữa
+                            </button>
+                        </div>
+
+                        <div class="p-6">
+                            @if($device->repairs->isNotEmpty())
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-slate-100">
+                                        <thead class="bg-slate-50/80">
+                                            <tr>
+                                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase">Ngày sửa</th>
+                                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase">Nội dung</th>
+                                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase">Nơi sửa / Thợ</th>
+                                                <th class="px-6 py-3 text-right text-xs font-bold text-slate-400 uppercase">Chi phí</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-slate-100">
+                                            @foreach($device->repairs as $repair)
+                                                <tr class="hover:bg-slate-50/50 transition">
+                                                    <td class="px-6 py-3 text-sm font-semibold text-slate-700 whitespace-nowrap">{{ $repair->repaired_at?->format('d/m/Y') }}</td>
+                                                    <td class="px-6 py-3 text-sm text-slate-600">{{ $repair->description }}</td>
+                                                    <td class="px-6 py-3 text-sm text-slate-500">{{ $repair->repairer ?? '—' }}</td>
+                                                    <td class="px-6 py-3 text-sm font-bold text-slate-800 text-right whitespace-nowrap">{{ number_format($repair->cost, 0, ',', '.') }} đ</td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @else
+                                <div class="text-center py-8 text-slate-400">
+                                    <div class="text-4xl mb-3">🔧</div>
+                                    <p class="text-sm font-medium">Chưa có lịch sử sửa chữa nào</p>
+                                    <p class="text-xs mt-1">Ghi nhận thông tin sửa chữa và chi phí bảo trì để theo dõi dòng đời thiết bị.</p>
+                                </div>
+                            @endif
+                        </div>
+
+                        <!-- Add Repair Modal -->
+                        <div x-show="showRepairModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+                            <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                                <div class="fixed inset-0 transition-opacity" aria-hidden="true" @click="showRepairModal = false">
+                                    <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"></div>
+                                </div>
+                                <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                                <div class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-slate-200">
+                                    <div class="px-6 py-4 bg-slate-50/80 border-b border-slate-150 flex justify-between items-center">
+                                        <h3 class="text-lg font-bold text-slate-850 font-outfit">Ghi nhận lịch sử sửa chữa</h3>
+                                        <button type="button" @click="showRepairModal = false" class="text-slate-400 hover:text-slate-650">
+                                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <form method="POST" action="{{ route('devices.repairs.store', $device) }}" class="p-6 space-y-4">
+                                        @csrf
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <x-input-label for="repaired_at" value="Ngày sửa chữa" />
+                                                <x-text-input id="repaired_at" name="repaired_at" type="date" class="mt-1 block w-full" value="{{ now()->format('Y-m-d') }}" required />
+                                            </div>
+                                            <div>
+                                                <x-input-label for="repair_cost_display" value="Chi phí sửa chữa" />
+                                                <x-text-input id="repair_cost_display" type="text" class="mt-1 block w-full" x-model="repairCostDisplay" @input="updateCost($event.target.value)" required placeholder="Ví dụ: 200.000" />
+                                                <input type="hidden" name="cost" :value="repairCostRaw" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <x-input-label for="repairer" value="Nơi sửa / Thợ thực hiện" />
+                                            <x-text-input id="repairer" name="repairer" type="text" class="mt-1 block w-full" placeholder="Ví dụ: Cửa hàng Điện lạnh, Thợ sửa tại nhà..." />
+                                        </div>
+                                        <div>
+                                            <x-input-label for="description" value="Nội dung sửa chữa" />
+                                            <textarea id="description" name="description" rows="3" class="mt-1 block w-full bg-white border border-slate-300 rounded-xl shadow-sm text-slate-800 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition duration-150 py-2.5 px-3.5" placeholder="Ví dụ: Thay máy nén, nạp gas điều hòa..." required></textarea>
+                                        </div>
+                                        <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                                            <button type="button" @click="showRepairModal = false" class="text-sm font-semibold text-slate-500 hover:text-slate-805">{{ __('common.cancel') }}</button>
+                                            <x-primary-button>Lưu lại</x-primary-button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Cột 3: Device Info + Specs + Profile -->
@@ -211,6 +323,21 @@
                             <div class="flex justify-between">
                                 <dt class="text-xs font-bold text-slate-400 uppercase">{{ __('common.status') }}</dt>
                                 <dd><span class="px-2 py-0.5 rounded-full text-xs font-semibold border {{ $device->status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-slate-100 text-slate-600 border-slate-200' }}">{{ __('common.'.$device->status) }}</span></dd>
+                            </div>
+                            <div class="flex justify-between border-t border-slate-100 pt-3 mt-3">
+                                <dt class="text-xs font-bold text-slate-400 uppercase">Bảo hành</dt>
+                                <dd class="text-right">
+                                    @if($device->warranty_duration)
+                                        <span class="px-2 py-0.5 rounded-full text-xs font-semibold border {{ $device->is_under_warranty ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200' }}">
+                                            {{ $device->is_under_warranty ? 'Còn hạn' : 'Hết hạn' }} ({{ $device->warranty_duration }} {{ $device->warranty_unit === 'year' ? 'năm' : 'tháng' }})
+                                        </span>
+                                        @if($device->warranty_expires_at)
+                                            <p class="text-[10px] text-slate-450 mt-1">Hết hạn: {{ $device->warranty_expires_at->format('d/m/Y') }}</p>
+                                        @endif
+                                    @else
+                                        <span class="text-slate-450 text-xs">Không có</span>
+                                    @endif
+                                </dd>
                             </div>
                         </dl>
                     </div>

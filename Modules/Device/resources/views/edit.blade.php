@@ -57,6 +57,20 @@
                                 <x-text-input id="purchased_at" name="purchased_at" type="date" class="mt-1 block w-full" :value="old('purchased_at', $device->purchased_at?->format('Y-m-d'))" />
                             </div>
                         </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
+                            <div>
+                                <x-input-label for="warranty_duration" value="Thời hạn bảo hành" />
+                                <div class="flex gap-2">
+                                    <x-text-input id="warranty_duration" name="warranty_duration" type="number" min="0" class="mt-1 block w-full" :value="old('warranty_duration', $device->warranty_duration)" placeholder="Ví dụ: 12, 2..." />
+                                    <select id="warranty_unit" name="warranty_unit" class="mt-1 block bg-white/80 border border-slate-300 rounded-xl shadow-sm text-slate-800 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition duration-150 py-2.5 px-3.5 w-32">
+                                        <option value="month" @selected(old('warranty_unit', $device->warranty_unit) === 'month')>Tháng</option>
+                                        <option value="year" @selected(old('warranty_unit', $device->warranty_unit) === 'year')>Năm</option>
+                                    </select>
+                                </div>
+                                <x-input-error :messages="$errors->get('warranty_duration')" class="mt-2" />
+                            </div>
+                        </div>
                     </div>
 
                     <div class="pt-6 border-t border-slate-100">

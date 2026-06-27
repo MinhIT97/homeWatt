@@ -16,6 +16,9 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     Route::delete('/devices/{device}/images/{media}', [DeviceController::class, 'deleteImage'])
         ->name('devices.delete-image');
 
+    Route::post('/devices/{device}/repairs', [DeviceController::class, 'storeRepair'])
+        ->name('devices.repairs.store');
+
     Route::get('/devices/import', [ImportController::class, 'showForm'])->name('devices.import');
     Route::post('/devices/import', [ImportController::class, 'import']);
 });

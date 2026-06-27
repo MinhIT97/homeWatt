@@ -28,6 +28,8 @@ class Device extends Model
         'serial',
         'purchased_at',
         'purchase_price',
+        'warranty_duration',
+        'warranty_unit',
     ];
 
     public const STATUSES = ['active', 'inactive', 'broken'];
@@ -45,6 +47,31 @@ class Device extends Model
         'purchased_at' => 'date',
         'purchase_price' => 'decimal:2',
     ];
+
+    public function getWarrantyExpiresAtAttribute()
+    {
+        if (! $this->purchased_at || ! $this->warranty_duration) {
+            return null;
+        }
+
+        $unit = $this->warranty_unit === 'year' ? 'addYears' : 'addMonths';
+        return $this->purchased_at->copy()->$unit($this->warranty_duration);
+    }
+
+    public function getIsUnderWarrantyAttribute(): bool
+    {
+        $expiry = $this->warranty_expires_at;
+        if (! $expiry) {
+            return false;
+        }
+
+        return $expiry->isFuture() || $expiry->isToday();
+    }
+
+    public function repairs(): HasMany
+    {
+        return $this->hasMany(DeviceRepair::class);
+    }
 
     public function room(): BelongsTo
     {

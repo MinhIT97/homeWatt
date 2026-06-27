@@ -35,6 +35,8 @@ class UpdateDeviceRequest extends FormRequest
             'serial' => ['nullable', 'string', 'max:255'],
             'purchased_at' => ['nullable', 'date'],
             'purchase_price' => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],
+            'warranty_duration' => ['nullable', 'integer', 'min:0'],
+            'warranty_unit' => ['nullable', 'string', 'in:month,year'],
             'rated_power' => ['nullable', 'numeric', 'min:0', 'max:100000'],
             'max_power' => ['nullable', 'numeric', 'min:0', 'max:100000'],
             'standby_power' => ['nullable', 'numeric', 'min:0', 'max:1000'],
