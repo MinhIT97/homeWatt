@@ -143,29 +143,72 @@ class TelegramWebhookController extends Controller
 
         foreach ($allWallets as $w) {
             $walletNameLower = mb_strtolower($w->name, 'UTF-8');
+            $walletNameNoSpaces = str_replace(' ', '', $walletNameLower);
 
-            if (str_contains($cleanTextLower, $walletNameLower)) {
-                $selectedWallet = $w;
-                $selectedHome = $memberships->firstWhere('home_id', $w->home_id)?->home;
-                $text = str_ireplace($w->name, '', $text);
-                break;
+            // Xây dựng danh sách các từ khóa có thể khớp với ví này
+            $matchCandidates = [
+                $w->name,
+                $walletNameLower,
+                $walletNameNoSpaces,
+                'tài khoản ' . $walletNameLower,
+                'tài khoản ' . $walletNameNoSpaces,
+                'taikhoan ' . $walletNameLower,
+                'taikhoan ' . $walletNameNoSpaces,
+                'tk ' . $walletNameLower,
+                'tk ' . $walletNameNoSpaces,
+            ];
+
+            // Tự động thêm các viết tắt phổ biến
+            if (str_contains($walletNameLower, 'techcombank')) {
+                $matchCandidates[] = 'tech';
+                $matchCandidates[] = 'tcb';
+            }
+            if (str_contains($walletNameLower, 'vietcombank')) {
+                $matchCandidates[] = 'vcb';
+            }
+            if (str_contains($walletNameLower, 'momo')) {
+                $matchCandidates[] = 'momo';
+            }
+            if (str_contains($walletNameLower, 'tiền mặt') || str_contains($walletNameLower, 'tien mat')) {
+                $matchCandidates[] = 'tien mat';
+                $matchCandidates[] = 'tiền mặt';
+                $matchCandidates[] = 'tm';
+            }
+            if (str_contains($walletNameLower, 'vpbank') || str_contains($walletNameLower, 'vp bank')) {
+                $matchCandidates[] = 'vpbank';
+                $matchCandidates[] = 'vp bank';
+                $matchCandidates[] = 'vp';
             }
 
-            // Keyword abbreviations matching
-            $abbreviations = [];
-            if (str_contains($walletNameLower, 'techcombank')) $abbreviations[] = 'tech';
-            if (str_contains($walletNameLower, 'vietcombank')) $abbreviations[] = 'vcb';
-            if (str_contains($walletNameLower, 'momo')) $abbreviations[] = 'momo';
-            if (str_contains($walletNameLower, 'tiền mặt')) {
-                $abbreviations[] = 'tien mat';
-                $abbreviations[] = 'tm';
-            }
+            // Sắp xếp các ứng viên khớp theo độ dài giảm dần để khớp cụm từ dài trước (tránh khớp nhầm từ ngắn)
+            usort($matchCandidates, fn($a, $b) => strlen($b) <=> strlen($a));
 
-            foreach ($abbreviations as $abbr) {
-                if (str_contains($cleanTextLower, $abbr)) {
+            foreach ($matchCandidates as $candidate) {
+                $candidateLower = mb_strtolower($candidate, 'UTF-8');
+                
+                // Khớp trực tiếp trong tin nhắn
+                if (str_contains($cleanTextLower, $candidateLower)) {
                     $selectedWallet = $w;
                     $selectedHome = $memberships->firstWhere('home_id', $w->home_id)?->home;
-                    $text = str_ireplace($abbr, '', $text);
+                    $text = str_ireplace($candidateLower, '', $text);
+                    break 2;
+                }
+                
+                // Khớp không dấu/không cách (ví dụ "vp bank" khớp với "vpbank")
+                $candidateNoSpaces = str_replace(' ', '', $candidateLower);
+                $textNoSpaces = str_replace(' ', '', $cleanTextLower);
+                if (str_contains($textNoSpaces, $candidateNoSpaces)) {
+                    $selectedWallet = $w;
+                    $selectedHome = $memberships->firstWhere('home_id', $w->home_id)?->home;
+                    
+                    // Loại bỏ phần khớp khỏi tin nhắn gốc để không bị đưa vào mô tả
+                    $text = str_ireplace($w->name, '', $text);
+                    $text = str_ireplace($candidateLower, '', $text);
+                    foreach (explode(' ', $candidateLower) as $part) {
+                        if (strlen($part) > 1) {
+                            $text = str_ireplace($part, '', $text);
+                        }
+                    }
                     break 2;
                 }
             }
