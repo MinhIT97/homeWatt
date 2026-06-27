@@ -84,6 +84,6 @@ class HomeMember extends Model
 
     public function canEdit(): bool
     {
-        return in_array($this->role, ['owner', 'manager']);
+        return $this->isEditor();
     }
 }

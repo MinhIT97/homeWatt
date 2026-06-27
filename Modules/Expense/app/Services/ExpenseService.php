@@ -55,19 +55,24 @@ class ExpenseService
                 abort(403, 'Cannot edit expenses linked to a transfer');
             }
 
-            $oldWallet = $locked->wallet;
+            $oldWalletId = (int) $locked->getOriginal('wallet_id');
             $oldType = $locked->type;
             $oldAmount = (float) $locked->amount;
 
             $locked->update($data);
 
-            // If wallet changed, revert old and apply new
-            $newWallet = Wallet::lockForUpdate()->find($locked->wallet_id);
-            if ($oldWallet->id !== $newWallet->id) {
+            $newWalletId = (int) $locked->wallet_id;
+
+            $walletIds = collect([$oldWalletId, $newWalletId])->unique()->sort()->values();
+            $lockedWallets = Wallet::whereIn('id', $walletIds)->lockForUpdate()->get()->keyBy('id');
+
+            $oldWallet = $lockedWallets->get($oldWalletId);
+            $newWallet = $lockedWallets->get($newWalletId);
+
+            if ($oldWalletId !== $newWalletId) {
                 $this->applyToBalance($oldWallet, $oldType, -$oldAmount);
                 $this->applyToBalance($newWallet, $locked->type, (float) $locked->amount);
             } elseif ($oldType !== $locked->type || $oldAmount !== (float) $locked->amount) {
-                // Revert old, apply new
                 $this->applyToBalance($oldWallet, $oldType, -$oldAmount);
                 $this->applyToBalance($newWallet, $locked->type, (float) $locked->amount);
             }
@@ -76,7 +81,7 @@ class ExpenseService
                 'expense_id' => $locked->id,
                 'home_id' => $locked->home_id,
                 'old' => [
-                    'wallet_id' => $oldWallet->id,
+                    'wallet_id' => $oldWalletId,
                     'amount' => $oldAmount,
                     'type' => $oldType,
                 ],

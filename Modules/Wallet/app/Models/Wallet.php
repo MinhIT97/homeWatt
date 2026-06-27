@@ -22,7 +22,6 @@ class Wallet extends Model
         'name',
         'type',
         'currency',
-        'balance',
         'opening_balance',
         'icon',
         'color',
@@ -93,7 +92,7 @@ class Wallet extends Model
 
         $transferOut = (float) Transfer::where('from_wallet_id', $this->id)
             ->whereNull('deleted_at')
-            ->sum('amount');
+            ->selectRaw('SUM(amount + fee) as total')->value('total') ?? 0;
 
         return (float) $this->opening_balance + $income - $expense + $transferIn - $transferOut;
     }
@@ -112,7 +111,7 @@ class Wallet extends Model
 
     public function canDelete(): bool
     {
-        return $this->calculatedBalance() === 0.0;
+        return abs($this->calculatedBalance()) < 0.01;
     }
 
     public function archive(): bool
@@ -120,8 +119,16 @@ class Wallet extends Model
         return $this->forceFill(['is_archived' => true])->save();
     }
 
-    public function restore(): bool
+    public function unarchive(): bool
     {
         return $this->forceFill(['is_archived' => false])->save();
+    }
+
+    public function netBalance(): float
+    {
+        if ($this->type === self::TYPE_CREDIT_CARD) {
+            return (float) $this->balance - (float) $this->opening_balance;
+        }
+        return (float) $this->balance;
     }
 }

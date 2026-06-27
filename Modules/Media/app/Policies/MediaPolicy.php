@@ -4,6 +4,7 @@ namespace Modules\Media\Policies;
 
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
+use Modules\Device\Models\Device;
 use Modules\Media\Models\Media;
 
 class MediaPolicy
@@ -21,9 +22,19 @@ class MediaPolicy
                 ->exists();
     }
 
-    public function create(User $user): bool
+    public function create(User $user, ?Device $device = null): bool
     {
-        return true;
+        if (! $device) {
+            return false;
+        }
+        if (! $device->room) {
+            return false;
+        }
+
+        return $device->room->home->members()
+            ->where('user_id', $user->id)
+            ->whereIn('role', ['owner', 'manager'])
+            ->exists();
     }
 
     public function delete(User $user, Media $media): bool

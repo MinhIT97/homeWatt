@@ -3,7 +3,6 @@
 namespace Modules\Expense\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Support\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -56,12 +55,6 @@ class TransferController extends Controller
             return back()->with('error', $e->getMessage())->withInput();
         }
 
-        AuditLogger::log('transfer.created', [
-            'transfer_id' => $transfer->id,
-            'home_id' => $transfer->home_id,
-            'amount' => $transfer->amount,
-        ]);
-
         return redirect()->route('transfers.show', $transfer)
             ->with('success', __('expense.transfer_created'));
     }
@@ -77,17 +70,9 @@ class TransferController extends Controller
 
     public function destroy(Request $request, Transfer $transfer): RedirectResponse
     {
-        $this->authorize('view', $transfer);
-
-        $transferId = $transfer->id;
-        $homeId = $transfer->home_id;
+        $this->authorize('delete', $transfer);
 
         $this->transferService->reverseTransfer($transfer);
-
-        AuditLogger::log('transfer.reversed', [
-            'transfer_id' => $transferId,
-            'home_id' => $homeId,
-        ]);
 
         return redirect()->route('transfers.index')
             ->with('success', __('expense.transfer_reversed'));

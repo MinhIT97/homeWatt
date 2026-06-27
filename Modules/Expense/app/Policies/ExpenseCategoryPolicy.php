@@ -5,6 +5,7 @@ namespace Modules\Expense\Policies;
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
 use Modules\Expense\Models\ExpenseCategory;
+use Modules\Home\Models\Home;
 
 class ExpenseCategoryPolicy
 {
@@ -20,9 +21,14 @@ class ExpenseCategoryPolicy
         return $category->home?->isMember($user->id) ?? false;
     }
 
-    public function create(User $user): bool
+    public function create(User $user, ?Home $home = null): bool
     {
-        return true;
+        if (! $home) {
+            return false;
+        }
+        $member = $home->member($user->id);
+
+        return $member && $member->canEdit();
     }
 
     public function update(User $user, ExpenseCategory $category): bool

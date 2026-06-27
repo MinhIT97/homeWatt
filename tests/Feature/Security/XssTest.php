@@ -17,7 +17,8 @@ class XssTest extends TestCase
     public function test_device_name_is_escaped_in_dashboard_view(): void
     {
         $user = User::factory()->create();
-        $home = Home::create(['owner_id' => $user->id, 'name' => 'Test']);
+        $home = new Home(['name' => 'Test']);
+        $home->forceFill(['owner_id' => $user->id])->save();
         $m = HomeMember::create(['home_id' => $home->id, 'user_id' => $user->id]);
         $m->assignRole('owner');
         $room = Room::create(['home_id' => $home->id, 'name' => 'R']);

@@ -11,7 +11,9 @@ use Illuminate\View\View;
 use Modules\Device\Models\Device;
 use Modules\Energy\Models\MonthlyEnergySummary;
 use Modules\Energy\Services\SavingSuggestion;
+use Modules\Expense\Models\ExpenseCategory;
 use Modules\Home\Models\Home;
+use Modules\Wallet\Models\Wallet;
 
 class DashboardController extends Controller
 {
@@ -52,29 +54,30 @@ class DashboardController extends Controller
                 $monthStart = $now->copy()->startOfMonth();
                 $monthEnd = $now->copy()->endOfMonth();
 
-                $walletsList = DB::table('wallets')
-                    ->where('home_id', $home->id)
+                $walletsList = Wallet::where('home_id', $home->id)
                     ->where('is_archived', false)
                     ->get();
 
                 $stats['wallet_count'] = $walletsList->count();
-                $stats['total_balance'] = (float) $walletsList->sum(function ($w) {
-                    if ($w->type === 'credit_card') {
-                        return (float) $w->balance - (float) $w->opening_balance;
-                    }
-                    return (float) $w->balance;
-                });
+                $stats['total_balance'] = (float) $walletsList->sum(fn ($w) => $w->netBalance());
+
+                $debtCategoryIds = DB::table('expense_categories')
+                    ->where('home_id', $home->id)
+                    ->whereIn('category_group', ExpenseCategory::DEBT_GROUPS)
+                    ->pluck('id');
 
                 $monthlyIncome = DB::table('expenses')
                     ->where('home_id', $home->id)
                     ->whereNull('transfer_id')
                     ->where('type', 'income')
+                    ->whereNotIn('category_id', $debtCategoryIds)
                     ->whereBetween('occurred_at', [$monthStart, $monthEnd])
                     ->sum('amount');
                 $monthlyExpense = DB::table('expenses')
                     ->where('home_id', $home->id)
                     ->whereNull('transfer_id')
                     ->where('type', 'expense')
+                    ->whereNotIn('category_id', $debtCategoryIds)
                     ->whereBetween('occurred_at', [$monthStart, $monthEnd])
                     ->sum('amount');
 
@@ -270,9 +273,9 @@ class DashboardController extends Controller
             $currentKey = $now->year.'-'.$now->month;
             $lastKey = $now->copy()->subMonth()->year.'-'.$now->copy()->subMonth()->month;
 
-            $monthlyKwh = (float) ($summaries[$currentKey]->sum('total_kwh') ?? 0);
-            $monthlyCost = (float) ($summaries[$currentKey]->sum('estimated_cost') ?? 0);
-            $lastMonthKwh = (float) ($summaries[$lastKey]->sum('total_kwh') ?? 0);
+            $monthlyKwh = (float) ($summaries->get($currentKey)?->sum('total_kwh') ?? 0);
+            $monthlyCost = (float) ($summaries->get($currentKey)?->sum('estimated_cost') ?? 0);
+            $lastMonthKwh = (float) ($summaries->get($lastKey)?->sum('total_kwh') ?? 0);
 
             $pctChange = $lastMonthKwh > 0
                 ? round((($monthlyKwh - $lastMonthKwh) / $lastMonthKwh) * 100)

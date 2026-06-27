@@ -15,7 +15,8 @@ class WalletTest extends TestCase
 
     private function setupHome(User $owner): Home
     {
-        $home = Home::create(['owner_id' => $owner->id, 'name' => 'Test Home']);
+        $home = new Home(['name' => 'Test Home']);
+        $home->forceFill(['owner_id' => $owner->id])->save();
         $m = HomeMember::create(['home_id' => $home->id, 'user_id' => $owner->id]);
         $m->assignRole('owner');
 

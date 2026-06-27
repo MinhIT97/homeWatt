@@ -16,10 +16,8 @@ class MassAssignmentTest extends TestCase
     public function test_user_cannot_change_home_status_via_mass_assignment(): void
     {
         $user = User::factory()->create();
-        $home = Home::create([
-            'owner_id' => $user->id,
-            'name' => 'My Home',
-        ]);
+        $home = new Home(['name' => 'My Home']);
+        $home->forceFill(['owner_id' => $user->id])->save();
         $membership = HomeMember::create([
             'home_id' => $home->id,
             'user_id' => $user->id,

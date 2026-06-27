@@ -4,6 +4,7 @@ namespace Modules\Room\Policies;
 
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
+use Modules\Home\Models\Home;
 use Modules\Room\Models\Room;
 
 class RoomPolicy
@@ -22,9 +23,14 @@ class RoomPolicy
         return $room->home->members->contains('user_id', $user->id);
     }
 
-    public function create(User $user): bool
+    public function create(User $user, ?Home $home = null): bool
     {
-        return true;
+        if (! $home) {
+            return false;
+        }
+        $member = $home->member($user->id);
+
+        return $member && $member->canEdit();
     }
 
     public function update(User $user, Room $room): bool

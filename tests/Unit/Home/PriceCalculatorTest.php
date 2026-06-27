@@ -162,11 +162,11 @@ class PriceCalculatorTest extends TestCase
     private function createHomeWithData(): Home
     {
         $user = User::factory()->create();
-        $home = Home::create([
-            'owner_id' => $user->id,
+        $home = new Home([
             'name' => 'Test Home',
             'currency' => 'VND',
         ]);
+        $home->forceFill(['owner_id' => $user->id])->save();
         $membership = HomeMember::create(['home_id' => $home->id, 'user_id' => $user->id]);
         $membership->assignRole('owner');
         Room::create(['home_id' => $home->id, 'name' => 'Living Room']);
@@ -177,11 +177,11 @@ class PriceCalculatorTest extends TestCase
     private function createEmptyHome(): Home
     {
         $user = User::factory()->create();
-        $home = Home::create([
-            'owner_id' => $user->id,
+        $home = new Home([
             'name' => 'Empty Home',
             'currency' => 'VND',
         ]);
+        $home->forceFill(['owner_id' => $user->id])->save();
         $membership = HomeMember::create(['home_id' => $home->id, 'user_id' => $user->id]);
         $membership->assignRole('owner');
 

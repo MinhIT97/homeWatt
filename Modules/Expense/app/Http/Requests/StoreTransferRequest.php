@@ -4,6 +4,7 @@ namespace Modules\Expense\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Modules\Home\Models\Home;
+use Modules\Wallet\Models\Wallet;
 
 class StoreTransferRequest extends FormRequest
 {
@@ -20,8 +21,23 @@ class StoreTransferRequest extends FormRequest
         }
 
         $member = $home->member($this->user()->id);
+        if (! $member || ! $member->canEdit()) {
+            return false;
+        }
 
-        return $member && $member->canEdit();
+        // Validate both wallets belong to the same home
+        $fromWallet = Wallet::find($this->input('from_wallet_id'));
+        $toWallet = Wallet::find($this->input('to_wallet_id'));
+
+        if (! $fromWallet || ! $toWallet) {
+            return false;
+        }
+
+        if ((int) $fromWallet->home_id !== (int) $homeId || (int) $toWallet->home_id !== (int) $homeId) {
+            return false;
+        }
+
+        return true;
     }
 
     public function rules(): array

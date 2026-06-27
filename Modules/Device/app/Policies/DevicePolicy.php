@@ -5,6 +5,7 @@ namespace Modules\Device\Policies;
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
 use Modules\Device\Models\Device;
+use Modules\Room\Models\Room;
 
 class DevicePolicy
 {
@@ -22,9 +23,15 @@ class DevicePolicy
         return $device->room->home->members->contains('user_id', $user->id);
     }
 
-    public function create(User $user): bool
+    public function create(User $user, ?Room $room = null): bool
     {
-        return true;
+        if (! $room) {
+            return false;
+        }
+        $room->loadMissing('home.members');
+        $member = $room->home->members->firstWhere('user_id', $user->id);
+
+        return $member && $member->canEdit();
     }
 
     public function update(User $user, Device $device): bool

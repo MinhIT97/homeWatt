@@ -19,7 +19,8 @@ class NullDereferenceTest extends TestCase
     public function test_policy_returns_false_when_device_relation_is_missing(): void
     {
         $user = User::factory()->create();
-        $home = Home::create(['owner_id' => $user->id, 'name' => 'H']);
+        $home = new Home(['name' => 'H']);
+        $home->forceFill(['owner_id' => $user->id])->save();
         $m = HomeMember::create(['home_id' => $home->id, 'user_id' => $user->id]);
         $m->assignRole('owner');
 
@@ -41,7 +42,8 @@ class NullDereferenceTest extends TestCase
     public function test_policy_returns_false_when_room_relation_is_missing(): void
     {
         $user = User::factory()->create();
-        $home = Home::create(['owner_id' => $user->id, 'name' => 'H']);
+        $home = new Home(['name' => 'H']);
+        $home->forceFill(['owner_id' => $user->id])->save();
         $m = HomeMember::create(['home_id' => $home->id, 'user_id' => $user->id]);
         $m->assignRole('owner');
 

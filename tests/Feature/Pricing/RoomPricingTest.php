@@ -17,7 +17,8 @@ class RoomPricingTest extends TestCase
     public function test_user_can_create_room_with_price(): void
     {
         $user = User::factory()->create();
-        $home = Home::create(['owner_id' => $user->id, 'name' => 'H']);
+        $home = new Home(['name' => 'H']);
+        $home->forceFill(['owner_id' => $user->id])->save();
         $m = HomeMember::create(['home_id' => $home->id, 'user_id' => $user->id]);
         $m->assignRole('owner');
 
@@ -39,7 +40,8 @@ class RoomPricingTest extends TestCase
     public function test_negative_room_price_rejected(): void
     {
         $user = User::factory()->create();
-        $home = Home::create(['owner_id' => $user->id, 'name' => 'H']);
+        $home = new Home(['name' => 'H']);
+        $home->forceFill(['owner_id' => $user->id])->save();
         $m = HomeMember::create(['home_id' => $home->id, 'user_id' => $user->id]);
         $m->assignRole('owner');
 
@@ -56,7 +58,8 @@ class RoomPricingTest extends TestCase
     public function test_room_price_is_optional(): void
     {
         $user = User::factory()->create();
-        $home = Home::create(['owner_id' => $user->id, 'name' => 'H']);
+        $home = new Home(['name' => 'H']);
+        $home->forceFill(['owner_id' => $user->id])->save();
         $m = HomeMember::create(['home_id' => $home->id, 'user_id' => $user->id]);
         $m->assignRole('owner');
 
@@ -73,7 +76,8 @@ class RoomPricingTest extends TestCase
     public function test_user_can_update_room_price(): void
     {
         $user = User::factory()->create();
-        $home = Home::create(['owner_id' => $user->id, 'name' => 'H']);
+        $home = new Home(['name' => 'H']);
+        $home->forceFill(['owner_id' => $user->id])->save();
         $m = HomeMember::create(['home_id' => $home->id, 'user_id' => $user->id]);
         $m->assignRole('owner');
         $room = Room::create([

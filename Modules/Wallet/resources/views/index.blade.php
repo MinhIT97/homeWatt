@@ -36,7 +36,7 @@
                     <div>
                         <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">{{ __('wallet.wallet_count') }}</div>
                         <div class="mt-1 text-2xl font-bold text-slate-700 font-outfit">
-                            {{ $wallets->count() }}
+                            {{ $wallets->total() }}
                         </div>
                     </div>
                 </div>
@@ -75,6 +75,12 @@
                         </a>
                     @endforeach
                 </div>
+
+                @if($wallets->hasPages())
+                    <div class="mt-8">
+                        {{ $wallets->links() }}
+                    </div>
+                @endif
             @endif
         </div>
     </div>

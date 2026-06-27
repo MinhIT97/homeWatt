@@ -22,7 +22,8 @@ class EnergyCalculatorTest extends TestCase
     private function createDevice(array $spec = [], array $profile = []): Device
     {
         $user = User::factory()->create();
-        $home = Home::create(['owner_id' => $user->id, 'name' => 'H']);
+        $home = new Home(['name' => 'H']);
+        $home->forceFill(['owner_id' => $user->id])->save();
         $m = HomeMember::create(['home_id' => $home->id, 'user_id' => $user->id]);
         $m->assignRole('owner');
         $room = Room::create(['home_id' => $home->id, 'name' => 'R']);

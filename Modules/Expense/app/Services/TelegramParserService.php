@@ -24,24 +24,29 @@ class TelegramParserService
 
         // 1. Determine Type and Category based on prefix / keywords
         $type = 'expense'; // default
+        $categoryGroup = null;
         $categoryName = 'Khác'; // default
         $cleanText = $lowercaseText;
 
         // Pattern matching for Lending / Borrowing first since they are multi-word
         if ($this->hasPrefix($lowercaseText, ['cho vay', 'cho muon', 'cho mượn'])) {
             $type = 'expense';
+            $categoryGroup = ExpenseCategory::GROUP_LENDING;
             $categoryName = 'Cho vay';
             $cleanText = $this->removePrefix($lowercaseText, ['cho vay', 'cho muon', 'cho mượn']);
         } elseif ($this->hasPrefix($lowercaseText, ['thu no', 'thu nợ', 'đòi nợ', 'doi no'])) {
             $type = 'income';
+            $categoryGroup = ExpenseCategory::GROUP_DEBT_COLLECTION;
             $categoryName = 'Thu nợ';
             $cleanText = $this->removePrefix($lowercaseText, ['thu no', 'thu nợ', 'đòi nợ', 'doi no']);
         } elseif ($this->hasPrefix($lowercaseText, ['tra no', 'trả nợ', 'trả tiền', 'tra tien'])) {
             $type = 'expense';
+            $categoryGroup = ExpenseCategory::GROUP_DEBT_REPAYMENT;
             $categoryName = 'Trả nợ';
             $cleanText = $this->removePrefix($lowercaseText, ['tra no', 'trả nợ', 'trả tiền', 'tra tien']);
         } elseif ($this->hasPrefix($lowercaseText, ['di vay', 'đi vay', 'vay tiền', 'vay tien', 'vay', 'mượn', 'muon'])) {
             $type = 'income';
+            $categoryGroup = ExpenseCategory::GROUP_BORROWING;
             $categoryName = 'Đi vay';
             $cleanText = $this->removePrefix($lowercaseText, ['di vay', 'đi vay', 'vay tiền', 'vay tien', 'vay', 'mượn', 'muon']);
         } elseif ($this->hasPrefix($lowercaseText, ['chi', 'tieu', 'tiêu', 'mua', 'pay', 'out'])) {
@@ -70,10 +75,6 @@ class TelegramParserService
             $amount *= 1000;
         } elseif (in_array($unit, ['m', 'tr', 'triệu', 'trieu'])) {
             $amount *= 1000000;
-        } elseif ($amount < 1000) {
-            // If user enters "50" without unit, assume they mean 50k (very common in manual logs)
-            // unless they specifically type a high number like 50000
-            $amount *= 1000;
         }
 
         // Remove the matched amount from the text to get description
@@ -88,25 +89,34 @@ class TelegramParserService
         }
 
         // Find category model in DB
-        $category = ExpenseCategory::where('home_id', $homeId)
-            ->where('type', $type)
-            ->where('name', $categoryName)
-            ->first();
+        if ($categoryGroup) {
+            $category = ExpenseCategory::where('home_id', $homeId)
+                ->where('category_group', $categoryGroup)
+                ->first();
+        } else {
+            $category = ExpenseCategory::where('home_id', $homeId)
+                ->where('type', $type)
+                ->where('name', $categoryName)
+                ->first();
+        }
 
         // Fallback to general "Khác" if not found
         if (!$category) {
             $category = ExpenseCategory::where('home_id', $homeId)
-                ->where('type', $type)
-                ->where('name', 'LIKE', '%Khác%')
+                ->where('category_group', ExpenseCategory::GROUP_OTHER)
                 ->first();
+        }
+
+        if (!$category) {
+            throw new \RuntimeException(__('expense.default_category_not_found'));
         }
 
         // Original casing for description if possible
         $originalDesc = $text;
         // Strip out command prefix from original casing
         foreach (['cho vay', 'cho muon', 'cho mượn', 'thu no', 'thu nợ', 'đòi nợ', 'doi no', 'tra no', 'trả nợ', 'trả tiền', 'tra tien', 'di vay', 'đi vay', 'vay tiền', 'vay tien', 'vay', 'mượn', 'muon', 'chi', 'tieu', 'tiêu', 'mua', 'pay', 'out', 'thu', 'nhan', 'nhận', 'luong', 'lương', 'in'] as $prefix) {
-            if (str_starts_with(strtolower($originalDesc), $prefix)) {
-                $originalDesc = trim(substr($originalDesc, strlen($prefix)));
+            if (str_starts_with(mb_strtolower($originalDesc), $prefix)) {
+                $originalDesc = trim(mb_substr($originalDesc, mb_strlen($prefix)));
                 break;
             }
         }
@@ -144,7 +154,7 @@ class TelegramParserService
     {
         foreach ($prefixes as $prefix) {
             if (str_starts_with($text, $prefix)) {
-                return trim(substr($text, strlen($prefix)));
+                return trim(mb_substr($text, mb_strlen($prefix)));
             }
         }
         return $text;

@@ -17,7 +17,6 @@ class Home extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'owner_id',
         'name',
         'address',
         'timezone',

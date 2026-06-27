@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Modules\Expense\Models\Expense;
+use Modules\Expense\Models\ExpenseCategory;
 use Modules\Expense\Models\Transfer;
 use Modules\Home\Models\Home;
 use Modules\Wallet\Models\Wallet;
@@ -24,6 +25,10 @@ class ExpenseReportController extends Controller
 
         $homes = Home::whereHas('members', fn ($q) => $q->where('user_id', $userId))->get();
         $selectedHomeId = $homeId ?? $homes->first()?->id;
+
+        if ($selectedHomeId && $homes->where('id', $selectedHomeId)->isEmpty()) {
+            abort(403);
+        }
 
         $report = null;
         if ($selectedHomeId) {
@@ -46,6 +51,10 @@ class ExpenseReportController extends Controller
         $homes = Home::whereHas('members', fn ($q) => $q->where('user_id', $userId))->get();
         $selectedHomeId = $homeId ?? $homes->first()?->id;
 
+        if ($selectedHomeId && $homes->where('id', $selectedHomeId)->isEmpty()) {
+            abort(403);
+        }
+
         $report = null;
         if ($selectedHomeId) {
             $report = $this->buildCategoryReport($selectedHomeId, $from, $to);
@@ -64,30 +73,30 @@ class ExpenseReportController extends Controller
         // Get debt categories
         $debtCategories = DB::table('expense_categories')
             ->where('home_id', $homeId)
-            ->whereIn('name', ['Cho vay', 'Trả nợ', 'Đi vay', 'Thu nợ'])
+            ->whereIn('category_group', ExpenseCategory::DEBT_GROUPS)
             ->get();
         $debtCategoryIds = $debtCategories->pluck('id')->toArray();
 
         // Calculate specific debt types
-        $lentCategoryId = $debtCategories->firstWhere('name', 'Cho vay')?->id;
+        $lentCategoryId = $debtCategories->firstWhere('category_group', ExpenseCategory::GROUP_LENDING)?->id;
         $totalLent = $lentCategoryId ? (float) Expense::where('home_id', $homeId)
             ->where('category_id', $lentCategoryId)
             ->whereBetween('occurred_at', [$start, $end])
             ->sum('amount') : 0.0;
 
-        $collectedCategoryId = $debtCategories->firstWhere('name', 'Thu nợ')?->id;
+        $collectedCategoryId = $debtCategories->firstWhere('category_group', ExpenseCategory::GROUP_DEBT_COLLECTION)?->id;
         $totalCollected = $collectedCategoryId ? (float) Expense::where('home_id', $homeId)
             ->where('category_id', $collectedCategoryId)
             ->whereBetween('occurred_at', [$start, $end])
             ->sum('amount') : 0.0;
 
-        $borrowedCategoryId = $debtCategories->firstWhere('name', 'Đi vay')?->id;
+        $borrowedCategoryId = $debtCategories->firstWhere('category_group', ExpenseCategory::GROUP_BORROWING)?->id;
         $totalBorrowed = $borrowedCategoryId ? (float) Expense::where('home_id', $homeId)
             ->where('category_id', $borrowedCategoryId)
             ->whereBetween('occurred_at', [$start, $end])
             ->sum('amount') : 0.0;
 
-        $repaidCategoryId = $debtCategories->firstWhere('name', 'Trả nợ')?->id;
+        $repaidCategoryId = $debtCategories->firstWhere('category_group', ExpenseCategory::GROUP_DEBT_REPAYMENT)?->id;
         $totalRepaid = $repaidCategoryId ? (float) Expense::where('home_id', $homeId)
             ->where('category_id', $repaidCategoryId)
             ->whereBetween('occurred_at', [$start, $end])
@@ -115,29 +124,34 @@ class ExpenseReportController extends Controller
 
         // Wallet balances
         $wallets = Wallet::where('home_id', $homeId)->where('is_archived', false)->get();
-        $totalBalance = (float) $wallets->sum(function ($w) {
-            if ($w->type === 'credit_card') {
-                return (float) $w->balance - (float) $w->opening_balance;
-            }
-            return (float) $w->balance;
-        });
+        $totalBalance = (float) $wallets->sum(fn ($w) => $w->netBalance());
 
-        // Daily breakdown
+        // Daily breakdown — single query instead of N+1 per day
+        $dailyRows = Expense::where('home_id', $homeId)
+            ->whereNull('transfer_id')
+            ->whereNotIn('category_id', $debtCategoryIds)
+            ->whereBetween('occurred_at', [$start, $end])
+            ->selectRaw("DATE(occurred_at) as date, type, SUM(amount) as total")
+            ->groupByRaw('DATE(occurred_at), type')
+            ->get();
+
+        $dailyMap = [];
+        foreach ($dailyRows as $row) {
+            $key = $row->date;
+            if (!isset($dailyMap[$key])) {
+                $dailyMap[$key] = ['income' => 0.0, 'expense' => 0.0];
+            }
+            $dailyMap[$key][$row->type] = (float) $row->total;
+        }
+
         $daysInMonth = $start->daysInMonth;
         $dailyData = [];
         for ($d = 1; $d <= $daysInMonth; $d++) {
-            $day = $start->copy()->day($d);
-            $dayEnd = $day->copy()->endOfDay();
+            $date = $start->copy()->day($d)->toDateString();
             $dailyData[] = [
-                'date' => $day->toDateString(),
-                'income' => (float) Expense::where('home_id', $homeId)
-                    ->where('type', Expense::TYPE_INCOME)->whereNull('transfer_id')
-                    ->whereNotIn('category_id', $debtCategoryIds)
-                    ->whereBetween('occurred_at', [$day, $dayEnd])->sum('amount'),
-                'expense' => (float) Expense::where('home_id', $homeId)
-                    ->where('type', Expense::TYPE_EXPENSE)->whereNull('transfer_id')
-                    ->whereNotIn('category_id', $debtCategoryIds)
-                    ->whereBetween('occurred_at', [$day, $dayEnd])->sum('amount'),
+                'date' => $date,
+                'income' => $dailyMap[$date]['income'] ?? 0.0,
+                'expense' => $dailyMap[$date]['expense'] ?? 0.0,
             ];
         }
 
@@ -167,6 +181,7 @@ class ExpenseReportController extends Controller
 
         $rows = DB::table('expenses')
             ->where('expenses.home_id', $homeId)
+            ->whereNull('expenses.deleted_at')
             ->whereNull('transfer_id')
             ->whereBetween('occurred_at', [$start, $end])
             ->join('expense_categories', 'expense_categories.id', '=', 'expenses.category_id')

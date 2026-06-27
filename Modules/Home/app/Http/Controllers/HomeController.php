@@ -43,10 +43,8 @@ class HomeController extends Controller
     public function store(StoreHomeRequest $request): RedirectResponse
     {
         $home = DB::transaction(function () use ($request) {
-            $home = Home::create([
-                ...$request->validated(),
-                'owner_id' => $request->user()->id,
-            ]);
+            $home = Home::create($request->validated());
+            $home->forceFill(['owner_id' => $request->user()->id])->save();
 
             $this->memberService->createOwnerMembership($home, $request->user());
 

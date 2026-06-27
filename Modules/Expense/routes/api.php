@@ -8,6 +8,7 @@ use Modules\Expense\Http\Controllers\TransferController;
 use Modules\Expense\Http\Controllers\TelegramWebhookController;
 
 Route::post('v1/telegram/webhook', [TelegramWebhookController::class, 'handle'])
+    ->middleware('throttle:30,1')
     ->name('telegram.webhook');
 
 Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {

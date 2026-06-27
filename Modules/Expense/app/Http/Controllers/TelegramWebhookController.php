@@ -16,6 +16,11 @@ class TelegramWebhookController extends Controller
 {
     public function handle(Request $request, TelegramParserService $parser, ExpenseService $expenseService): JsonResponse
     {
+        $secret = config('services.telegram.webhook_secret');
+        if ($secret && $request->header('X-Telegram-Bot-Api-Secret-Token') !== $secret) {
+            abort(403, 'Invalid webhook token');
+        }
+
         $chatId = $request->input('message.chat.id');
         $text = trim($request->input('message.text', ''));
 
@@ -72,10 +77,10 @@ class TelegramWebhookController extends Controller
         }
 
         // Link Telegram account
-        $user->update([
+        $user->forceFill([
             'telegram_chat_id' => $chatId,
             'telegram_verification_code' => null,
-        ]);
+        ])->save();
 
         $msg = "🎉 Liên kết tài khoản thành công!\n\n"
              . "Tài khoản HomeWatt của bạn: *" . e($user->name) . "* (" . e($user->email) . ")\n\n"
@@ -99,32 +104,33 @@ class TelegramWebhookController extends Controller
             return;
         }
 
-        $member = $user->homeMembers()->with('home')->first();
+        $memberships = $user->homeMembers()->with('home')->get();
 
-        if (!$member || !$member->home) {
+        if ($memberships->isEmpty()) {
             $this->sendMessage($chatId, '❌ Bạn chưa tham gia vào bất kỳ ngôi nhà nào trên HomeWatt. Vui lòng tạo hoặc tham gia nhà trước.');
             return;
         }
 
-        $home = $member->home;
-        $wallets = Wallet::where('home_id', $home->id)->where('is_archived', false)->get();
+        // Gather wallets from ALL homes for multi-home users
+        $homeIds = $memberships->pluck('home_id');
+        $allWallets = Wallet::whereIn('home_id', $homeIds)->where('is_archived', false)->get();
 
-        if ($wallets->isEmpty()) {
+        if ($allWallets->isEmpty()) {
             $this->sendMessage($chatId, '❌ Ngôi nhà của bạn chưa có ví tiền nào để ghi nhận giao dịch. Vui lòng tạo ví trên website.');
             return;
         }
 
-        // 1. Match wallet based on name or keywords inside the message
+        // 1. Match wallet across ALL homes
         $selectedWallet = null;
+        $selectedHome = null;
         $cleanTextLower = mb_strtolower($text, 'UTF-8');
 
-        foreach ($wallets as $w) {
+        foreach ($allWallets as $w) {
             $walletNameLower = mb_strtolower($w->name, 'UTF-8');
-            
-            // Full name matching
+
             if (str_contains($cleanTextLower, $walletNameLower)) {
                 $selectedWallet = $w;
-                // Strip the wallet name out of the text so it does not get in the description
+                $selectedHome = $memberships->firstWhere('home_id', $w->home_id)?->home;
                 $text = str_ireplace($w->name, '', $text);
                 break;
             }
@@ -142,18 +148,29 @@ class TelegramWebhookController extends Controller
             foreach ($abbreviations as $abbr) {
                 if (str_contains($cleanTextLower, $abbr)) {
                     $selectedWallet = $w;
+                    $selectedHome = $memberships->firstWhere('home_id', $w->home_id)?->home;
                     $text = str_ireplace($abbr, '', $text);
                     break 2;
                 }
             }
         }
 
-        // 2. Fallback to default wallets
+        // 2. Fallback to first home's default wallets
         if (!$selectedWallet) {
-            $selectedWallet = $wallets->first(fn($w) => str_contains(mb_strtolower($w->name, 'UTF-8'), 'tiền mặt'))
-                ?: $wallets->first(fn($w) => str_contains(mb_strtolower($w->name, 'UTF-8'), 'chính'))
-                ?: $wallets->first();
+            $firstHome = $memberships->first()->home;
+            $homeWallets = $allWallets->where('home_id', $firstHome->id);
+            $selectedWallet = $homeWallets->first(fn($w) => str_contains(mb_strtolower($w->name, 'UTF-8'), 'tiền mặt'))
+                ?: $homeWallets->first(fn($w) => str_contains(mb_strtolower($w->name, 'UTF-8'), 'chính'))
+                ?: $homeWallets->first();
+            $selectedHome = $firstHome;
+
+            // Notify multi-home users which home is being used
+            if ($memberships->count() > 1) {
+                $this->sendMessage($chatId, "ℹ️ Đang ghi giao dịch vào nhà *{$selectedHome->name}*.\nĐể chọn nhà khác, hãy thêm tên ví thuộc nhà đó vào tin nhắn.");
+            }
         }
+
+        $home = $selectedHome;
 
         $parsed = $parser->parse($text, $home->id);
 
@@ -196,7 +213,7 @@ class TelegramWebhookController extends Controller
 
     private function sendMessage(int $chatId, string $text): void
     {
-        $token = config('services.telegram.bot_token') ?? env('TELEGRAM_BOT_TOKEN');
+        $token = config('services.telegram.bot_token');
         if (empty($token)) {
             Log::warning('Telegram bot token not configured; message could not be sent.', [
                 'chat_id' => $chatId,

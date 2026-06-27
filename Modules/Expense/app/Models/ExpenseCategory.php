@@ -19,6 +19,7 @@ class ExpenseCategory extends Model
         'parent_id',
         'name',
         'type',
+        'category_group',
         'icon',
         'color',
         'is_system',
@@ -35,6 +36,20 @@ class ExpenseCategory extends Model
     public const TYPE_EXPENSE = 'expense';
 
     public const TYPES = [self::TYPE_INCOME, self::TYPE_EXPENSE];
+
+    public const GROUP_LENDING = 'lending';
+    public const GROUP_DEBT_COLLECTION = 'debt_collection';
+    public const GROUP_BORROWING = 'borrowing';
+    public const GROUP_DEBT_REPAYMENT = 'debt_repayment';
+    public const GROUP_TRANSFER = 'transfer';
+    public const GROUP_OTHER = 'other';
+
+    public const DEBT_GROUPS = [
+        self::GROUP_LENDING,
+        self::GROUP_DEBT_COLLECTION,
+        self::GROUP_BORROWING,
+        self::GROUP_DEBT_REPAYMENT,
+    ];
 
     public function home(): BelongsTo
     {

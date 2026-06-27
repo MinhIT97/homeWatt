@@ -18,36 +18,32 @@ class WalletController extends Controller
     {
         $userId = $request->user()->id;
 
-        $wallets = Wallet::whereHas('home.members', fn ($q) => $q->where('user_id', $userId))
+        $walletQuery = Wallet::whereHas('home.members', fn ($q) => $q->where('user_id', $userId))
             ->with(['home'])
             ->where('is_archived', false)
             ->orderBy('sort_order')
-            ->orderBy('name')
-            ->get();
+            ->orderBy('name');
 
-        // Calculate total balance (Cash + Bank + Credit Card Debt)
-        $totalBalance = (float) $wallets->sum(function ($w) {
-            if ($w->type === 'credit_card') {
-                return (float) $w->balance - (float) $w->opening_balance;
-            }
-            return (float) $w->balance;
-        });
+        $wallets = $walletQuery->paginate(20);
 
-        $totalOpening = (float) $wallets->sum(function ($w) {
+        // Calculate totals from all wallets (not just current page)
+        $allWallets = $walletQuery->get();
+        $totalBalance = (float) $allWallets->sum(fn ($w) => $w->netBalance());
+
+        $totalOpening = (float) $allWallets->sum(function ($w) {
             if ($w->type === 'credit_card') {
                 return 0.0;
             }
             return (float) $w->opening_balance;
         });
-        
-        // Calculate credit card debt
-        $creditCardDebt = (float) $wallets->sum(function ($w) {
+
+        $creditCardDebt = (float) $allWallets->sum(function ($w) {
             if ($w->type === 'credit_card') {
-                return (float) $w->balance - (float) $w->opening_balance;
+                return $w->netBalance();
             }
             return 0.0;
         });
-        $homeCurrency = $wallets->first()?->home?->currency ?? 'VND';
+        $homeCurrency = $allWallets->first()?->home?->currency ?? 'VND';
 
         return view('wallet::index', compact('wallets', 'totalBalance', 'totalOpening', 'creditCardDebt', 'homeCurrency'));
     }
@@ -90,8 +86,6 @@ class WalletController extends Controller
     public function show(Request $request, Wallet $wallet): View
     {
         $this->authorize('view', $wallet);
-
-        $wallet->load(['home', 'expenses.category', 'transfersFrom', 'transfersTo']);
 
         $currentBalance = $wallet->calculatedBalance();
 
@@ -186,18 +180,23 @@ class WalletController extends Controller
     {
         $this->authorize('delete', $wallet);
 
-        if (! $wallet->canDelete()) {
-            return back()->with('error', __('wallet.cannot_delete_with_balance'));
-        }
+        DB::transaction(function () use ($wallet) {
+            $locked = Wallet::where('id', $wallet->id)->lockForUpdate()->first();
+            if (! $locked) {
+                abort(404);
+            }
 
-        $walletId = $wallet->id;
-        $homeId = $wallet->home_id;
-        $wallet->delete();
+            if (! $locked->canDelete()) {
+                throw new \RuntimeException(__('wallet.cannot_delete_with_balance'));
+            }
 
-        AuditLogger::log('wallet.deleted', [
-            'wallet_id' => $walletId,
-            'home_id' => $homeId,
-        ]);
+            $locked->delete();
+
+            AuditLogger::log('wallet.deleted', [
+                'wallet_id' => $locked->id,
+                'home_id' => $locked->home_id,
+            ]);
+        });
 
         return redirect()->route('wallets.index')
             ->with('success', __('wallet.deleted'));
@@ -221,7 +220,7 @@ class WalletController extends Controller
     {
         $this->authorize('archive', $wallet);
 
-        $wallet->restore();
+        $wallet->unarchive();
 
         AuditLogger::log('wallet.restored', [
             'wallet_id' => $wallet->id,

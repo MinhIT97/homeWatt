@@ -3,7 +3,6 @@
 namespace Modules\Expense\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Support\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -77,9 +76,9 @@ class ExpenseController extends Controller
             ? Wallet::where('home_id', $selectedHomeId)->where('is_archived', false)->get()
             : collect();
 
-        $expenseCats = $categories->where('type', 'expense')->whereNotIn('name', ['Cho vay', 'Trả nợ']);
-        $incomeCats = $categories->where('type', 'income')->whereNotIn('name', ['Đi vay', 'Thu nợ']);
-        $debtCats = $categories->filter(fn($c) => in_array($c->name, ['Cho vay', 'Trả nợ', 'Đi vay', 'Thu nợ']));
+        $expenseCats = $categories->where('type', 'expense')->whereNotIn('category_group', ExpenseCategory::DEBT_GROUPS);
+        $incomeCats = $categories->where('type', 'income')->whereNotIn('category_group', ExpenseCategory::DEBT_GROUPS);
+        $debtCats = $categories->whereIn('category_group', ExpenseCategory::DEBT_GROUPS);
 
         return view('expense::create', compact(
             'homes', 'selectedHomeId', 'categories', 'wallets', 'expenseCats', 'incomeCats', 'debtCats'
@@ -89,13 +88,6 @@ class ExpenseController extends Controller
     public function store(StoreExpenseRequest $request): RedirectResponse
     {
         $expense = $this->expenseService->createExpense($request->validated(), $request->user());
-
-        AuditLogger::log('expense.created', [
-            'expense_id' => $expense->id,
-            'home_id' => $expense->home_id,
-            'amount' => $expense->amount,
-            'type' => $expense->type,
-        ]);
 
         return redirect()->route('expenses.show', $expense)
             ->with('success', __('expense.created'));
@@ -118,9 +110,9 @@ class ExpenseController extends Controller
         $categories = ExpenseCategory::where('home_id', $expense->home_id)->whereNull('parent_id')->with('children')->orderBy('sort_order')->get();
         $wallets = Wallet::where('home_id', $expense->home_id)->where('is_archived', false)->get();
 
-        $expenseCats = $categories->where('type', 'expense')->whereNotIn('name', ['Cho vay', 'Trả nợ']);
-        $incomeCats = $categories->where('type', 'income')->whereNotIn('name', ['Đi vay', 'Thu nợ']);
-        $debtCats = $categories->filter(fn($c) => in_array($c->name, ['Cho vay', 'Trả nợ', 'Đi vay', 'Thu nợ']));
+        $expenseCats = $categories->where('type', 'expense')->whereNotIn('category_group', ExpenseCategory::DEBT_GROUPS);
+        $incomeCats = $categories->where('type', 'income')->whereNotIn('category_group', ExpenseCategory::DEBT_GROUPS);
+        $debtCats = $categories->whereIn('category_group', ExpenseCategory::DEBT_GROUPS);
 
         return view('expense::edit', compact('expense', 'categories', 'wallets', 'expenseCats', 'incomeCats', 'debtCats'));
     }
@@ -131,11 +123,6 @@ class ExpenseController extends Controller
 
         $this->expenseService->updateExpense($expense, $request->validated());
 
-        AuditLogger::log('expense.updated', [
-            'expense_id' => $expense->id,
-            'home_id' => $expense->home_id,
-        ]);
-
         return redirect()->route('expenses.show', $expense)
             ->with('success', __('expense.updated'));
     }
@@ -144,15 +131,7 @@ class ExpenseController extends Controller
     {
         $this->authorize('delete', $expense);
 
-        $expenseId = $expense->id;
-        $homeId = $expense->home_id;
-
         $this->expenseService->deleteExpense($expense);
-
-        AuditLogger::log('expense.deleted', [
-            'expense_id' => $expenseId,
-            'home_id' => $homeId,
-        ]);
 
         return redirect()->route('expenses.index')
             ->with('success', __('expense.deleted'));

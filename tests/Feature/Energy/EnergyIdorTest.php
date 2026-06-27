@@ -17,7 +17,8 @@ class EnergyIdorTest extends TestCase
 
     private function createHomeWithDevice(User $owner, ?User $member = null): array
     {
-        $home = Home::create(['owner_id' => $owner->id, 'name' => 'Test Home']);
+        $home = new Home(['name' => 'Test Home']);
+        $home->forceFill(['owner_id' => $owner->id])->save();
         $membership = HomeMember::create(['home_id' => $home->id, 'user_id' => $owner->id]);
         $membership->assignRole('owner');
 
