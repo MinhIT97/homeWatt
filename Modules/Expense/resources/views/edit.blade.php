@@ -91,7 +91,7 @@
                             <select id="wallet_id" name="wallet_id" class="mt-1 block w-full bg-white/80 border border-slate-300 rounded-xl shadow-sm text-slate-800 py-2.5 px-3.5" required>
                                 <option value="">{{ __('expense.select_wallet') }}</option>
                                 @foreach($wallets as $w)
-                                    <option value="{{ $w->id }}" @selected(old('wallet_id', $expense->wallet_id) == $w->id)>{{ $w->name }} ({{ number_format((float) $w->balance, 0, ',', '.') }})</option>
+                                    <option value="{{ $w->id }}" @selected(old('wallet_id', $expense->wallet_id) == $w->id)>{{ $w->name }} ({{ number_format((float) $w->calculatedBalance(), 0, ',', '.') }})</option>
                                 @endforeach
                             </select>
                         </div>

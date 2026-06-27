@@ -67,7 +67,7 @@
                                 </div>
                             </div>
                             <div class="text-2xl font-extrabold text-slate-800 font-outfit">
-                                {{ number_format($wallet->balance, 0, ',', '.') }} <span class="text-sm font-normal text-slate-500">{{ $wallet->currency }}</span>
+                                {{ number_format($wallet->calculatedBalance(), 0, ',', '.') }} <span class="text-sm font-normal text-slate-500">{{ $wallet->currency }}</span>
                             </div>
                             @if($wallet->description)
                                 <p class="text-xs text-slate-400 mt-2 line-clamp-2">{{ $wallet->description }}</p>

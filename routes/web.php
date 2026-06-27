@@ -7,6 +7,7 @@ Route::get('/up', function () {
     return response()->json(['status' => 'ok']);
 })->name('health');
 
+
 Route::get('/version', function () {
     return response()->json([
         'application' => config('app.name'),

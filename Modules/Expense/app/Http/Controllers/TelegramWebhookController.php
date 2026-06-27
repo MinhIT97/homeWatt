@@ -206,7 +206,7 @@ class TelegramWebhookController extends Controller
                     . "*Số tiền*: " . number_format($parsed['amount'], 0, ',', '.') . " đ\n"
                     . "*Danh mục*: " . $parsed['category_name'] . "\n"
                     . "*Ghi chú*: " . $parsed['description'] . "\n"
-                    . "*Ví*: " . $selectedWallet->name . " (Số dư: " . number_format((float) $selectedWallet->fresh()->balance, 0, ',', '.') . " đ)";
+                    . "*Ví*: " . $selectedWallet->name . " (Số dư: " . number_format((float) $selectedWallet->fresh()->calculatedBalance(), 0, ',', '.') . " đ)";
 
         $this->sendMessage($chatId, $confirmMsg);
     }

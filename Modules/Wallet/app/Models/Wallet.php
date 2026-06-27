@@ -22,6 +22,7 @@ class Wallet extends Model
         'name',
         'type',
         'currency',
+        'balance',
         'opening_balance',
         'icon',
         'color',
@@ -126,9 +127,10 @@ class Wallet extends Model
 
     public function netBalance(): float
     {
+        $currentBalance = $this->calculatedBalance();
         if ($this->type === self::TYPE_CREDIT_CARD) {
-            return (float) $this->balance - (float) $this->opening_balance;
+            return $currentBalance - (float) $this->opening_balance;
         }
-        return (float) $this->balance;
+        return $currentBalance;
     }
 }

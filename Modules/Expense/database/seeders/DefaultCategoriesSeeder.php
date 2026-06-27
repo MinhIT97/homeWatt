@@ -41,7 +41,10 @@ class DefaultCategoriesSeeder extends Seeder
                 'name' => 'Nhà cửa', 'icon' => '🏠', 'color' => '#8b5cf6',
                 'children' => [
                     ['name' => 'Tiền thuê nhà', 'icon' => '🔑'],
-                    ['name' => 'Tiện ích (Điện, nước...)', 'icon' => '⚡'],
+                    ['name' => 'Tiền điện', 'icon' => '⚡'],
+                    ['name' => 'Tiền nước', 'icon' => '💧'],
+                    ['name' => 'Tiền rác & vệ sinh', 'icon' => '🗑️'],
+                    ['name' => 'Tiền gas', 'icon' => '🔥'],
                     ['name' => 'Internet & TV', 'icon' => '🌐'],
                     ['name' => 'Đồ dùng gia đình', 'icon' => '🛋️'],
                     ['name' => 'Sửa chữa nhà', 'icon' => '🔨'],
@@ -92,17 +95,17 @@ class DefaultCategoriesSeeder extends Seeder
                 ]
             ],
             [
-                'name' => 'Cho vay', 'icon' => '🤝', 'color' => '#eab308',
+                'name' => 'Cho vay', 'icon' => '🤝', 'color' => '#eab308', 'category_group' => 'lending',
                 'children' => [
-                    ['name' => 'Cho bạn bè vay', 'icon' => '🤝'],
-                    ['name' => 'Cho người thân mượn', 'icon' => '🏠'],
+                    ['name' => 'Cho bạn bè vay', 'icon' => '🤝', 'category_group' => 'lending'],
+                    ['name' => 'Cho người thân mượn', 'icon' => '🏠', 'category_group' => 'lending'],
                 ]
             ],
             [
-                'name' => 'Trả nợ', 'icon' => '💸', 'color' => '#a855f7',
+                'name' => 'Trả nợ', 'icon' => '💸', 'color' => '#a855f7', 'category_group' => 'debt_repayment',
                 'children' => [
-                    ['name' => 'Trả nợ ngân hàng', 'icon' => '🏦'],
-                    ['name' => 'Trả nợ bạn bè', 'icon' => '💸'],
+                    ['name' => 'Trả nợ ngân hàng', 'icon' => '🏦', 'category_group' => 'debt_repayment'],
+                    ['name' => 'Trả nợ bạn bè', 'icon' => '💸', 'category_group' => 'debt_repayment'],
                 ]
             ],
             [
@@ -136,17 +139,17 @@ class DefaultCategoriesSeeder extends Seeder
                 ]
             ],
             [
-                'name' => 'Đi vay', 'icon' => '🏦', 'color' => '#0284c7',
+                'name' => 'Đi vay', 'icon' => '🏦', 'color' => '#0284c7', 'category_group' => 'borrowing',
                 'children' => [
-                    ['name' => 'Vay bạn bè', 'icon' => '🏦'],
-                    ['name' => 'Vay ngân hàng', 'icon' => '🏛️'],
+                    ['name' => 'Vay bạn bè', 'icon' => '🏦', 'category_group' => 'borrowing'],
+                    ['name' => 'Vay ngân hàng', 'icon' => '🏛️', 'category_group' => 'borrowing'],
                 ]
             ],
             [
-                'name' => 'Thu nợ', 'icon' => '🪙', 'color' => '#14b8a6',
+                'name' => 'Thu nợ', 'icon' => '🪙', 'color' => '#14b8a6', 'category_group' => 'debt_collection',
                 'children' => [
-                    ['name' => 'Thu nợ bạn bè', 'icon' => '🪙'],
-                    ['name' => 'Thu nợ người thân', 'icon' => '🏡'],
+                    ['name' => 'Thu nợ bạn bè', 'icon' => '🪙', 'category_group' => 'debt_collection'],
+                    ['name' => 'Thu nợ người thân', 'icon' => '🏡', 'category_group' => 'debt_collection'],
                 ]
             ],
             [
@@ -169,6 +172,7 @@ class DefaultCategoriesSeeder extends Seeder
                         'icon' => $cat['icon'],
                         'color' => $cat['color'],
                         'is_system' => true,
+                        'category_group' => $cat['category_group'] ?? null,
                         'sort_order' => $index,
                     ]
                 );
@@ -186,6 +190,7 @@ class DefaultCategoriesSeeder extends Seeder
                                 'icon' => $child['icon'],
                                 'color' => $cat['color'],
                                 'is_system' => true,
+                                'category_group' => $child['category_group'] ?? $parent->category_group ?? null,
                                 'sort_order' => $childIndex,
                             ]
                         );
@@ -205,6 +210,7 @@ class DefaultCategoriesSeeder extends Seeder
                         'icon' => $cat['icon'],
                         'color' => $cat['color'],
                         'is_system' => true,
+                        'category_group' => $cat['category_group'] ?? null,
                         'sort_order' => $index,
                     ]
                 );
@@ -222,6 +228,7 @@ class DefaultCategoriesSeeder extends Seeder
                                 'icon' => $child['icon'],
                                 'color' => $cat['color'],
                                 'is_system' => true,
+                                'category_group' => $child['category_group'] ?? $parent->category_group ?? null,
                                 'sort_order' => $childIndex,
                             ]
                         );
