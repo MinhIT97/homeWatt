@@ -6,7 +6,29 @@
     <div class="py-12">
         <div class="max-w-2xl mx-auto sm:px-6 lg:px-8">
             <div class="glass-panel rounded-2xl border border-slate-200/60 shadow-sm bg-white/70">
-                <form method="POST" action="{{ route('wallets.store') }}" class="p-8 space-y-6">
+                <form method="POST" action="{{ route('wallets.store') }}" class="p-8 space-y-6"
+                      x-data="{
+                          amountRaw: '{{ old('opening_balance', 0) }}',
+                          amountDisplay: '0',
+                          init() {
+                              if (this.amountRaw) {
+                                  this.amountDisplay = this.formatNumber(this.amountRaw);
+                              }
+                          },
+                          formatNumber(val) {
+                              if (!val) return '';
+                              let clean = val.toString().replace(/[^0-9]/g, '');
+                              clean = clean.replace(/^0+/, '');
+                              if (clean === '') return '';
+                              return clean.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                          },
+                          updateAmount(val) {
+                              let clean = val.replace(/[^0-9]/g, '');
+                              clean = clean.replace(/^0+/, '');
+                              this.amountRaw = clean;
+                              this.amountDisplay = this.formatNumber(clean);
+                          }
+                      }">
                     @csrf
 
                     <div>
@@ -37,8 +59,9 @@
                     </div>
 
                     <div>
-                        <x-input-label for="opening_balance" value="{{ __('wallet.opening_balance') }}" />
-                        <x-text-input id="opening_balance" name="opening_balance" type="number" step="0.01" min="0" class="mt-1 block w-full" :value="old('opening_balance', 0)" required />
+                        <x-input-label for="opening_balance_display" value="{{ __('wallet.opening_balance') }}" />
+                        <x-text-input id="opening_balance_display" type="text" class="mt-1 block w-full" x-model="amountDisplay" @input="updateAmount($event.target.value)" required />
+                        <input type="hidden" id="opening_balance" name="opening_balance" :value="amountRaw">
                         <p class="text-[11px] text-slate-400 mt-1">{{ __('wallet.opening_balance_help') }}</p>
                         <x-input-error :messages="$errors->get('opening_balance')" class="mt-2" />
                     </div>

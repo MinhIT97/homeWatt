@@ -31,10 +31,11 @@
         showCategoryModal: false,
         activeTab: '{{ old('type', 'expense') === 'income' ? 'income' : 'expense' }}',
         searchQuery: '',
+        amountRaw: '{{ old('amount') }}',
+        amountDisplay: '',
 
         init() {
             const debtNames = ['Cho vay', 'Trả nợ', 'Đi vay', 'Thu nợ'];
-            // Also check child categories of debt parents
             if (this.categoryName) {
                 if (debtNames.includes(this.categoryName)) {
                     this.activeTab = 'debt';
@@ -45,6 +46,24 @@
                     this.activeTab = value;
                 }
             });
+            if (this.amountRaw) {
+                this.amountDisplay = this.formatNumber(this.amountRaw);
+            }
+        },
+
+        formatNumber(val) {
+            if (!val) return '';
+            let clean = val.toString().replace(/[^0-9]/g, '');
+            clean = clean.replace(/^0+/, '');
+            if (clean === '') return '';
+            return clean.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        },
+
+        updateAmount(val) {
+            let clean = val.replace(/[^0-9]/g, '');
+            clean = clean.replace(/^0+/, '');
+            this.amountRaw = clean;
+            this.amountDisplay = this.formatNumber(clean);
         },
 
         selectCategory(id, name, icon, color, categoryType) {
@@ -118,8 +137,9 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <x-input-label for="amount" :value="__('expense.amount_label')" />
-                            <x-text-input id="amount" name="amount" type="number" step="0.01" min="0.01" class="mt-1 block w-full" :value="old('amount')" required />
+                            <x-input-label for="amount_display" :value="__('expense.amount_label')" />
+                            <x-text-input id="amount_display" type="text" class="mt-1 block w-full" x-model="amountDisplay" @input="updateAmount($event.target.value)" required />
+                            <input type="hidden" id="amount" name="amount" :value="amountRaw">
                         </div>
                         <div>
                             <x-input-label for="occurred_at" :value="__('expense.occurred_at_label')" />

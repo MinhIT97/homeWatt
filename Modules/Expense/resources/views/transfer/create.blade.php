@@ -12,8 +12,39 @@
                           fromWalletId: '{{ old('from_wallet_id', request('from_wallet_id')) }}',
                           toWalletId: '{{ old('to_wallet_id') }}',
                           walletsByHome: {{ json_encode($wallets) }},
+                          amountRaw: '{{ old('amount') }}',
+                          amountDisplay: '',
+                          feeRaw: '{{ old('fee', 0) }}',
+                          feeDisplay: '0',
                           getFilteredWallets() {
                               return this.walletsByHome[this.homeId] || [];
+                          },
+                          init() {
+                              if (this.amountRaw) {
+                                  this.amountDisplay = this.formatNumber(this.amountRaw);
+                              }
+                              if (this.feeRaw) {
+                                  this.feeDisplay = this.formatNumber(this.feeRaw);
+                              }
+                          },
+                          formatNumber(val) {
+                              if (!val) return '';
+                              let clean = val.toString().replace(/[^0-9]/g, '');
+                              clean = clean.replace(/^0+/, '');
+                              if (clean === '') return '';
+                              return clean.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                          },
+                          updateAmount(val) {
+                              let clean = val.replace(/[^0-9]/g, '');
+                              clean = clean.replace(/^0+/, '');
+                              this.amountRaw = clean;
+                              this.amountDisplay = this.formatNumber(clean);
+                          },
+                          updateFee(val) {
+                              let clean = val.replace(/[^0-9]/g, '');
+                              clean = clean.replace(/^0+/, '');
+                              this.feeRaw = clean;
+                              this.feeDisplay = this.formatNumber(clean);
                           }
                       }">
                     @csrf
@@ -62,12 +93,14 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div class="md:col-span-2">
-                            <x-input-label for="amount" :value="__('expense.amount_label')" />
-                            <x-text-input id="amount" name="amount" type="number" step="0.01" min="0.01" class="mt-1 block w-full" :value="old('amount')" required />
+                            <x-input-label for="amount_display" :value="__('expense.amount_label')" />
+                            <x-text-input id="amount_display" type="text" class="mt-1 block w-full" x-model="amountDisplay" @input="updateAmount($event.target.value)" required />
+                            <input type="hidden" id="amount" name="amount" :value="amountRaw">
                         </div>
                         <div>
-                            <x-input-label for="fee" :value="__('expense.transfer_fee')" />
-                            <x-text-input id="fee" name="fee" type="number" step="0.01" min="0" class="mt-1 block w-full" :value="old('fee', 0)" />
+                            <x-input-label for="fee_display" :value="__('expense.transfer_fee')" />
+                            <x-text-input id="fee_display" type="text" class="mt-1 block w-full" x-model="feeDisplay" @input="updateFee($event.target.value)" />
+                            <input type="hidden" id="fee" name="fee" :value="feeRaw">
                         </div>
                     </div>
 

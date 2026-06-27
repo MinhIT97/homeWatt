@@ -129,7 +129,11 @@ class TelegramWebhookController extends Controller
 
         // Gather wallets from ALL homes for multi-home users
         $homeIds = $memberships->pluck('home_id');
-        $allWallets = Wallet::whereIn('home_id', $homeIds)->where('is_archived', false)->get();
+        $allWallets = Wallet::whereIn('home_id', $homeIds)
+            ->where('is_archived', false)
+            ->get()
+            ->sortByDesc(fn($w) => mb_strlen($w->name, 'UTF-8'))
+            ->values();
 
         if ($allWallets->isEmpty()) {
             $this->sendMessage($chatId, '❌ Ngôi nhà của bạn chưa có ví tiền nào để ghi nhận giao dịch. Vui lòng tạo ví trên website.');
