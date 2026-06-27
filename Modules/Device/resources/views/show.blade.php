@@ -7,7 +7,7 @@
             </div>
             <div class="flex gap-2">
                 <a href="{{ route('devices.edit', $device) }}" class="inline-flex items-center px-4 py-2 bg-white/80 border border-slate-300 hover:border-slate-400 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition">{{ __('common.edit') }}</a>
-                <a href="{{ route('energy.calculate') }}" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-primary-600 to-accent-500 hover:from-primary-500 hover:to-accent-400 text-white text-sm font-semibold rounded-xl shadow-md transition">{{ __('device.calculate_cost') }}</a>
+                <a href="{{ route('energy.index', ['device_id' => $device->id]) }}" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-primary-600 to-accent-500 hover:from-primary-500 hover:to-accent-400 text-white text-sm font-semibold rounded-xl shadow-md transition">{{ __('device.calculate_cost') }}</a>
             </div>
         </div>
     </x-slot>
@@ -57,28 +57,25 @@
                                             $mediaAnalysis = $analyses->firstWhere('media_id', $media->id);
                                         @endphp
                                         <div class="relative group rounded-xl overflow-hidden border border-slate-200 bg-slate-100 aspect-[4/3]">
-                                            <img src="{{ route('media.serve', $media) }}" class="w-full h-full object-cover" alt="Device label" loading="lazy" />
+                                            <img src="{{ $media->url() }}" class="w-full h-full object-cover" alt="Device label" loading="lazy" />
 
                                             <!-- Overlay actions -->
-                                            <div class="absolute inset-0 bg-gradient-to-t from-slate-900/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition flex flex-col justify-end p-3 gap-2">
-                                                <div class="flex gap-2">
-                                                    @if(!$mediaAnalysis || $mediaAnalysis->status === 'failed')
-                                                        <form method="POST" action="{{ route('ai.analyses.store') }}" class="flex-1">
-                                                            @csrf
-                                                            <input type="hidden" name="media_id" value="{{ $media->id }}" />
-                                                            <button type="submit" class="w-full text-xs px-3 py-2 bg-accent-500 hover:bg-accent-400 text-white font-bold rounded-lg transition flex items-center justify-center gap-1">
-                                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
-                                                                {{ __('device.ai_analysis') }}
-                                                            </button>
-                                                        </form>
-                                                    @endif
-                                                    <form method="POST" action="{{ route('devices.delete-image', [$device, $media]) }}" onsubmit="return confirm('{{ __('device.delete_image_confirm') }}')" class="flex-1">
-                                                        @csrf @method('DELETE')
-                                                        <button type="submit" class="w-full text-xs px-3 py-2 bg-red-500/80 hover:bg-red-500 text-white font-bold rounded-lg transition flex items-center justify-center gap-1">
-                                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                            <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition duration-300 flex items-center justify-center gap-3">
+                                                @if(!$mediaAnalysis || $mediaAnalysis->status === 'failed')
+                                                    <form method="POST" action="{{ route('ai.analyses.store') }}">
+                                                        @csrf
+                                                        <input type="hidden" name="media_id" value="{{ $media->id }}" />
+                                                        <button type="submit" title="{{ __('device.ai_analysis') }}" class="w-10 h-10 rounded-full bg-accent-500 hover:bg-accent-400 text-white flex items-center justify-center shadow-lg transition duration-200 transform hover:scale-110">
+                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
                                                         </button>
                                                     </form>
-                                                </div>
+                                                @endif
+                                                <form method="POST" action="{{ route('devices.delete-image', [$device, $media]) }}" onsubmit="return confirm('{{ __('device.delete_image_confirm') }}')">
+                                                    @csrf @method('DELETE')
+                                                    <button type="submit" title="{{ __('common.delete') }}" class="w-10 h-10 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-lg transition duration-200 transform hover:scale-110">
+                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                    </button>
+                                                </form>
                                             </div>
 
                                             <!-- Status badge -->
@@ -209,6 +206,7 @@
                             <div class="flex justify-between"><dt class="text-xs font-bold text-slate-400 uppercase">{{ __('common.type') }}</dt><dd class="text-sm font-semibold text-slate-800">{{ $device->deviceType?->display_name ?? '—' }}</dd></div>
                             <div class="flex justify-between"><dt class="text-xs font-bold text-slate-400 uppercase">{{ __('common.brand') }}</dt><dd class="text-sm font-semibold text-slate-800">{{ $device->brand ?? '—' }}</dd></div>
                             <div class="flex justify-between"><dt class="text-xs font-bold text-slate-400 uppercase">{{ __('common.model') }}</dt><dd class="text-sm font-semibold text-slate-800">{{ $device->model ?? '—' }}</dd></div>
+                            <div class="flex justify-between"><dt class="text-xs font-bold text-slate-400 uppercase">{{ __('device.location_label') }}</dt><dd class="text-sm font-semibold text-slate-800">{{ $device->location ?? '—' }}</dd></div>
                             <div class="flex justify-between"><dt class="text-xs font-bold text-slate-400 uppercase">{{ __('common.serial') }}</dt><dd class="text-sm font-semibold text-slate-800">{{ $device->serial ?? '—' }}</dd></div>
                             <div class="flex justify-between">
                                 <dt class="text-xs font-bold text-slate-400 uppercase">{{ __('common.status') }}</dt>

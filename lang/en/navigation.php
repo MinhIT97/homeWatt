@@ -26,4 +26,10 @@ return [
     'dashboard' => 'Energy Dashboard',
     'auth_system' => 'Authentication',
     'guest_meta_desc' => 'Sign in or create a HomeWatt account to start tracking devices, energy usage, and calculate your electric bill with AI.',
+    'wallets' => 'Wallets',
+    'expenses' => 'Expenses',
+    'transfers' => 'Transfers',
+    'categories' => 'Categories',
+    'finance_reports' => 'Finance Reports',
+    'finance' => 'Finance',
 ];

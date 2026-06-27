@@ -50,11 +50,48 @@
                 </div>
             </div>
 
+            <!-- Price Summary -->
+            <div class="mt-8 glass-panel rounded-2xl border border-slate-200/60 shadow-sm bg-white/70">
+                <div class="p-6">
+                    <h3 class="text-lg font-bold text-slate-800 font-outfit mb-4">{{ __('home.price_summary') }}</h3>
+                    <dl class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                        <div>
+                            <dt class="text-xs font-bold text-slate-400 uppercase tracking-wider">{{ __('home.room_count') }}</dt>
+                            <dd class="mt-1 text-2xl font-extrabold text-slate-800 font-outfit">{{ $priceSummary['room_count'] ?? 0 }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-bold text-slate-400 uppercase tracking-wider">{{ __('home.device_count') }}</dt>
+                            <dd class="mt-1 text-2xl font-extrabold text-slate-800 font-outfit">{{ $priceSummary['device_count'] ?? 0 }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-bold text-slate-400 uppercase tracking-wider">{{ __('home.rooms_price') }}</dt>
+                            <dd class="mt-1 text-2xl font-extrabold text-slate-800 font-outfit">
+                                {{ number_format($priceSummary['rooms'] ?? 0, 0, ',', '.') }} {{ $priceSummary['currency'] ?? 'VND' }}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-bold text-slate-400 uppercase tracking-wider">{{ __('home.devices_price') }}</dt>
+                            <dd class="mt-1 text-2xl font-extrabold text-slate-800 font-outfit">
+                                {{ number_format($priceSummary['devices'] ?? 0, 0, ',', '.') }} {{ $priceSummary['currency'] ?? 'VND' }}
+                            </dd>
+                        </div>
+                    </dl>
+                    <div class="mt-6 pt-6 border-t border-slate-100">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm font-bold text-slate-600 uppercase tracking-wider">{{ __('home.total_price') }}</span>
+                            <span class="text-3xl font-extrabold text-primary-600 font-outfit">
+                                {{ number_format($priceSummary['total'] ?? 0, 0, ',', '.') }} {{ $priceSummary['currency'] ?? 'VND' }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Rooms section -->
             <div class="mt-8">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-bold text-slate-800 font-outfit">{{ __('home.rooms_list') }}</h3>
-                    <a href="{{ route('rooms.create', ['home_id' => $home->id]) }}" class="text-sm text-primary-600 hover:text-primary-800 font-bold transition flex items-center gap-1">+ {{ __('home.add_room') }}</a>
+                    <a href="{{ route('rooms.create', ['home_id' => $home->id]) }}" class="text-sm text-primary-600 hover:text-primary-800 font-bold transition flex items-center gap-1">{{ __('home.add_room') }}</a>
                 </div>
 
                 @if($home->rooms->isEmpty())

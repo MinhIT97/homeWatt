@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Modules\Device\Models\Device;
 use Modules\Room\Models\Room;
 
 class Home extends Model
@@ -79,5 +80,23 @@ class Home extends Model
             ->where('user_id', $userId)
             ->whereIn('role', $roles)
             ->exists();
+    }
+
+    public function totalRoomsPrice(): float
+    {
+        return (float) $this->rooms()->sum('price');
+    }
+
+    public function totalDevicesPrice(): float
+    {
+        return (float) Device::whereHas(
+            'room',
+            fn ($q) => $q->where('home_id', $this->id)
+        )->sum('purchase_price');
+    }
+
+    public function totalPrice(): float
+    {
+        return $this->totalRoomsPrice() + $this->totalDevicesPrice();
     }
 }

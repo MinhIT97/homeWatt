@@ -31,6 +31,7 @@ class StoreRoomRequest extends FormRequest
             'type' => ['nullable', 'string', 'in:living_room,bedroom,kitchen,bathroom,garage,outdoor,other'],
             'floor' => ['nullable', 'integer'],
             'sort_order' => ['nullable', 'integer'],
+            'price' => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],
         ];
     }
 }

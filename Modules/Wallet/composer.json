@@ -1,0 +1,28 @@
+{
+    "name": "nwidart/wallet",
+    "description": "Ví tiền - quản lý nhiều ví theo từng Home.",
+    "authors": [
+        {
+            "name": "Nicolas Widart",
+            "email": "n.widart@gmail.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {
+
+            }
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Wallet\\": "app/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Wallet\\Tests\\": "tests/"
+        }
+    }
+}

@@ -24,8 +24,10 @@ class Device extends Model
         'name',
         'brand',
         'model',
+        'location',
         'serial',
         'purchased_at',
+        'purchase_price',
     ];
 
     public const STATUSES = ['active', 'inactive', 'broken'];
@@ -41,6 +43,7 @@ class Device extends Model
 
     protected $casts = [
         'purchased_at' => 'date',
+        'purchase_price' => 'decimal:2',
     ];
 
     public function room(): BelongsTo

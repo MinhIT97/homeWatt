@@ -7,12 +7,16 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Modules\AI\Contracts\DeviceImageAnalyzer;
 use Modules\AI\Models\AiAnalysisRequest;
 use Modules\AI\Models\AiAnalysisResult;
 use Modules\AI\Models\DeviceExtraction;
+use Modules\Device\Models\Device;
+use Modules\Device\Models\DeviceSpecification;
+use Modules\Device\Models\DeviceType;
 use Modules\Media\Models\Media;
 
 class AnalyzeDeviceImageJob implements ShouldQueue
@@ -38,6 +42,7 @@ class AnalyzeDeviceImageJob implements ShouldQueue
 
         try {
             $media = Media::findOrFail($this->analysisRequest->media_id);
+            $deviceId = $media->owner_type === 'device' ? $media->owner_id : null;
 
             $imageContent = Storage::disk($media->disk)->get($media->path);
             $imageBase64 = base64_encode($imageContent);
@@ -59,7 +64,7 @@ class AnalyzeDeviceImageJob implements ShouldQueue
                 'processing_time_ms' => $processingTimeMs,
             ]);
 
-            $this->createExtractions($analysisResult, $result);
+            $this->createAndApplyExtractions($analysisResult, $result, $deviceId);
 
             $this->analysisRequest->update(['status' => 'completed']);
         } catch (\Throwable $e) {
@@ -87,7 +92,7 @@ class AnalyzeDeviceImageJob implements ShouldQueue
         }
     }
 
-    protected function createExtractions(AiAnalysisResult $analysisResult, array $result): void
+    protected function createAndApplyExtractions(AiAnalysisResult $analysisResult, array $result, ?int $deviceId): void
     {
         $fields = [
             'device_type' => $result['device_type'] ?? null,
@@ -101,15 +106,41 @@ class AnalyzeDeviceImageJob implements ShouldQueue
             'capacity' => $result['capacity'] ?? null,
         ];
 
-        foreach ($fields as $field => $value) {
-            DeviceExtraction::create([
-                'ai_analysis_result_id' => $analysisResult->id,
-                'field' => $field,
-                'ai_value' => $value !== null ? (string) $value : null,
-                'confidence' => $result['fields_confidence'][$field] ?? null,
-                'status' => 'pending',
-            ]);
-        }
+        $device = $deviceId ? Device::find($deviceId) : null;
+
+        DB::transaction(function () use ($analysisResult, $fields, $device, $result, $deviceId) {
+            foreach ($fields as $field => $value) {
+                $hasValue = $value !== null && $value !== '';
+                $status = $hasValue ? 'confirmed' : 'pending';
+
+                DeviceExtraction::create([
+                    'ai_analysis_result_id' => $analysisResult->id,
+                    'device_id' => $deviceId,
+                    'field' => $field,
+                    'ai_value' => $hasValue ? (string) $value : null,
+                    'confirmed_value' => $hasValue ? (string) $value : null,
+                    'confidence' => $result['fields_confidence'][$field] ?? null,
+                    'status' => $status,
+                ]);
+
+                // Propagate confirmed values to the device immediately
+                if ($device && $hasValue) {
+                    if (in_array($field, ['brand', 'model'])) {
+                        $device->update([$field => $value]);
+                    } elseif ($field === 'device_type') {
+                        $deviceType = DeviceType::where('slug', $value)
+                            ->orWhere('name', $value)
+                            ->first();
+                        if ($deviceType) {
+                            $device->update(['device_type_id' => $deviceType->id]);
+                        }
+                    } elseif (in_array($field, ['rated_power', 'max_power', 'standby_power', 'voltage', 'current', 'capacity'])) {
+                        $spec = $device->specification ?: new DeviceSpecification(['device_id' => $device->id]);
+                        $spec->fill([$field => $value])->save();
+                    }
+                }
+            }
+        });
     }
 
     protected function sanitizeErrorMessage(string $message): string

@@ -7,6 +7,9 @@ use Modules\Device\Http\Controllers\ImportController;
 Route::middleware(['web', 'auth', 'verified'])->group(function () {
     Route::resource('devices', DeviceController::class);
 
+    Route::post('/devices/analyze-image', [DeviceController::class, 'analyzeImage'])
+        ->name('devices.analyze-image');
+
     Route::post('/devices/{device}/upload-image', [DeviceController::class, 'uploadImage'])
         ->name('devices.upload-image');
 

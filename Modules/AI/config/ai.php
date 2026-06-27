@@ -9,6 +9,18 @@ return [
             'vision_model' => env('OPENAI_VISION_MODEL', 'gpt-4o-mini'),
         ],
 
+        'gemini' => [
+            'api_keys' => array_values(array_filter(array_map(
+                'trim',
+                explode(',', (string) env('GEMINI_API_KEY', ''))
+            ))),
+            'vision_model' => env('GEMINI_VISION_MODEL', env('GEMINI_MODEL', 'gemini-2.5-flash')),
+            'fallback_models' => array_values(array_filter(array_map(
+                'trim',
+                explode(',', (string) env('GEMINI_FALLBACK_MODELS', 'gemini-flash-latest,gemini-2.5-flash-lite,gemini-2.0-flash-lite'))
+            ))),
+        ],
+
         'fake' => [
             'enabled' => env('AI_FAKE_PROVIDER', false),
         ],

@@ -40,4 +40,11 @@ return [
     'invite_button' => 'Invite Member',
     'members_list' => 'Member List',
     'view_details' => 'View details',
+    'price_summary' => 'Price Summary',
+    'total_price' => 'Total Estimated Value',
+    'rooms_price' => 'Rooms Total',
+    'devices_price' => 'Devices Total',
+    'room_count' => 'Room Count',
+    'device_count' => 'Device Count',
+    'room_subtotal' => 'Subtotal (Room + Devices)',
 ];

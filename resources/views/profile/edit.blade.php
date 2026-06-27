@@ -19,6 +19,12 @@
                 </div>
             </div>
 
+            <div id="telegram-section" class="p-6 sm:p-8 glass-panel rounded-2xl border border-slate-200/60 shadow-sm scroll-mt-6">
+                <div class="max-w-xl">
+                    @include('profile.partials.telegram-integration-form')
+                </div>
+            </div>
+
             <div class="p-6 sm:p-8 glass-panel rounded-2xl border border-slate-200/60 shadow-sm">
                 <div class="max-w-xl">
                     @include('profile.partials.delete-user-form')

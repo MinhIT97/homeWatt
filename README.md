@@ -104,7 +104,7 @@ rollback về image cũ.
 | `PROJECT_DIR` | Variable | Đường dẫn checkout trên server (mặc định `/home/minhnv/projects/homeWatt`) |
 | `PRODUCTION_URL` | Variable | URL production để smoke test (mặc định `http://localhost:8087`) |
 
-## Kiến trúc module
+## Kiến trúc module & Cơ sở dữ liệu
 
 ```
 Modules/
@@ -117,13 +117,92 @@ Modules/
 ├── Energy/       Hồ sơ sử dụng, chỉ số, ước tính, phương pháp tính
 ├── Tariff/       Biểu giá versioned, bậc giá, thuế, ngày hiệu lực
 ├── Dashboard/    Tổng hợp, biểu đồ, xếp hạng, chỉ báo chất lượng dữ liệu
-└── Admin/        Dữ liệu tham chiếu, biểu giá, quản lý AI usage
+├── Admin/        Dữ liệu tham chiếu, biểu giá, quản lý AI usage
+├── Wallet/       Quản lý ví tài chính gia đình
+└── Expense/      Quản lý thu chi và luân chuyển giao dịch ví
 ```
 
-Mỗi module sở hữu routes, controllers, requests, policies, services, models,
-migrations, views, tests, config, và README riêng cho capability của nó.
-Cross-module access thông qua public contracts, actions, services, events,
-jobs, hoặc models.
+Mỗi module sở hữu routes, controllers, requests, policies, services, models, migrations, views, tests, config, và README riêng cho capability của nó. Cross-module access thông qua public contracts, actions, services, events, jobs, hoặc models.
+
+### Sơ đồ quan hệ cơ sở dữ liệu (Database Schema)
+
+Dữ liệu được tổ chức chặt chẽ và cô lập theo hộ gia đình (`home_id`):
+
+```mermaid
+erDiagram
+    users ||--o{ home_members : is_member_of
+    homes ||--o{ home_members : contains
+    homes ||--o{ rooms : has
+    rooms ||--o{ devices : contains
+    devices ||--o{ device_specifications : has_spec
+    devices ||--o{ device_usage_profiles : has_profile
+    devices ||--o{ energy_readings : has_readings
+    devices ||--o{ media : has_photos
+    homes ||--o{ wallets : owns
+    wallets ||--o{ expenses : records
+    expenses }o--|| expense_categories : categorizes
+```
+
+---
+
+## Các luồng nghiệp vụ cốt lõi
+
+### 1. Luồng tự động trích xuất tem thông số thiết bị bằng AI Vision
+Người dùng có thể chụp hoặc tải ảnh nhãn năng lượng/tem công suất thiết bị để AI trích xuất thông tin tự động:
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant App as Laravel Web App
+    participant Queue as Redis Queue (ai)
+    participant AI as Gemini/OpenAI API
+    
+    User->>App: Tải ảnh nhãn mác/tem thông số thiết bị
+    App->>App: Lưu ảnh private & tạo AiAnalysisRequest (pending)
+    App->>Queue: Đẩy Job AnalyzeDeviceImageJob vào hàng đợi
+    App-->>User: Trả về trang chi tiết và hiển thị trạng thái đang xử lý
+    
+    Note over Queue, AI: Job chạy ngầm (Asynchronous)
+    Queue->>App: Thực thi handle() trong Job
+    App->>AI: Gửi ảnh Base64 + prompt yêu cầu xuất JSON
+    AI-->>App: Trả về JSON chứa thông số kỹ thuật + độ tin cậy từng trường
+    App->>App: Lưu kết quả vào AiAnalysisResult & tạo đề xuất ở DeviceExtraction
+    
+    User->>App: Xem kết quả đề xuất trích xuất của AI
+    User->>App: Chỉnh sửa và nhấn "Xác nhận" (Confirm)
+    App->>App: Lưu chính thức vào thông số kỹ thuật của thiết bị
+```
+
+> **Nguyên tắc an toàn AI**: Kết quả của AI chỉ là đề xuất và được lưu ở bảng `device_extractions` dưới trạng thái `pending`. Chỉ khi người dùng bấm xác nhận (`confirmed`), dữ liệu mới được đồng bộ vào bảng chính thức (`device_specifications`, `devices`).
+
+### 2. Cơ chế ước lượng điện năng (Energy Engine)
+Hệ thống tính toán lượng điện tiêu thụ hàng tháng của mỗi thiết bị dựa trên cấu hình tại lớp `EnergyCalculator`:
+*   **Tải liên tục (Continuous)**:
+    $$\text{kWh/tháng} = \frac{\text{Công suất định mức (W)} \times \text{Số giờ sử dụng/ngày} \times \text{Số ngày sử dụng/tháng}}{1000}$$
+*   **Chu kỳ tải (Duty-cycle)**: Áp dụng cho điều hòa, tủ lạnh, bình nóng lạnh.
+    $$\text{kWh/tháng} = \frac{\text{Công suất định mức (W)} \times \text{Số giờ sử dụng/ngày} \times \text{Số ngày sử dụng/tháng} \times \text{Duty Cycle}}{1000}$$
+*   **Đo đạc thực tế (Measured)**: Nếu có dữ liệu từ ổ cắm thông minh hoặc công tơ đo điện (`energy_readings`), hệ thống ưu tiên **cộng tổng số đo thực tế** thay vì dùng công thức ước lượng.
+
+### 3. Công cụ tính hóa đơn điện lũy tiến bậc thang (EVN)
+Tính tiền điện dựa theo biểu giá lũy tiến 6 bậc thang của EVN được lưu trong database (`tariff_tiers`):
+*   **Bậc 1**: 0 - 50 kWh (đơn giá 1,806 VND/kWh) + 10% VAT.
+*   **Bậc 2**: 51 - 100 kWh (đơn giá 1,866 VND/kWh) + 10% VAT.
+*   **Bậc 3**: 101 - 200 kWh (đơn giá 2,167 VND/kWh) + 10% VAT.
+*   **Bậc 4**: 201 - 300 kWh (đơn giá 2,729 VND/kWh) + 10% VAT.
+*   **Bậc 5**: 301 - 400 kWh (đơn giá 3,050 VND/kWh) + 10% VAT.
+*   **Bậc 6**: Từ 401 kWh trở lên (đơn giá 3,151 VND/kWh) + 10% VAT.
+
+### 4. Nghiệp vụ tài chính & Luân chuyển ví (Wallet & Transfers)
+Nghiệp vụ chi tiêu được thiết kế tuân thủ tính nhất quán giao dịch (ACID):
+*   Khi luân chuyển tiền giữa các ví (`transfers`), hệ thống tự động khóa ví nguồn và ví đích (`lockForUpdate()`) theo thứ tự ID để tránh deadlock.
+*   Kiểm tra số dư khả dụng (gồm cả tiền chuyển và phí luân chuyển).
+*   Tạo bản ghi giao dịch luân chuyển và đồng thời sinh tự động **2 giao dịch đối ứng** trong bảng `expenses` (ví nguồn ghi nhận Chi "Chuyển tiền ra", ví đích ghi nhận Thu "Chuyển tiền vào") liên kết tới `transfer_id`.
+*   Hỗ trợ chức năng đảo ngược luân chuyển (`reverseTransfer`) để hoàn trả tiền và xóa mềm các giao dịch chi tiêu đối ứng một cách đồng bộ.
+
+### 5. Dashboard & Caching hiệu năng
+*   Sử dụng **Redis Cache** để cache kết quả Dashboard của từng nhà (`5 phút`) nhằm tránh thực thi các câu lệnh truy vấn SQL phức tạp liên tục. Cache tự động xóa khi có biến động thiết bị hoặc giao dịch.
+*   Bộ đề xuất tiết kiệm điện (`SavingSuggestion`) phân tích dữ liệu thiết bị để đề xuất giảm giờ dùng cho thiết bị công suất cao, tối ưu cài đặt nhiệt độ điều hòa vào mùa nóng cao điểm (tháng 6-8), cảnh báo nếu tổng điện năng vượt ngưỡng giới hạn của căn nhà.
+
 
 ## Health check
 

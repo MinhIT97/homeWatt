@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Modules\Device\Models\Device;
 use Modules\Home\Models\Home;
+use Modules\Home\Models\HomeMember;
 use Modules\Room\Models\Room;
 
 trait AuthorizesHomeResource
@@ -51,7 +52,7 @@ trait AuthorizesHomeResource
      */
     protected function userCanAccessHome(User $user, int $homeId, array $roles = []): bool
     {
-        $query = \Modules\Home\Models\HomeMember::where('home_id', $homeId)
+        $query = HomeMember::where('home_id', $homeId)
             ->where('user_id', $user->id);
 
         if (! empty($roles)) {

@@ -94,6 +94,62 @@
             </div>
         </a>
 
+        <!-- Divider -->
+        <div class="pt-4 pb-2 px-3.5">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{{ __('navigation.finance') ?? 'Finance' }}</p>
+        </div>
+
+        <!-- Wallets -->
+        <a href="{{ route('wallets.index') }}" class="group flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition {{ request()->routeIs('wallets.*') ? 'bg-blue-50/50 text-blue-600' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800' }}">
+            <div class="flex items-center gap-3">
+                <svg class="w-5 h-5 {{ request()->routeIs('wallets.*') ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                </svg>
+                <span>{{ __('navigation.wallets') }}</span>
+            </div>
+            <span class="px-2 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-600 rounded-full">{{ __('navigation.new_badge') }}</span>
+        </a>
+
+        <!-- Expenses -->
+        <a href="{{ route('expenses.index') }}" class="group flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition {{ request()->routeIs('expenses.*') ? 'bg-blue-50/50 text-blue-600' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800' }}">
+            <div class="flex items-center gap-3">
+                <svg class="w-5 h-5 {{ request()->routeIs('expenses.*') ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                </svg>
+                <span>{{ __('navigation.expenses') }}</span>
+            </div>
+        </a>
+
+        <!-- Transfers -->
+        <a href="{{ route('transfers.index') }}" class="group flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition {{ request()->routeIs('transfers.*') ? 'bg-blue-50/50 text-blue-600' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800' }}">
+            <div class="flex items-center gap-3">
+                <svg class="w-5 h-5 {{ request()->routeIs('transfers.*') ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+                </svg>
+                <span>{{ __('navigation.transfers') }}</span>
+            </div>
+        </a>
+
+        <!-- Categories -->
+        <a href="{{ route('categories.index') }}" class="group flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition {{ request()->routeIs('categories.*') ? 'bg-blue-50/50 text-blue-600' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800' }}">
+            <div class="flex items-center gap-3">
+                <svg class="w-5 h-5 {{ request()->routeIs('categories.*') ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                </svg>
+                <span>{{ __('navigation.categories') }}</span>
+            </div>
+        </a>
+
+        <!-- Finance Reports -->
+        <a href="{{ route('reports.monthly') }}" class="group flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition {{ request()->routeIs('reports.*') ? 'bg-blue-50/50 text-blue-600' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800' }}">
+            <div class="flex items-center gap-3">
+                <svg class="w-5 h-5 {{ request()->routeIs('reports.*') ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+                <span>{{ __('navigation.finance_reports') }}</span>
+            </div>
+        </a>
+
         <!-- Settings (Cài đặt) -->
         <a href="{{ route('profile.edit') }}" class="group flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition {{ request()->routeIs('profile.edit') ? 'bg-blue-50/50 text-blue-600' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800' }}">
             <div class="flex items-center gap-3">

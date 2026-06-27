@@ -8,5 +8,7 @@
     "Energy": true,
     "Tariff": true,
     "Dashboard": true,
-    "Admin": true
+    "Admin": true,
+    "Wallet": true,
+    "Expense": true
 }

@@ -31,6 +31,10 @@ class DashboardController extends Controller
             'today_kwh' => 0.0,
             'pct_vs_yesterday' => null,
             'pct_vs_last_month' => null,
+            'total_balance' => 0.0,
+            'wallet_count' => 0,
+            'month_income' => 0.0,
+            'month_expense' => 0.0,
         ];
 
         $topDevices = collect();
@@ -43,6 +47,39 @@ class DashboardController extends Controller
         if ($selectedHomeId) {
             $home = Home::find($selectedHomeId);
             if ($home && $home->members()->where('user_id', $user->id)->exists()) {
+                // Financial overview
+                $now = Carbon::now();
+                $monthStart = $now->copy()->startOfMonth();
+                $monthEnd = $now->copy()->endOfMonth();
+
+                $walletsList = DB::table('wallets')
+                    ->where('home_id', $home->id)
+                    ->where('is_archived', false)
+                    ->get();
+
+                $stats['wallet_count'] = $walletsList->count();
+                $stats['total_balance'] = (float) $walletsList->sum(function ($w) {
+                    if ($w->type === 'credit_card') {
+                        return (float) $w->balance - (float) $w->opening_balance;
+                    }
+                    return (float) $w->balance;
+                });
+
+                $monthlyIncome = DB::table('expenses')
+                    ->where('home_id', $home->id)
+                    ->whereNull('transfer_id')
+                    ->where('type', 'income')
+                    ->whereBetween('occurred_at', [$monthStart, $monthEnd])
+                    ->sum('amount');
+                $monthlyExpense = DB::table('expenses')
+                    ->where('home_id', $home->id)
+                    ->whereNull('transfer_id')
+                    ->where('type', 'expense')
+                    ->whereBetween('occurred_at', [$monthStart, $monthEnd])
+                    ->sum('amount');
+
+                $stats['month_income'] = (float) $monthlyIncome;
+                $stats['month_expense'] = (float) $monthlyExpense;
                 $now = Carbon::now();
                 $lastMonth = $now->copy()->subMonth();
                 $cacheKey = "dashboard:home:{$home->id}:".$now->format('Ym');
@@ -165,7 +202,7 @@ class DashboardController extends Controller
                         'today_kwh' => $todayKwh,
                         'pct_vs_yesterday' => $pctYesterday,
                         'pct_vs_last_month' => $pctLastMonth,
-                        'top_devices' => $topDevicesRows,
+                        'top_devices' => $topDevicesRows->map(fn($row) => (array) $row)->all(),
                         'daily_labels' => $dailyLabels,
                         'daily_data' => $dailyData,
                         'last_month_daily_data' => $lastMonthDailyData,
@@ -181,7 +218,7 @@ class DashboardController extends Controller
                 $stats['pct_vs_yesterday'] = $payload['pct_vs_yesterday'];
                 $stats['pct_vs_last_month'] = $payload['pct_vs_last_month'];
 
-                $topDevices = $payload['top_devices'];
+                $topDevices = collect($payload['top_devices'])->map(fn($row) => (object) $row);
                 $dailyLabels = $payload['daily_labels'];
                 $dailyData = $payload['daily_data'];
                 $lastMonthDailyData = $payload['last_month_daily_data'];

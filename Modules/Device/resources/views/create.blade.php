@@ -6,8 +6,131 @@
     <div class="py-12">
         <div class="max-w-2xl mx-auto sm:px-6 lg:px-8">
             <div class="glass-panel rounded-2xl border border-slate-200/60 shadow-sm bg-white/70">
-                <form method="POST" action="{{ route('devices.store') }}" class="p-8 space-y-6">
+                <form method="POST" action="{{ route('devices.store') }}" class="p-8 space-y-6"
+                      x-data="{
+                          name: '{{ old('name') }}',
+                          deviceTypeId: '{{ old('device_type_id') }}',
+                          brand: '{{ old('brand') }}',
+                          model: '{{ old('model') }}',
+                          location: '{{ old('location') }}',
+                          ratedPower: '{{ old('rated_power') }}',
+                          maxPower: '{{ old('max_power') }}',
+                          standbyPower: '{{ old('standby_power') }}',
+                          voltage: '{{ old('voltage') }}',
+                          isAnalyzing: false,
+                          statusMessage: '',
+                          statusType: '',
+
+                          analyzeImage(event) {
+                              const file = event.target.files[0];
+                              if (!file) return;
+
+                              this.isAnalyzing = true;
+                              this.statusMessage = 'Đang phân tích hình ảnh nhãn thiết bị...';
+                              this.statusType = '';
+
+                              const formData = new FormData();
+                              formData.append('image', file);
+
+                              fetch('{{ route('devices.analyze-image') }}', {
+                                  method: 'POST',
+                                  headers: {
+                                      'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                  },
+                                  body: formData
+                              })
+                              .then(response => {
+                                  if (!response.ok) {
+                                      throw new Error('Lỗi từ máy chủ AI hoặc vượt quá giới hạn cuộc gọi.');
+                                  }
+                                  return response.json();
+                              })
+                              .then(res => {
+                                  console.log('AI Extraction Response:', res);
+                                  if (res.success && res.data) {
+                                      const data = res.data;
+
+                                      // Check if all major fields are empty/null
+                                      if (!data.brand && !data.model && !data.rated_power_watts && !data.voltage) {
+                                          this.statusMessage = 'AI không thể đọc được thông số từ ảnh này. Vui lòng chụp/chọn ảnh nhãn mác rõ nét hơn.';
+                                          this.statusType = 'error';
+                                          return;
+                                      }
+
+                                      this.brand = data.brand || '';
+                                      this.model = data.model || '';
+                                      this.ratedPower = data.rated_power_watts || '';
+                                      this.maxPower = data.max_power_watts || '';
+                                      this.standbyPower = data.standby_power_watts || '';
+                                      this.voltage = data.voltage || '';
+
+                                      // Auto-detect device type from options by data-slug
+                                      if (data.device_type) {
+                                          const typeOption = Array.from(document.querySelectorAll('#device_type_id option')).find(opt => 
+                                              opt.getAttribute('data-slug') === data.device_type
+                                          );
+                                          if (typeOption) {
+                                              this.deviceTypeId = typeOption.value;
+                                          }
+                                      }
+
+                                      // Set default name if name is empty
+                                      if (!this.name) {
+                                          this.name = (this.brand ? this.brand + ' ' : '') + (data.device_type ? data.device_type.replace('_', ' ').toUpperCase() : 'Thiết bị');
+                                      }
+
+                                      this.statusMessage = 'Đã trích xuất thông số thành công! Vui lòng kiểm tra lại biểu mẫu.';
+                                      this.statusType = 'success';
+                                  } else {
+                                      throw new Error(res.message || 'Không thể trích xuất được thông số từ hình ảnh.');
+                                  }
+                              })
+                              .catch(err => {
+                                  console.error(err);
+                                  this.statusMessage = err.message;
+                                  this.statusType = 'error';
+                              })
+                              .finally(() => {
+                                  this.isAnalyzing = false;
+                              });
+                          }
+                      }">
                     @csrf
+
+                    <!-- AI Scan section -->
+                    <div class="p-5 bg-gradient-to-br from-primary-50 to-primary-100/50 rounded-2xl border border-primary-100 space-y-4">
+                        <div class="flex items-start gap-4">
+                            <span class="text-3xl p-3 bg-white rounded-xl shadow-sm">🤖</span>
+                            <div>
+                                <h3 class="font-bold text-slate-800 text-sm">Quét thông số tự động bằng AI</h3>
+                                <p class="text-xs text-slate-500 mt-1">Chụp ảnh nhãn mác hoặc tem công suất của thiết bị để AI tự động điền các thông số kỹ thuật.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex flex-col sm:flex-row gap-3 items-center">
+                            <label class="w-full sm:w-auto inline-flex justify-center items-center gap-2 px-4 py-2.5 bg-white border border-slate-300 hover:bg-slate-50 rounded-xl text-sm font-semibold text-slate-700 cursor-pointer shadow-sm transition">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                <span>Chụp ảnh / Chọn ảnh</span>
+                                <input type="file" accept="image/*" class="hidden" @change="analyzeImage($event)">
+                            </label>
+                            
+                            <div x-show="isAnalyzing" class="flex items-center gap-2 text-xs text-slate-500 animate-pulse">
+                                <svg class="animate-spin h-4 w-4 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span x-text="statusMessage"></span>
+                            </div>
+
+                            <div x-show="!isAnalyzing && statusMessage" class="text-xs font-semibold px-3 py-1.5 rounded-lg border"
+                                 :class="statusType === 'success' ? 'bg-green-50 text-green-750 border-green-200' : 'bg-red-50 text-red-750 border-red-200'"
+                                 x-text="statusMessage">
+                            </div>
+                        </div>
+                    </div>
 
                     <div>
                         <x-input-label for="room_id" value="{{ __('device.room_label') }}" />
@@ -23,29 +146,49 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <x-input-label for="name" value="{{ __('device.name_label') }}" />
-                            <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name')" required placeholder="{{ __('device.name_placeholder') }}" />
+                            <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" x-model="name" required placeholder="{{ __('device.name_placeholder') }}" />
                             <x-input-error :messages="$errors->get('name')" class="mt-2" />
                         </div>
 
                         <div>
                             <x-input-label for="device_type_id" value="{{ __('device.type_label') }}" />
-                            <select id="device_type_id" name="device_type_id" class="mt-1 block w-full bg-white/80 border border-slate-300 rounded-xl shadow-sm text-slate-800 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition duration-150 py-2.5 px-3.5">
+                            <select id="device_type_id" name="device_type_id" x-model="deviceTypeId" class="mt-1 block w-full bg-white/80 border border-slate-300 rounded-xl shadow-sm text-slate-800 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition duration-150 py-2.5 px-3.5">
                                 <option value="">{{ __('device.select_type') }}</option>
                                 @foreach($deviceTypes as $type)
-                                    <option value="{{ $type->id }}" @selected(old('device_type_id') == $type->id)>{{ $type->display_name }}</option>
+                                    <option value="{{ $type->id }}" data-slug="{{ $type->slug }}">{{ $type->display_name }}</option>
                                 @endforeach
                             </select>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div>
                             <x-input-label for="brand" value="{{ __('device.brand_label') }}" />
-                            <x-text-input id="brand" name="brand" type="text" class="mt-1 block w-full" :value="old('brand')" placeholder="{{ __('device.brand_placeholder') }}" />
+                            <x-text-input id="brand" name="brand" type="text" class="mt-1 block w-full" x-model="brand" placeholder="{{ __('device.brand_placeholder') }}" />
                         </div>
                         <div>
                             <x-input-label for="model" value="{{ __('device.model_label') }}" />
-                            <x-text-input id="model" name="model" type="text" class="mt-1 block w-full" :value="old('model')" placeholder="{{ __('device.model_placeholder') }}" />
+                            <x-text-input id="model" name="model" type="text" class="mt-1 block w-full" x-model="model" placeholder="{{ __('device.model_placeholder') }}" />
+                        </div>
+                        <div>
+                            <x-input-label for="location" value="{{ __('device.location_label') }}" />
+                            <x-text-input id="location" name="location" type="text" class="mt-1 block w-full" x-model="location" placeholder="{{ __('device.location_placeholder') }}" />
+                        </div>
+                    </div>
+
+                    <div class="pt-6 border-t border-slate-100">
+                        <h3 class="font-outfit font-bold text-slate-700 text-sm uppercase tracking-wider border-b border-slate-100 pb-3 mb-4">{{ __('device.purchase_info') }}</h3>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            <div>
+                                <x-input-label for="purchase_price" value="{{ __('device.purchase_price') }}" />
+                                <x-text-input id="purchase_price" name="purchase_price" type="number" step="0.01" min="0" class="mt-1 block w-full" :value="old('purchase_price')" placeholder="{{ __('device.purchase_price_placeholder') }}" />
+                                <x-input-error :messages="$errors->get('purchase_price')" class="mt-2" />
+                            </div>
+                            <div>
+                                <x-input-label for="purchased_at" value="{{ __('device.purchased_at_label') }}" />
+                                <x-text-input id="purchased_at" name="purchased_at" type="date" class="mt-1 block w-full" :value="old('purchased_at')" />
+                            </div>
                         </div>
                     </div>
 
@@ -55,19 +198,19 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             <div>
                                 <x-input-label for="rated_power" value="{{ __('device.rated_power') }}" />
-                                <x-text-input id="rated_power" name="rated_power" type="number" step="0.01" class="mt-1 block w-full" :value="old('rated_power')" placeholder="{{ __('device.rated_power_placeholder') }}" />
+                                <x-text-input id="rated_power" name="rated_power" type="number" step="0.01" class="mt-1 block w-full" x-model="ratedPower" placeholder="{{ __('device.rated_power_placeholder') }}" />
                             </div>
                             <div>
                                 <x-input-label for="max_power" value="{{ __('device.max_power') }}" />
-                                <x-text-input id="max_power" name="max_power" type="number" step="0.01" class="mt-1 block w-full" :value="old('max_power')" placeholder="{{ __('device.max_power_placeholder') }}" />
+                                <x-text-input id="max_power" name="max_power" type="number" step="0.01" class="mt-1 block w-full" x-model="maxPower" placeholder="{{ __('device.max_power_placeholder') }}" />
                             </div>
                             <div>
                                 <x-input-label for="standby_power" value="{{ __('device.standby_power') }}" />
-                                <x-text-input id="standby_power" name="standby_power" type="number" step="0.01" class="mt-1 block w-full" :value="old('standby_power')" placeholder="{{ __('device.standby_power_placeholder') }}" />
+                                <x-text-input id="standby_power" name="standby_power" type="number" step="0.01" class="mt-1 block w-full" x-model="standbyPower" placeholder="{{ __('device.standby_power_placeholder') }}" />
                             </div>
                             <div>
                                 <x-input-label for="voltage" value="{{ __('common.voltage') }} (V)" />
-                                <x-text-input id="voltage" name="voltage" type="number" step="0.1" class="mt-1 block w-full" :value="old('voltage')" placeholder="{{ __('device.voltage_placeholder') }}" />
+                                <x-text-input id="voltage" name="voltage" type="number" step="0.1" class="mt-1 block w-full" x-model="voltage" placeholder="{{ __('device.voltage_placeholder') }}" />
                             </div>
                         </div>
                     </div>

@@ -57,4 +57,24 @@ class ProfileController extends Controller
 
         return Redirect::to('/');
     }
+
+    public function generateTelegramCode(Request $request): RedirectResponse
+    {
+        $code = (string) rand(100000, 999999);
+        $request->user()->update([
+            'telegram_verification_code' => $code,
+        ]);
+
+        return Redirect::route('profile.edit')->with('telegram-code-generated', $code);
+    }
+
+    public function unlinkTelegram(Request $request): RedirectResponse
+    {
+        $request->user()->update([
+            'telegram_chat_id' => null,
+            'telegram_verification_code' => null,
+        ]);
+
+        return Redirect::route('profile.edit')->with('status', 'telegram-unlinked');
+    }
 }

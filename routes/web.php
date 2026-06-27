@@ -28,6 +28,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::post('/profile/telegram/code', [ProfileController::class, 'generateTelegramCode'])->name('profile.telegram.code');
+    Route::delete('/profile/telegram', [ProfileController::class, 'unlinkTelegram'])->name('profile.telegram.unlink');
 });
 
 Route::get('lang/{locale}', function ($locale) {

@@ -4,6 +4,7 @@ namespace Modules\AI\Providers;
 
 use Modules\AI\Contracts\DeviceImageAnalyzer;
 use Modules\AI\Services\FakeDeviceImageAnalyzer;
+use Modules\AI\Services\GeminiVisionAnalyzer;
 use Modules\AI\Services\OpenAiVisionAnalyzer;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 
@@ -25,6 +26,10 @@ class AIServiceProvider extends ModuleServiceProvider
         $this->app->singleton(DeviceImageAnalyzer::class, function ($app) {
             if (config('ai.providers.fake.enabled', false) || $app->environment('testing')) {
                 return new FakeDeviceImageAnalyzer;
+            }
+
+            if (config('ai.default') === 'gemini') {
+                return new GeminiVisionAnalyzer;
             }
 
             return new OpenAiVisionAnalyzer;

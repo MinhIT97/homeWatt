@@ -49,6 +49,14 @@
             </svg>
         </button>
 
+        <!-- PWA Install Button on Desktop -->
+        <button x-show="showInstallBtn" @click="triggerInstall()" class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white rounded-xl text-xs font-bold shadow-sm transition hover:shadow-md">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+            </svg>
+            <span>Cài đặt app</span>
+        </button>
+
         <!-- Language Switcher -->
         <div class="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200/60">
             <a href="{{ route('lang.switch', 'vi') }}" class="px-2 py-1 text-[10px] font-bold rounded {{ app()->getLocale() == 'vi' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600' }} transition">VI</a>
@@ -136,6 +144,27 @@
             <x-responsive-nav-link :href="route('dashboard.compare')" :active="request()->routeIs('dashboard.compare')">
                 {{ __('navigation.compare') }}
             </x-responsive-nav-link>
+
+            <div class="pt-3 pb-1 px-3">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Finance</p>
+            </div>
+
+            <x-responsive-nav-link :href="route('wallets.index')" :active="request()->routeIs('wallets.*')">
+                {{ __('navigation.wallets') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('expenses.index')" :active="request()->routeIs('expenses.*')">
+                {{ __('navigation.expenses') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('transfers.index')" :active="request()->routeIs('transfers.*')">
+                {{ __('navigation.transfers') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('categories.index')" :active="request()->routeIs('categories.*')">
+                {{ __('navigation.categories') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('reports.monthly')" :active="request()->routeIs('reports.*')">
+                {{ __('navigation.finance_reports') }}
+            </x-responsive-nav-link>
+
             <x-responsive-nav-link :href="route('profile.edit')" :active="request()->routeIs('profile.edit')">
                 {{ __('navigation.settings') }}
             </x-responsive-nav-link>

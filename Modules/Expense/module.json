@@ -1,0 +1,11 @@
+{
+    "name": "Expense",
+    "alias": "expense",
+    "description": "Quản lý chi tiêu - ghi nhận thu/chi, chuyển ví, báo cáo theo Home.",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Expense\\Providers\\ExpenseServiceProvider"
+    ],
+    "files": []
+}

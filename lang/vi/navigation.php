@@ -26,4 +26,10 @@ return [
     'dashboard' => 'Bảng điều khiển năng lượng',
     'auth_system' => 'Xác thực hệ thống',
     'guest_meta_desc' => 'Đăng nhập hoặc đăng ký tài khoản HomeWatt để bắt đầu theo dõi thiết bị, điện năng và tính hóa đơn điện bằng AI.',
+    'wallets' => 'Ví tiền',
+    'expenses' => 'Chi tiêu',
+    'transfers' => 'Chuyển ví',
+    'categories' => 'Danh mục',
+    'finance_reports' => 'Báo cáo tài chính',
+    'finance' => 'Tài chính',
 ];

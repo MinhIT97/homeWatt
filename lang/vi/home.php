@@ -40,4 +40,11 @@ return [
     'invite_button' => 'Mời thành viên',
     'members_list' => 'Danh Sách Thành Viên',
     'view_details' => 'Xem chi tiết',
+    'price_summary' => 'Tổng Giá Trị',
+    'total_price' => 'Tổng Giá Trị Ước Tính',
+    'rooms_price' => 'Tổng Phòng',
+    'devices_price' => 'Tổng Thiết Bị',
+    'room_count' => 'Số Phòng',
+    'device_count' => 'Số Thiết Bị',
+    'room_subtotal' => 'Phụ phí (Phòng + Thiết Bị)',
 ];

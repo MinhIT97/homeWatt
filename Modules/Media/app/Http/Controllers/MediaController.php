@@ -63,15 +63,42 @@ class MediaController extends Controller
 
     public function serve(Request $request, Media $media)
     {
+        logger()->debug('Media serve request received', [
+            'url' => $request->fullUrl(),
+            'media_id' => $media->id,
+            'user_id' => $request->user()?->id,
+        ]);
+
         if (! $request->hasValidSignature()) {
+            logger()->warning('Media serve: invalid signature', [
+                'url' => $request->fullUrl(),
+                'expected_key' => config('app.key'),
+            ]);
             abort(403, __('messages.invalid_signature'));
         }
 
-        $this->authorize('view', $media);
+        try {
+            $this->authorize('view', $media);
+        } catch (\Exception $e) {
+            logger()->warning('Media serve: authorization failed', [
+                'user_id' => $request->user()?->id,
+                'media_id' => $media->id,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
 
         if (! Storage::disk($media->disk)->exists($media->path)) {
+            logger()->warning('Media serve: file not found on disk', [
+                'disk' => $media->disk,
+                'path' => $media->path,
+            ]);
             abort(404);
         }
+
+        logger()->debug('Media serve: serving file successfully', [
+            'path' => Storage::disk($media->disk)->path($media->path),
+        ]);
 
         return response()->file(
             Storage::disk($media->disk)->path($media->path),

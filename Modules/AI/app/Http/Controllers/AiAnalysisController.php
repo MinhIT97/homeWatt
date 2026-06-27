@@ -10,6 +10,8 @@ use Illuminate\View\View;
 use Modules\AI\Jobs\AnalyzeDeviceImageJob;
 use Modules\AI\Models\AiAnalysisRequest;
 use Modules\AI\Models\DeviceExtraction;
+use Modules\Device\Models\DeviceSpecification;
+use Modules\Device\Models\DeviceType;
 use Modules\Media\Models\Media;
 
 class AiAnalysisController extends Controller
@@ -120,10 +122,32 @@ class AiAnalysisController extends Controller
             'confirmed_value' => ['required', 'string'],
         ]);
 
-        $extraction->update([
-            'confirmed_value' => $request->input('confirmed_value'),
-            'status' => 'confirmed',
-        ]);
+        $confirmedValue = $request->input('confirmed_value');
+
+        DB::transaction(function () use ($extraction, $confirmedValue) {
+            $extraction->update([
+                'confirmed_value' => $confirmedValue,
+                'status' => 'confirmed',
+            ]);
+
+            $device = $extraction->device;
+            if ($device) {
+                $field = $extraction->field;
+                if (in_array($field, ['brand', 'model'])) {
+                    $device->update([$field => $confirmedValue]);
+                } elseif ($field === 'device_type') {
+                    $deviceType = DeviceType::where('slug', $confirmedValue)
+                        ->orWhere('name', $confirmedValue)
+                        ->first();
+                    if ($deviceType) {
+                        $device->update(['device_type_id' => $deviceType->id]);
+                    }
+                } elseif (in_array($field, ['rated_power', 'max_power', 'standby_power', 'voltage', 'current', 'capacity'])) {
+                    $spec = $device->specification ?: new DeviceSpecification(['device_id' => $device->id]);
+                    $spec->fill([$field => $confirmedValue])->save();
+                }
+            }
+        });
 
         return back()->with('success', __('ai.value_confirmed'));
     }

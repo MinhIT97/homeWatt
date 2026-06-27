@@ -37,9 +37,18 @@
                         </div>
                     </div>
 
-                    <div>
-                        <x-input-label for="floor" value="{{ __('room.floor_label') }}" />
-                        <x-text-input id="floor" name="floor" type="number" class="mt-1 block w-full" :value="old('floor')" placeholder="{{ __('room.floor_placeholder') }}" />
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <x-input-label for="floor" value="{{ __('room.floor_label') }}" />
+                            <x-text-input id="floor" name="floor" type="number" class="mt-1 block w-full" :value="old('floor')" placeholder="{{ __('room.floor_placeholder') }}" />
+                        </div>
+
+                        <div>
+                            <x-input-label for="price" value="{{ __('room.price') }}" />
+                            <x-text-input id="price" name="price" type="number" step="0.01" min="0" class="mt-1 block w-full" :value="old('price')" placeholder="{{ __('room.price_placeholder') }}" />
+                            <p class="text-[11px] text-slate-400 mt-1">{{ __('room.price_help') }}</p>
+                            <x-input-error :messages="$errors->get('price')" class="mt-2" />
+                        </div>
                     </div>
 
                     <div class="flex items-center justify-end gap-4 pt-4 border-t border-slate-100">

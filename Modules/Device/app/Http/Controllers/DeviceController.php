@@ -3,11 +3,13 @@
 namespace Modules\Device\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
+use Modules\AI\Contracts\DeviceImageAnalyzer;
 use Modules\AI\Models\AiAnalysisRequest;
 use Modules\Device\Http\Requests\StoreDeviceRequest;
 use Modules\Device\Http\Requests\UpdateDeviceRequest;
@@ -62,7 +64,7 @@ class DeviceController extends Controller
 
         $device = DB::transaction(function () use ($request) {
             $created = Device::create($request->safe()->only([
-                'room_id', 'device_type_id', 'name', 'brand', 'model', 'serial', 'purchased_at',
+                'room_id', 'device_type_id', 'name', 'brand', 'model', 'location', 'serial', 'purchased_at', 'purchase_price',
             ]));
 
             if ($request->hasAny(['rated_power', 'max_power', 'standby_power', 'voltage', 'current'])) {
@@ -131,7 +133,7 @@ class DeviceController extends Controller
             }
 
             $lockedDevice->update($request->safe()->only([
-                'device_type_id', 'name', 'brand', 'model', 'serial', 'purchased_at',
+                'device_type_id', 'name', 'brand', 'model', 'location', 'serial', 'purchased_at', 'purchase_price',
             ]));
 
             if ($lockedDevice->specification) {
@@ -217,6 +219,34 @@ class DeviceController extends Controller
         $media->delete();
 
         return back()->with('success', __('device.image_deleted'));
+    }
+
+    public function analyzeImage(Request $request, DeviceImageAnalyzer $analyzer): JsonResponse
+    {
+        $request->validate([
+            'image' => ['required', 'image', 'mimes:jpeg,png,webp', 'max:20480'],
+        ]);
+
+        try {
+            $file = $request->file('image');
+            $base64 = base64_encode(file_get_contents($file->getRealPath()));
+
+            $result = $analyzer->analyze($base64);
+
+            return response()->json([
+                'success' => true,
+                'data' => $result,
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('AI upload-time analysis failed', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Phân tích ảnh thất bại: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     protected function authorizeRoomMember(Request $request, Room $room): void

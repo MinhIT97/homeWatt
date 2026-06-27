@@ -14,10 +14,14 @@ use Modules\Home\Http\Requests\UpdateHomeRequest;
 use Modules\Home\Models\Home;
 use Modules\Home\Models\HomeMember;
 use Modules\Home\Services\MemberService;
+use Modules\Home\Services\PriceCalculator;
 
 class HomeController extends Controller
 {
-    public function __construct(private readonly MemberService $memberService) {}
+    public function __construct(
+        private readonly MemberService $memberService,
+        private readonly PriceCalculator $priceCalculator,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -59,7 +63,16 @@ class HomeController extends Controller
 
         $home->load(['owner', 'members.user', 'rooms']);
 
-        return view('home::show', compact('home'));
+        $priceSummary = $this->priceCalculator->calculateHomeTotal($home);
+        $roomPrices = $home->rooms()
+            ->with('devices:id,room_id,purchase_price,name')
+            ->get(['id', 'name', 'price'])
+            ->map(fn ($room) => [
+                'room' => $room,
+                'summary' => $this->priceCalculator->calculateRoomWithDevices($room),
+            ]);
+
+        return view('home::show', compact('home', 'priceSummary', 'roomPrices'));
     }
 
     public function edit(Request $request, Home $home): View

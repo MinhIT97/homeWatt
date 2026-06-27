@@ -2,10 +2,14 @@
 
 namespace App\Providers;
 
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Modules\Device\Models\Device;
+use Modules\Home\Models\Home;
 use Modules\Media\Models\Media;
 use Modules\Media\Policies\MediaPolicy;
+use Modules\Room\Models\Room;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -17,5 +21,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::policy(Media::class, MediaPolicy::class);
+
+        Relation::morphMap([
+            'device' => Device::class,
+            'room' => Room::class,
+            'home' => Home::class,
+        ]);
     }
 }

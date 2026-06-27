@@ -21,7 +21,7 @@
                                 <select id="device_id" name="device_id" class="mt-1 block w-full bg-white/80 border border-slate-300 rounded-xl shadow-sm text-slate-850 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition duration-150 py-2.5 px-3.5 text-sm" required>
                                     <option value="">{{ __('energy.select_device_option') }}</option>
                                     @foreach($devices as $d)
-                                        <option value="{{ $d->id }}">{{ $d->name }} ({{ $d->room->home->name }} / {{ $d->room->name }})</option>
+                                        <option value="{{ $d->id }}" data-power="{{ $d->specification?->rated_power }}" @selected(request('device_id') == $d->id)>{{ $d->name }} ({{ $d->room->home->name }} / {{ $d->room->name }})</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -65,7 +65,7 @@
                                 <select id="calc_device_id" name="device_id" class="mt-1 block w-full bg-white/80 border border-slate-300 rounded-xl shadow-sm text-slate-850 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition duration-150 py-2.5 px-3.5 text-sm" required>
                                     <option value="">{{ __('energy.select_device_option') }}</option>
                                     @foreach($devices as $d)
-                                        <option value="{{ $d->id }}">{{ $d->name }}</option>
+                                        <option value="{{ $d->id }}" @selected(request('device_id') == $d->id)>{{ $d->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -123,4 +123,27 @@
             </div>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const deviceSelect = document.getElementById('device_id');
+            const wattsInput = document.getElementById('watts');
+
+            function updateWatts() {
+                const selectedOption = deviceSelect.options[deviceSelect.selectedIndex];
+                const power = selectedOption ? selectedOption.getAttribute('data-power') : '';
+                if (power) {
+                    wattsInput.value = power;
+                } else {
+                    wattsInput.value = '';
+                }
+            }
+
+            if (deviceSelect && wattsInput) {
+                deviceSelect.addEventListener('change', updateWatts);
+                // Run on initial load as well in case of pre-selected values
+                updateWatts();
+            }
+        });
+    </script>
 </x-app-layout>

@@ -13,7 +13,7 @@ use Modules\AI\Models\AiAnalysisRequest;
 use Modules\Home\Models\Home;
 use Modules\Home\Models\HomeMember;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'email', 'password', 'telegram_chat_id', 'telegram_verification_code'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {

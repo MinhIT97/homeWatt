@@ -21,6 +21,23 @@ class Room extends Model
         'type',
         'floor',
         'sort_order',
+        'price',
+    ];
+
+    protected $casts = [
+        'floor' => 'integer',
+        'sort_order' => 'integer',
+        'price' => 'decimal:2',
+    ];
+
+    public const TYPES = [
+        'living_room' => 'Phòng khách',
+        'bedroom' => 'Phòng ngủ',
+        'kitchen' => 'Bếp',
+        'bathroom' => 'Phòng tắm',
+        'garage' => 'Garage',
+        'outdoor' => 'Ngoài trời',
+        'other' => 'Khác',
     ];
 
     public function home(): BelongsTo

@@ -1,0 +1,30 @@
+{
+    "name": "nwidart/expense",
+    "description": "Quản lý chi tiêu - ghi nhận thu/chi, chuyển ví, báo cáo theo Home.",
+    "authors": [
+        {
+            "name": "Nicolas Widart",
+            "email": "n.widart@gmail.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {
+
+            }
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Expense\\": "app/",
+            "Modules\\Expense\\Database\\Factories\\": "database/factories/",
+            "Modules\\Expense\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Expense\\Tests\\": "tests/"
+        }
+    }
+}

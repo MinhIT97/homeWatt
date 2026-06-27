@@ -1,0 +1,11 @@
+{
+    "name": "Wallet",
+    "alias": "wallet",
+    "description": "Ví tiền - quản lý nhiều ví (cash, bank) theo từng Home.",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Wallet\\Providers\\WalletServiceProvider"
+    ],
+    "files": []
+}

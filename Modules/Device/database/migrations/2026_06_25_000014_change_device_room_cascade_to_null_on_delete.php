@@ -9,7 +9,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('devices', function (Blueprint $table) {
-            $table->dropForeign(['room_id']);
+            $foreignKeys = collect(Schema::getForeignKeys('devices'))->pluck('name');
+            if ($foreignKeys->contains('devices_room_id_foreign')) {
+                $table->dropForeign(['room_id']);
+            }
+        });
+
+        Schema::table('devices', function (Blueprint $table) {
+            $table->unsignedBigInteger('room_id')->nullable()->change();
+
             $table->foreign('room_id')
                 ->references('id')->on('rooms')
                 ->nullOnDelete();
@@ -19,7 +27,15 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('devices', function (Blueprint $table) {
-            $table->dropForeign(['room_id']);
+            $foreignKeys = collect(Schema::getForeignKeys('devices'))->pluck('name');
+            if ($foreignKeys->contains('devices_room_id_foreign')) {
+                $table->dropForeign(['room_id']);
+            }
+        });
+
+        Schema::table('devices', function (Blueprint $table) {
+            $table->unsignedBigInteger('room_id')->nullable(false)->change();
+
             $table->foreign('room_id')
                 ->references('id')->on('rooms')
                 ->cascadeOnDelete();

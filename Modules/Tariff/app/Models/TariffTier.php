@@ -2,11 +2,14 @@
 
 namespace Modules\Tariff\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TariffTier extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'tariff_plan_id',
         'tier_number',
