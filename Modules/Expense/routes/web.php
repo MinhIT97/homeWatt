@@ -13,7 +13,7 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     Route::post('categories', [ExpenseCategoryController::class, 'store'])->name('categories.store');
     Route::get('categories/{category}/edit', [ExpenseCategoryController::class, 'edit'])->name('categories.edit');
     Route::put('categories/{category}', [ExpenseCategoryController::class, 'update'])->name('categories.update');
-    Route::patch('categories/{category}', [ExpenseCategoryController::class, 'update'])->name('categories.update');
+    Route::patch('categories/{category}', [ExpenseCategoryController::class, 'update']);
     Route::delete('categories/{category}', [ExpenseCategoryController::class, 'destroy'])->name('categories.destroy');
 
     // Expenses
@@ -23,7 +23,7 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     Route::get('expenses/{expense}', [ExpenseController::class, 'show'])->name('expenses.show');
     Route::get('expenses/{expense}/edit', [ExpenseController::class, 'edit'])->name('expenses.edit');
     Route::put('expenses/{expense}', [ExpenseController::class, 'update'])->name('expenses.update');
-    Route::patch('expenses/{expense}', [ExpenseController::class, 'update'])->name('expenses.update');
+    Route::patch('expenses/{expense}', [ExpenseController::class, 'update']);
     Route::delete('expenses/{expense}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
 
     // Transfers
