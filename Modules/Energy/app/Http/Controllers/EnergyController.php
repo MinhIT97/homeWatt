@@ -136,4 +136,102 @@ class EnergyController extends Controller
         return redirect()->route('energy.index')
             ->with('success', __('energy.estimate_result', ['kwh' => $estimate->estimated_kwh, 'cost' => $estimate->estimated_cost]));
     }
+
+    public function tieredReport(Request $request): View
+    {
+        $user = $request->user();
+        
+        $homes = \Modules\Home\Models\Home::whereHas('members', fn($q) => $q->where('user_id', $user->id))->get();
+        $selectedHomeId = $request->get('home_id', $homes->first()?->id);
+        $selectedMonth = $request->get('month', now()->format('Y-m'));
+
+        $home = \Modules\Home\Models\Home::findOrFail($selectedHomeId);
+
+        $startOfMonth = \Illuminate\Support\Carbon::parse($selectedMonth . '-01')->startOfMonth();
+        $endOfMonth = \Illuminate\Support\Carbon::parse($selectedMonth . '-01')->endOfMonth();
+
+        $devices = Device::whereHas('room', fn($q) => $q->where('home_id', $selectedHomeId))->get();
+        $deviceIds = $devices->pluck('id');
+
+        $totalKwh = 0.0;
+        if ($deviceIds->isNotEmpty()) {
+            $totalKwh = (float) EnergyReading::whereIn('device_id', $deviceIds)
+                ->whereBetween('recorded_at', [$startOfMonth, $endOfMonth])
+                ->sum('kwh');
+        }
+
+        $tariffPlan = TariffPlan::where('status', 'active')->first() 
+            ?: TariffPlan::orderByDesc('id')->first();
+
+        $tiers = $tariffPlan ? $tariffPlan->tiers()->orderBy('tier_number')->get() : collect();
+
+        $calculation = [];
+        $remainingKwh = $totalKwh;
+        $totalCost = 0.0;
+        $previousLimit = 0.0;
+
+        foreach ($tiers as $index => $tier) {
+            $limit = $tier->limit_kwh;
+            
+            if (is_null($limit)) {
+                $consumedInTier = $remainingKwh;
+            } else {
+                $tierCap = $limit - $previousLimit;
+                $consumedInTier = min($tierCap, $remainingKwh);
+                $previousLimit = $limit;
+            }
+
+            $consumedInTier = max(0.0, $consumedInTier);
+            $remainingKwh -= $consumedInTier;
+            $remainingKwh = max(0.0, $remainingKwh);
+
+            $cost = $consumedInTier * $tier->rate;
+            $totalCost += $cost;
+
+            $calculation[] = [
+                'tier_number' => $tier->tier_number,
+                'limit_from' => $index === 0 ? 0 : $tiers[$index - 1]->limit_kwh,
+                'limit_to' => $limit,
+                'rate' => $tier->rate,
+                'consumed' => $consumedInTier,
+                'cost' => $cost,
+                'percentage' => $totalKwh > 0 ? round(($consumedInTier / $totalKwh) * 100, 1) : 0,
+            ];
+        }
+
+        $deviceBreakdown = [];
+        if ($totalKwh > 0 && $deviceIds->isNotEmpty()) {
+            $deviceReadings = EnergyReading::whereIn('device_id', $deviceIds)
+                ->whereBetween('recorded_at', [$startOfMonth, $endOfMonth])
+                ->select('device_id', DB::raw('SUM(kwh) as total_kwh'))
+                ->groupBy('device_id')
+                ->get();
+
+            foreach ($deviceReadings as $dr) {
+                $dev = $devices->firstWhere('id', $dr->device_id);
+                if ($dev) {
+                    $devKwh = (float) $dr->total_kwh;
+                    $deviceBreakdown[] = [
+                        'device' => $dev,
+                        'kwh' => $devKwh,
+                        'percentage' => round(($devKwh / $totalKwh) * 100, 1),
+                        'estimated_cost' => ($totalCost / $totalKwh) * $devKwh,
+                    ];
+                }
+            }
+
+            usort($deviceBreakdown, fn($a, $b) => $b['kwh'] <=> $a['kwh']);
+        }
+
+        return view('energy::tiered_report', compact(
+            'homes',
+            'selectedHomeId',
+            'selectedMonth',
+            'totalKwh',
+            'calculation',
+            'totalCost',
+            'deviceBreakdown',
+            'tariffPlan'
+        ));
+    }
 }

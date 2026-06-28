@@ -31,6 +31,7 @@ class UpdateExpenseCategoryRequest extends FormRequest
     {
         return [
             'name' => ['sometimes', 'required', 'string', 'max:100'],
+            'parent_id' => ['sometimes', 'nullable', 'exists:expense_categories,id'],
             'type' => ['sometimes', 'required', 'string', 'in:'.implode(',', ExpenseCategory::TYPES)],
             'icon' => ['sometimes', 'nullable', 'string', 'max:50'],
             'color' => ['sometimes', 'nullable', 'string', 'max:7', 'regex:/^#[0-9A-Fa-f]{6}$/'],

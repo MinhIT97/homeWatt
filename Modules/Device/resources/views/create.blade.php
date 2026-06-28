@@ -19,6 +19,8 @@
                           voltage: '{{ old('voltage') }}',
                           warrantyDuration: '{{ old('warranty_duration') }}',
                           warrantyUnit: '{{ old('warranty_unit', 'month') }}',
+                          maintenanceInterval: '{{ old('maintenance_interval') }}',
+                          lastMaintainedAt: '{{ old('last_maintained_at') }}',
                           isAnalyzing: false,
                           statusMessage: '',
                           statusType: '',
@@ -204,6 +206,19 @@
                                     </select>
                                 </div>
                                 <x-input-error :messages="$errors->get('warranty_duration')" class="mt-2" />
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6 border-t border-slate-100/60 pt-6">
+                            <div>
+                                <x-input-label for="maintenance_interval" value="Chu kỳ bảo dưỡng định kỳ (tháng)" />
+                                <x-text-input id="maintenance_interval" name="maintenance_interval" type="number" min="1" class="mt-1 block w-full" x-model="maintenanceInterval" placeholder="Ví dụ: 6, 12... (để trống nếu không cần)" />
+                                <x-input-error :messages="$errors->get('maintenance_interval')" class="mt-2" />
+                            </div>
+                            <div>
+                                <x-input-label for="last_maintained_at" value="Ngày bảo dưỡng gần nhất" />
+                                <x-text-input id="last_maintained_at" name="last_maintained_at" type="date" class="mt-1 block w-full" x-model="lastMaintainedAt" />
+                                <x-input-error :messages="$errors->get('last_maintained_at')" class="mt-2" />
                             </div>
                         </div>
                     </div>

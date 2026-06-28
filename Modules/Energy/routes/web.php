@@ -5,6 +5,7 @@ use Modules\Energy\Http\Controllers\EnergyController;
 use Modules\Energy\Http\Controllers\SmartPlugController;
 
 Route::middleware(['web', 'auth', 'verified'])->group(function () {
+    Route::get('/energy/report/tiered', [EnergyController::class, 'tieredReport'])->name('energy.tiered');
     Route::resource('energy', EnergyController::class)->except(['edit', 'update', 'destroy']);
     Route::post('/energy/calculate', [EnergyController::class, 'calculate'])->name('energy.calculate');
 });

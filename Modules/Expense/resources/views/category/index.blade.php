@@ -27,12 +27,13 @@
                     <!-- Mobile View (Card List) -->
                     <div class="block sm:hidden divide-y divide-slate-100 bg-white/80">
                         @foreach($categories as $c)
-                            <div class="p-4 space-y-3">
+                            <!-- Parent Card -->
+                            <div class="p-4 space-y-3 bg-white/40">
                                 <div class="flex justify-between items-center">
                                     <div class="flex items-center gap-3">
                                         <span class="text-xl p-1.5 rounded-lg bg-slate-100/80">{{ $c->icon ?: '🏷️' }}</span>
                                         <div>
-                                            <span class="font-bold text-slate-800 text-sm">{{ $c->name }}</span>
+                                            <span class="font-extrabold text-slate-900 text-sm">{{ $c->name }}</span>
                                             @if($c->color)
                                                 <span class="inline-block w-2.5 h-2.5 rounded-full ml-1" style="background-color: {{ $c->color }}"></span>
                                             @endif
@@ -55,7 +56,7 @@
                                         @endif
                                     </div>
                                 </div>
-                                <div class="flex justify-end gap-3 pt-2 border-t border-slate-50">
+                                <div class="flex justify-end gap-3 pt-2 border-t border-slate-100">
                                     @if(!$c->is_system)
                                         <a href="{{ route('categories.edit', $c) }}" class="text-xs text-primary-600 hover:text-primary-900 transition font-bold">{{ __('common.edit') }}</a>
                                         <form method="POST" action="{{ route('categories.destroy', $c) }}" onsubmit="return confirm('{{ __('common.confirm_delete') }}')">
@@ -68,6 +69,52 @@
                                     @endif
                                 </div>
                             </div>
+
+                            <!-- Children Cards -->
+                            @foreach($c->children as $child)
+                                <div class="p-4 space-y-3 bg-slate-50/40 pl-8 border-l-4 border-slate-200">
+                                    <div class="flex justify-between items-center">
+                                        <div class="flex items-center gap-3">
+                                            <span class="text-lg p-1.5 rounded-lg bg-white shadow-sm">{{ $child->icon ?: '🏷️' }}</span>
+                                            <div class="flex items-center gap-1.5 text-slate-600 font-semibold text-xs">
+                                                <span>└─</span>
+                                                <span>{{ $child->name }}</span>
+                                                @if($child->color)
+                                                    <span class="inline-block w-2.5 h-2.5 rounded-full" style="background-color: {{ $child->color }}"></span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                        <span class="px-2 py-0.5 rounded-md text-[10px] {{ $child->type === 'income' ? 'bg-green-50/70 text-green-700 border border-green-150' : 'bg-red-50/70 text-red-700 border border-red-150' }}">
+                                            {{ $child->type === 'income' ? __('expense.type_income') : __('expense.type_expense') }}
+                                        </span>
+                                    </div>
+                                    <div class="flex justify-between items-center text-[11px] text-slate-400">
+                                        <div>
+                                            <span>{{ __('expense.select_home') }}:</span>
+                                            <span class="font-semibold">{{ $child->home?->name ?: '-' }}</span>
+                                        </div>
+                                        <div>
+                                            @if($child->is_system)
+                                                <span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[9px] border border-slate-200">{{ __('common.system_template') ?? 'Hệ thống' }}</span>
+                                            @else
+                                                <span class="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[9px] border border-blue-200">{{ __('common.template') ?? 'Tùy chỉnh' }}</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <div class="flex justify-end gap-3 pt-2 border-t border-slate-100">
+                                        @if(!$child->is_system)
+                                            <a href="{{ route('categories.edit', $child) }}" class="text-xs text-primary-600 hover:text-primary-900 transition font-bold">{{ __('common.edit') }}</a>
+                                            <form method="POST" action="{{ route('categories.destroy', $child) }}" onsubmit="return confirm('{{ __('common.confirm_delete') }}')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="text-xs text-red-600 hover:text-red-900 transition font-bold">{{ __('common.delete') }}</button>
+                                            </form>
+                                        @else
+                                            <span class="text-slate-450 text-[10px]">{{ __('Locked') }}</span>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
                         @endforeach
                     </div>
 
@@ -87,12 +134,13 @@
                             </thead>
                             <tbody class="bg-white/80 divide-y divide-slate-100">
                                 @foreach($categories as $c)
+                                    <!-- Parent Category Row -->
                                     <tr class="hover:bg-slate-50/50 transition">
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="flex items-center gap-3">
                                                 <span class="text-2xl p-2 rounded-xl bg-slate-100/80">{{ $c->icon ?: '🏷️' }}</span>
                                                 <div>
-                                                    <span class="font-bold text-slate-800">{{ $c->name }}</span>
+                                                    <span class="font-extrabold text-slate-900">{{ $c->name }}</span>
                                                     @if($c->color)
                                                         <span class="inline-block w-3 h-3 rounded-full ml-1" style="background-color: {{ $c->color }}"></span>
                                                     @endif
@@ -129,6 +177,53 @@
                                             </div>
                                         </td>
                                     </tr>
+
+                                    <!-- Child Categories Rows -->
+                                    @foreach($c->children as $child)
+                                        <tr class="bg-slate-50/20 hover:bg-slate-50 transition border-l-2 border-slate-200">
+                                            <td class="px-6 py-3.5 whitespace-nowrap pl-16">
+                                                <div class="flex items-center gap-3">
+                                                    <span class="text-xl p-1.5 rounded-lg bg-white shadow-sm">{{ $child->icon ?: '🏷️' }}</span>
+                                                    <div class="flex items-center gap-1.5 text-slate-600 font-semibold">
+                                                        <span>└─</span>
+                                                        <span>{{ $child->name }}</span>
+                                                        @if($child->color)
+                                                            <span class="inline-block w-2.5 h-2.5 rounded-full" style="background-color: {{ $child->color }}"></span>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-3.5 whitespace-nowrap text-sm">
+                                                <span class="px-2 py-0.5 rounded-md text-[11px] {{ $child->type === 'income' ? 'bg-green-50/70 text-green-700 border border-green-150' : 'bg-red-50/70 text-red-700 border border-red-150' }}">
+                                                    {{ $child->type === 'income' ? __('expense.type_income') : __('expense.type_expense') }}
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-3.5 whitespace-nowrap text-xs text-slate-400">
+                                                {{ $child->home?->name ?: '-' }}
+                                            </td>
+                                            <td class="px-6 py-3.5 whitespace-nowrap text-xs text-slate-400">
+                                                @if($child->is_system)
+                                                    <span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] border border-slate-200">{{ __('common.system_template') ?? 'Hệ thống' }}</span>
+                                                @else
+                                                    <span class="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] border border-blue-200">{{ __('common.template') ?? 'Tùy chỉnh' }}</span>
+                                                @endif
+                                            </td>
+                                            <td class="px-6 py-3.5 whitespace-nowrap text-right text-xs font-medium">
+                                                <div class="flex items-center justify-end gap-3">
+                                                    @if(!$child->is_system)
+                                                        <a href="{{ route('categories.edit', $child) }}" class="text-primary-600 hover:text-primary-900 transition font-bold">{{ __('common.edit') }}</a>
+                                                        <form method="POST" action="{{ route('categories.destroy', $child) }}" onsubmit="return confirm('{{ __('common.confirm_delete') }}')">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" class="text-red-600 hover:text-red-900 transition font-bold">{{ __('common.delete') }}</button>
+                                                        </form>
+                                                    @else
+                                                        <span class="text-slate-400 cursor-not-allowed text-[10px]">{{ __('Locked') }}</span>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @endforeach
                                 @endforeach
                             </tbody>
                         </table>

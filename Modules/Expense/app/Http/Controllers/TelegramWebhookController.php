@@ -23,8 +23,26 @@ class TelegramWebhookController extends Controller
 
         $chatId = $request->input('message.chat.id');
         $text = trim($request->input('message.text', ''));
+        $photo = $request->input('message.photo');
 
-        if (empty($chatId) || empty($text)) {
+        if (empty($chatId)) {
+            return response()->json(['ok' => true]);
+        }
+
+        if (!empty($photo)) {
+            try {
+                $this->handlePhotoUpload($chatId, $photo, $expenseService);
+            } catch (\Throwable $e) {
+                Log::error('Telegram photo processing failed', [
+                    'error' => $e->getMessage(),
+                    'chat_id' => $chatId,
+                ]);
+                $this->sendMessage($chatId, '⚠️ Đã xảy ra lỗi khi quét hóa đơn.');
+            }
+            return response()->json(['ok' => true]);
+        }
+
+        if (empty($text)) {
             return response()->json(['ok' => true]);
         }
 
@@ -342,6 +360,131 @@ class TelegramWebhookController extends Controller
         }
 
         $this->sendMessage($chatId, trim($msg));
+    }
+
+    private function handlePhotoUpload(int $chatId, array $photo, ExpenseService $expenseService): void
+    {
+        $token = config('services.telegram.bot_token');
+        if (empty($token)) {
+            $this->sendMessage($chatId, '⚠️ Token Telegram Bot chưa được cấu hình.');
+            return;
+        }
+
+        $user = User::where('telegram_chat_id', $chatId)->first();
+        if (!$user) {
+            $this->sendMessage($chatId, "❌ Tài khoản Telegram của bạn chưa được liên kết với HomeWatt.");
+            return;
+        }
+
+        $memberships = $user->homeMembers()->with('home')->get();
+        if ($memberships->isEmpty()) {
+            $this->sendMessage($chatId, '❌ Bạn chưa tham gia vào ngôi nhà nào.');
+            return;
+        }
+
+        $home = $memberships->first()->home;
+
+        // Find wallets
+        $wallet = Wallet::where('home_id', $home->id)
+            ->where('is_archived', false)
+            ->get()
+            ->first(fn($w) => str_contains(mb_strtolower($w->name, 'UTF-8'), 'tiền mặt'))
+            ?: Wallet::where('home_id', $home->id)
+                ->where('is_archived', false)
+                ->first();
+
+        if (!$wallet) {
+            $this->sendMessage($chatId, '❌ Ngôi nhà của bạn chưa có ví tiền nào để ghi nhận giao dịch.');
+            return;
+        }
+
+        $this->sendMessage($chatId, '🤖 AI đang quét hóa đơn của bạn, vui lòng đợi trong giây lát...');
+
+        // Get the largest photo
+        $largestPhoto = end($photo);
+        $fileId = $largestPhoto['file_id'];
+
+        $fileResponse = Http::get("https://api.telegram.org/bot{$token}/getFile?file_id={$fileId}");
+        if ($fileResponse->failed()) {
+            $this->sendMessage($chatId, '❌ Không thể tải thông tin tệp từ Telegram.');
+            return;
+        }
+
+        $filePath = $fileResponse->json('result.file_path');
+        if (empty($filePath)) {
+            $this->sendMessage($chatId, '❌ Không tìm thấy đường dẫn tệp ảnh.');
+            return;
+        }
+
+        $imageResponse = Http::get("https://api.telegram.org/file/bot{$token}/{$filePath}");
+        if ($imageResponse->failed()) {
+            $this->sendMessage($chatId, '❌ Không thể tải dữ liệu ảnh từ Telegram.');
+            return;
+        }
+
+        $base64 = base64_encode($imageResponse->body());
+
+        $scanner = new \Modules\AI\Services\GeminiBillScanner();
+        $result = $scanner->scan($base64);
+
+        if (!$result || empty($result['amount'])) {
+            $this->sendMessage($chatId, '🤖 AI không thể quét được số tiền hoặc thông tin hóa đơn này. Vui lòng chụp ảnh phẳng, đủ sáng và rõ số tiền, hoặc nhập tay chi tiêu.');
+            return;
+        }
+
+        // Match category
+        $categories = \Modules\Expense\Models\ExpenseCategory::all();
+        $aiCategoryKey = $result['category'];
+        $mappings = [
+            'eating' => ['ăn', 'uống', 'nhà hàng', 'food', 'cafe', 'cà phê'],
+            'shopping' => ['mua', 'sắm', 'quần áo', 'điện tử', 'tạp hóa', 'siêu thị'],
+            'living' => ['sinh hoạt', 'điện', 'nước', 'nhà', 'phí'],
+        ];
+
+        $selectedCategory = null;
+        if (isset($mappings[$aiCategoryKey])) {
+            foreach ($categories as $cat) {
+                foreach ($mappings[$aiCategoryKey] as $kw) {
+                    if (str_contains(mb_strtolower($cat->name, 'UTF-8'), $kw)) {
+                        $selectedCategory = $cat;
+                        break 2;
+                    }
+                }
+            }
+        }
+
+        if (!$selectedCategory) {
+            $selectedCategory = $categories->where('type', 'expense')->first();
+        }
+
+        if (!$selectedCategory) {
+            $this->sendMessage($chatId, '❌ Hệ thống chưa cấu hình danh mục chi tiêu nào.');
+            return;
+        }
+
+        // Create transaction
+        $payload = [
+            'home_id' => $home->id,
+            'wallet_id' => $wallet->id,
+            'category_id' => $selectedCategory->id,
+            'amount' => $result['amount'],
+            'type' => 'expense',
+            'description' => $result['description'] ?: 'Quét hóa đơn AI',
+            'notes' => $result['notes'] ?: 'Quét tự động qua Telegram',
+            'occurred_at' => now()->toDateTimeString(),
+        ];
+
+        $expense = $expenseService->createExpense($payload, $user);
+
+        $confirmMsg = "✅ *QUÉT HÓA ĐƠN THÀNH CÔNG (AI)*\n\n"
+                    . "• 🔴 *CHI TIÊU*\n"
+                    . "• *Số tiền*: *" . number_format($expense->amount, 0, ',', '.') . " đ*\n"
+                    . "• *Danh mục*: *" . $selectedCategory->name . "*\n"
+                    . "• *Mô tả*: *" . $expense->description . "*\n"
+                    . "• *Ví*: *" . $wallet->name . "* (Số dư: " . number_format((float) $wallet->fresh()->calculatedBalance(), 0, ',', '.') . " đ)\n\n"
+                    . "🤖 _Hóa đơn đã được tự động ghi nhận vào tài khoản!_";
+
+        $this->sendMessage($chatId, $confirmMsg);
     }
 
     private function sendMessage(int $chatId, string $text): void

@@ -3,6 +3,7 @@
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <h2 class="font-extrabold text-2xl text-slate-900 font-outfit leading-tight">{{ __('expense.title') }}</h2>
             <div class="flex gap-3">
+                <a href="{{ route('budgets.index') }}" class="inline-flex items-center px-4 py-2 bg-white/80 border border-slate-300 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition shadow-sm">🎯 Hạn mức</a>
                 <a href="{{ route('reports.monthly') }}" class="inline-flex items-center px-4 py-2 bg-white/80 border border-slate-300 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50">{{ __('expense.report_monthly') }}</a>
                 <a href="{{ route('expenses.create') }}" class="inline-flex items-center px-4 py-2 bg-primary-600 hover:bg-primary-700 rounded-xl text-sm font-semibold text-white">{{ __('expense.add_new') }}</a>
             </div>

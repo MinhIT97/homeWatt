@@ -339,6 +339,21 @@
                                     @endif
                                 </dd>
                             </div>
+                            <div class="flex justify-between border-t border-slate-100 pt-3 mt-3">
+                                <dt class="text-xs font-bold text-slate-400 uppercase">Bảo dưỡng</dt>
+                                <dd class="text-right">
+                                    @if($device->maintenance_interval)
+                                        <span class="px-2 py-0.5 rounded-full text-xs font-semibold border {{ $device->is_due_for_maintenance ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-green-50 text-green-700 border-green-200' }}">
+                                            {{ $device->is_due_for_maintenance ? 'Đến hạn' : 'Chưa đến hạn' }} (Chu kỳ {{ $device->maintenance_interval }} tháng)
+                                        </span>
+                                        @if($device->next_maintenance_at)
+                                            <p class="text-[10px] text-slate-450 mt-1">Tiếp theo: {{ $device->next_maintenance_at->format('d/m/Y') }}</p>
+                                        @endif
+                                    @else
+                                        <span class="text-slate-450 text-xs">Không có</span>
+                                    @endif
+                                </dd>
+                            </div>
                         </dl>
                     </div>
 

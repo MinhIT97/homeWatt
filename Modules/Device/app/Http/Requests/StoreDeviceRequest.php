@@ -37,6 +37,8 @@ class StoreDeviceRequest extends FormRequest
             'purchase_price' => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],
             'warranty_duration' => ['nullable', 'integer', 'min:0'],
             'warranty_unit' => ['nullable', 'string', 'in:month,year'],
+            'maintenance_interval' => ['nullable', 'integer', 'min:1'],
+            'last_maintained_at' => ['nullable', 'date'],
             'rated_power' => ['nullable', 'numeric', 'min:0', 'max:100000'],
             'max_power' => ['nullable', 'numeric', 'min:0', 'max:100000'],
             'standby_power' => ['nullable', 'numeric', 'min:0', 'max:1000'],

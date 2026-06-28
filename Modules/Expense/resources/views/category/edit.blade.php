@@ -31,6 +31,19 @@
                         </select>
                     </div>
 
+                    <div>
+                        <x-input-label for="parent_id" value="Danh mục cha (Tùy chọn)" />
+                        <select id="parent_id" name="parent_id" class="mt-1 block w-full bg-white/80 border border-slate-300 rounded-xl shadow-sm text-slate-800 py-2.5 px-3.5">
+                            <option value="">-- Đây là danh mục cha (Gốc) --</option>
+                            @foreach($parentCategories as $parent)
+                                <option value="{{ $parent->id }}" @selected(old('parent_id', $category->parent_id) == $parent->id) data-type="{{ $parent->type }}">
+                                    {{ $parent->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <x-input-error :messages="$errors->get('parent_id')" class="mt-2" />
+                    </div>
+
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div class="md:col-span-2">
                             <x-input-label for="name" :value="__('common.name')" />
@@ -61,6 +74,31 @@
                         <x-primary-button>{{ __('common.save') }}</x-primary-button>
                     </div>
                 </form>
+
+                <script>
+                    document.addEventListener('DOMContentLoaded', function () {
+                        const typeSelect = document.getElementById('type');
+                        const parentSelect = document.getElementById('parent_id');
+                        const parentOptions = Array.from(parentSelect.options);
+
+                        function filterParents() {
+                            const type = typeSelect.value;
+                            parentSelect.innerHTML = '';
+                            parentSelect.appendChild(parentOptions[0]);
+
+                            parentOptions.forEach(opt => {
+                                if (opt.value && opt.dataset.type === type) {
+                                    parentSelect.appendChild(opt);
+                                }
+                            });
+                        }
+
+                        if (typeSelect && parentSelect) {
+                            typeSelect.addEventListener('change', filterParents);
+                            filterParents();
+                        }
+                    });
+                </script>
             </div>
         </div>
     </div>

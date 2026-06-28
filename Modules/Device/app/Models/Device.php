@@ -30,6 +30,8 @@ class Device extends Model
         'purchase_price',
         'warranty_duration',
         'warranty_unit',
+        'maintenance_interval',
+        'last_maintained_at',
     ];
 
     public const STATUSES = ['active', 'inactive', 'broken'];
@@ -46,7 +48,36 @@ class Device extends Model
     protected $casts = [
         'purchased_at' => 'date',
         'purchase_price' => 'decimal:2',
+        'last_maintained_at' => 'date',
     ];
+
+    public function getNextMaintenanceAtAttribute()
+    {
+        if (!$this->maintenance_interval) {
+            return null;
+        }
+
+        $baseDate = $this->last_maintained_at 
+            ?: ($this->purchased_at ?: $this->created_at);
+
+        if (!$baseDate) {
+            return null;
+        }
+
+        // Handle case where baseDate is string from database
+        $base = \Illuminate\Support\Carbon::parse($baseDate);
+        return $base->addMonths($this->maintenance_interval);
+    }
+
+    public function getIsDueForMaintenanceAttribute(): bool
+    {
+        $next = $this->next_maintenance_at;
+        if (!$next) {
+            return false;
+        }
+
+        return $next->isPast() || $next->isToday();
+    }
 
     public function getWarrantyExpiresAtAttribute()
     {

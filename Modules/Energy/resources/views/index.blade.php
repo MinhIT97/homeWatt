@@ -1,6 +1,11 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-extrabold text-2xl text-slate-900 font-outfit leading-tight">{{ __('energy.title') }}</h2>
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <h2 class="font-extrabold text-2xl text-slate-900 font-outfit leading-tight">{{ __('energy.title') }}</h2>
+            <div class="flex gap-3">
+                <a href="{{ route('energy.tiered') }}" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-sm font-semibold transition shadow-sm">⚡ Phân tích Bậc thang</a>
+            </div>
+        </div>
     </x-slot>
 
     <div class="py-12">

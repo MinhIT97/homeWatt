@@ -65,7 +65,7 @@ class DeviceController extends Controller
 
         $device = DB::transaction(function () use ($request) {
             $created = Device::create($request->safe()->only([
-                'room_id', 'device_type_id', 'name', 'brand', 'model', 'location', 'serial', 'purchased_at', 'purchase_price', 'warranty_duration', 'warranty_unit',
+                'room_id', 'device_type_id', 'name', 'brand', 'model', 'location', 'serial', 'purchased_at', 'purchase_price', 'warranty_duration', 'warranty_unit', 'maintenance_interval', 'last_maintained_at',
             ]));
 
             if ($request->hasAny(['rated_power', 'max_power', 'standby_power', 'voltage', 'current'])) {
@@ -135,7 +135,7 @@ class DeviceController extends Controller
             }
 
             $lockedDevice->update($request->safe()->only([
-                'device_type_id', 'name', 'brand', 'model', 'location', 'serial', 'purchased_at', 'purchase_price', 'warranty_duration', 'warranty_unit',
+                'device_type_id', 'name', 'brand', 'model', 'location', 'serial', 'purchased_at', 'purchase_price', 'warranty_duration', 'warranty_unit', 'maintenance_interval', 'last_maintained_at',
             ]));
 
             if ($lockedDevice->specification) {

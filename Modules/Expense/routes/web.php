@@ -36,4 +36,9 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     // Reports
     Route::get('reports/monthly', [ExpenseReportController::class, 'monthly'])->name('reports.monthly');
     Route::get('reports/category', [ExpenseReportController::class, 'byCategory'])->name('reports.category');
+
+    // Budgets
+    Route::get('budgets', [\Modules\Expense\Http\Controllers\BudgetController::class, 'index'])->name('budgets.index');
+    Route::post('budgets', [\Modules\Expense\Http\Controllers\BudgetController::class, 'store'])->name('budgets.store');
+    Route::delete('budgets/{budget}', [\Modules\Expense\Http\Controllers\BudgetController::class, 'destroy'])->name('budgets.destroy');
 });

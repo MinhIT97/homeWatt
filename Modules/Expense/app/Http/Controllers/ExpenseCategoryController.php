@@ -18,7 +18,8 @@ class ExpenseCategoryController extends Controller
         $userId = $request->user()->id;
 
         $categories = ExpenseCategory::whereHas('home.members', fn ($q) => $q->where('user_id', $userId))
-            ->with('home')
+            ->whereNull('parent_id')
+            ->with(['home', 'children'])
             ->orderBy('home_id')
             ->orderBy('type')
             ->orderBy('sort_order')
@@ -36,7 +37,12 @@ class ExpenseCategoryController extends Controller
             ->get()
             ->pluck('home');
 
-        return view('expense::category.create', compact('homes'));
+        $parentCategories = ExpenseCategory::whereHas('home.members', fn ($q) => $q->where('user_id', $request->user()->id))
+            ->whereNull('parent_id')
+            ->orderBy('sort_order')
+            ->get();
+
+        return view('expense::category.create', compact('homes', 'parentCategories'));
     }
 
     public function store(StoreExpenseCategoryRequest $request): RedirectResponse
@@ -60,7 +66,13 @@ class ExpenseCategoryController extends Controller
     {
         $this->authorize('update', $category);
 
-        return view('expense::category.edit', compact('category'));
+        $parentCategories = ExpenseCategory::where('home_id', $category->home_id)
+            ->whereNull('parent_id')
+            ->where('id', '!=', $category->id)
+            ->orderBy('sort_order')
+            ->get();
+
+        return view('expense::category.edit', compact('category', 'parentCategories'));
     }
 
     public function update(UpdateExpenseCategoryRequest $request, ExpenseCategory $category): RedirectResponse

@@ -28,6 +28,7 @@ class StoreExpenseCategoryRequest extends FormRequest
     {
         return [
             'home_id' => ['required', 'exists:homes,id'],
+            'parent_id' => ['nullable', 'exists:expense_categories,id'],
             'name' => ['required', 'string', 'max:100'],
             'type' => ['required', 'string', 'in:'.implode(',', ExpenseCategory::TYPES)],
             'icon' => ['nullable', 'string', 'max:50'],
