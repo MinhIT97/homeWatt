@@ -106,7 +106,7 @@
                             <div class="flex items-center gap-2">
                                 <label for="year" class="text-xs font-semibold text-slate-500">Chọn năm:</label>
                                 <select id="year" name="year" onchange="this.form.submit()" 
-                                        class="bg-white/80 border border-slate-300 rounded-xl px-3 py-1.5 text-sm text-slate-800 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition shadow-sm">
+                                        class="bg-white/80 border border-slate-300 rounded-xl pl-3 pr-10 py-1.5 text-sm text-slate-800 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition shadow-sm">
                                     @for($y = now()->year; $y >= now()->year - 10; $y--)
                                         <option value="{{ $y }}" @selected($y === $yearVal)>{{ $y }}</option>
                                     @endfor
