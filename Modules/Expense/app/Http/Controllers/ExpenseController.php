@@ -25,7 +25,27 @@ class ExpenseController extends Controller
         $query = Expense::whereHas('home.members', fn ($q) => $q->where('user_id', $userId))
             ->with(['wallet', 'category', 'user']);
 
-        // Filters
+        // Time range period filters
+        $period = $request->get('period', 'all');
+        $dateVal = $request->get('date', now()->format('Y-m-d'));
+        $monthVal = $request->get('month', now()->format('Y-m'));
+        $yearVal = (int) $request->get('year', now()->format('Y'));
+
+        if ($period === 'day') {
+            $query->whereDate('occurred_at', $dateVal);
+        } elseif ($period === 'month') {
+            try {
+                $carbonMonth = \Carbon\Carbon::createFromFormat('Y-m', $monthVal);
+            } catch (\Exception $e) {
+                $carbonMonth = now();
+                $monthVal = $carbonMonth->format('Y-m');
+            }
+            $query->whereYear('occurred_at', $carbonMonth->year)->whereMonth('occurred_at', $carbonMonth->month);
+        } elseif ($period === 'year') {
+            $query->whereYear('occurred_at', $yearVal);
+        }
+
+        // Other filters
         if ($homeId = $request->get('home_id')) {
             $query->where('home_id', $homeId);
         }
@@ -45,7 +65,14 @@ class ExpenseController extends Controller
             $query->whereDate('occurred_at', '<=', $to);
         }
 
+        // Calculate totals for the filtered results
+        $totalIncome = (float) (clone $query)->where('type', 'income')->sum('amount');
+        $totalSpent = (float) (clone $query)->where('type', 'expense')->sum('amount');
+
         $expenses = $query->latest('occurred_at')->paginate(20);
+
+        // Group the paginated page collection by date
+        $groupedExpenses = $expenses->getCollection()->groupBy(fn($e) => $e->occurred_at?->format('Y-m-d') ?? now()->format('Y-m-d'));
 
         // For filter dropdowns
         $homes = Home::whereHas('members', fn ($q) => $q->where('user_id', $userId))->get();
@@ -58,7 +85,8 @@ class ExpenseController extends Controller
             ->get();
 
         return view('expense::index', compact(
-            'expenses', 'homes', 'categories', 'wallets'
+            'expenses', 'groupedExpenses', 'totalIncome', 'totalSpent', 'homes', 'categories', 'wallets',
+            'period', 'dateVal', 'monthVal', 'yearVal'
         ));
     }
 

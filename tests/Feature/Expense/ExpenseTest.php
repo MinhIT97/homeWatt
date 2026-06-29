@@ -186,4 +186,63 @@ class ExpenseTest extends TestCase
         $this->actingAs($user)->delete(route('expenses.destroy', $expense));
         $this->assertEquals(1000000.0, (float) $wallet->fresh()->balance);
     }
+
+    public function test_user_can_view_expenses_index_with_time_filters(): void
+    {
+        $user = User::factory()->create();
+        ['home' => $home, 'wallet' => $wallet, 'category' => $cat] = $this->setupHomeWithWallet($user);
+
+        // Create an expense for today
+        Expense::factory()->create([
+            'home_id' => $home->id,
+            'wallet_id' => $wallet->id,
+            'category_id' => $cat->id,
+            'type' => 'expense',
+            'amount' => 50000,
+            'occurred_at' => now(),
+        ]);
+
+        // Create an income for last month
+        Expense::factory()->create([
+            'home_id' => $home->id,
+            'wallet_id' => $wallet->id,
+            'category_id' => $cat->id,
+            'type' => 'income',
+            'amount' => 120000,
+            'occurred_at' => now()->subMonth(),
+        ]);
+
+        // Test period = all
+        $response = $this->actingAs($user)->get(route('expenses.index', ['period' => 'all']));
+        $response->assertOk();
+        $response->assertViewHas('totalSpent', 50000.0);
+        $response->assertViewHas('totalIncome', 120000.0);
+
+        // Test period = day (today)
+        $response = $this->actingAs($user)->get(route('expenses.index', [
+            'period' => 'day',
+            'date' => now()->format('Y-m-d'),
+        ]));
+        $response->assertOk();
+        $response->assertViewHas('totalSpent', 50000.0);
+        $response->assertViewHas('totalIncome', 0.0);
+
+        // Test period = month (this month)
+        $response = $this->actingAs($user)->get(route('expenses.index', [
+            'period' => 'month',
+            'month' => now()->format('Y-m'),
+        ]));
+        $response->assertOk();
+        $response->assertViewHas('totalSpent', 50000.0);
+        $response->assertViewHas('totalIncome', 0.0);
+
+        // Test period = month (last month)
+        $response = $this->actingAs($user)->get(route('expenses.index', [
+            'period' => 'month',
+            'month' => now()->subMonth()->format('Y-m'),
+        ]));
+        $response->assertOk();
+        $response->assertViewHas('totalSpent', 0.0);
+        $response->assertViewHas('totalIncome', 120000.0);
+    }
 }
