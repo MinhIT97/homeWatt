@@ -25,79 +25,127 @@
                           statusMessage: '',
                           statusType: '',
 
-                          analyzeImage(event) {
-                              const file = event.target.files[0];
-                              if (!file) return;
+                           populateForm(data) {
+                               if (!data.brand && !data.model && !data.rated_power_watts && !data.voltage) {
+                                   this.statusMessage = 'AI không thể đọc được thông số từ ảnh này. Vui lòng chụp/chọn ảnh nhãn mác rõ nét hơn.';
+                                   this.statusType = 'error';
+                                   return;
+                               }
 
-                              this.isAnalyzing = true;
-                              this.statusMessage = 'Đang phân tích hình ảnh nhãn thiết bị...';
-                              this.statusType = '';
+                               this.brand = data.brand || '';
+                               this.model = data.model || '';
+                               this.ratedPower = data.rated_power_watts || '';
+                               this.maxPower = data.max_power_watts || '';
+                               this.standbyPower = data.standby_power_watts || '';
+                               this.voltage = data.voltage || '';
 
-                              const formData = new FormData();
-                              formData.append('image', file);
+                               // Auto-detect device type from options by data-slug
+                               if (data.device_type) {
+                                   const typeOption = Array.from(document.querySelectorAll('#device_type_id option')).find(opt => 
+                                       opt.getAttribute('data-slug') === data.device_type
+                                   );
+                                   if (typeOption) {
+                                       this.deviceTypeId = typeOption.value;
+                                   }
+                               }
 
-                              fetch('{{ route('devices.analyze-image') }}', {
-                                  method: 'POST',
-                                  headers: {
-                                      'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                                  },
-                                  body: formData
-                              })
-                              .then(response => {
-                                  if (!response.ok) {
-                                      throw new Error('Lỗi từ máy chủ AI hoặc vượt quá giới hạn cuộc gọi.');
-                                  }
-                                  return response.json();
-                              })
-                              .then(res => {
-                                  console.log('AI Extraction Response:', res);
-                                  if (res.success && res.data) {
-                                      const data = res.data;
+                               // Set default name if name is empty
+                               if (!this.name) {
+                                   this.name = (this.brand ? this.brand + ' ' : '') + (data.device_type ? data.device_type.replace('_', ' ').toUpperCase() : 'Thiết bị');
+                               }
 
-                                      // Check if all major fields are empty/null
-                                      if (!data.brand && !data.model && !data.rated_power_watts && !data.voltage) {
-                                          this.statusMessage = 'AI không thể đọc được thông số từ ảnh này. Vui lòng chụp/chọn ảnh nhãn mác rõ nét hơn.';
-                                          this.statusType = 'error';
-                                          return;
-                                      }
+                               this.statusMessage = 'Đã trích xuất thông số thành công! Vui lòng kiểm tra lại biểu mẫu.';
+                               this.statusType = 'success';
+                           },
 
-                                      this.brand = data.brand || '';
-                                      this.model = data.model || '';
-                                      this.ratedPower = data.rated_power_watts || '';
-                                      this.maxPower = data.max_power_watts || '';
-                                      this.standbyPower = data.standby_power_watts || '';
-                                      this.voltage = data.voltage || '';
+                           analyzeImage(event) {
+                               const file = event.target.files[0];
+                               if (!file) return;
 
-                                      // Auto-detect device type from options by data-slug
-                                      if (data.device_type) {
-                                          const typeOption = Array.from(document.querySelectorAll('#device_type_id option')).find(opt => 
-                                              opt.getAttribute('data-slug') === data.device_type
-                                          );
-                                          if (typeOption) {
-                                              this.deviceTypeId = typeOption.value;
-                                          }
-                                      }
+                               this.isAnalyzing = true;
+                               this.statusMessage = 'Đang tải ảnh và gửi yêu cầu phân tích...';
+                               this.statusType = '';
 
-                                      // Set default name if name is empty
-                                      if (!this.name) {
-                                          this.name = (this.brand ? this.brand + ' ' : '') + (data.device_type ? data.device_type.replace('_', ' ').toUpperCase() : 'Thiết bị');
-                                      }
+                               const formData = new FormData();
+                               formData.append('image', file);
 
-                                      this.statusMessage = 'Đã trích xuất thông số thành công! Vui lòng kiểm tra lại biểu mẫu.';
-                                      this.statusType = 'success';
-                                  } else {
-                                      throw new Error(res.message || 'Không thể trích xuất được thông số từ hình ảnh.');
-                                  }
-                              })
-                              .catch(err => {
-                                  console.error(err);
-                                  this.statusMessage = err.message;
-                                  this.statusType = 'error';
-                              })
-                              .finally(() => {
-                                  this.isAnalyzing = false;
-                              });
-                          }
+                               fetch('{{ route('devices.analyze-image') }}', {
+                                   method: 'POST',
+                                   headers: {
+                                       'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                   },
+                                   body: formData
+                               })
+                               .then(response => {
+                                   if (!response.ok) {
+                                       throw new Error('Lỗi từ máy chủ AI hoặc vượt quá giới hạn cuộc gọi.');
+                                   }
+                                   return response.json();
+                               })
+                               .then(res => {
+                                   console.log('AI Extraction Response (Initiated):', res);
+                                   if (res.success && res.async) {
+                                       const analysisId = res.analysis_id;
+                                       this.statusMessage = 'AI đang quét thông số thiết bị trong nền. Bạn có thể tiếp tục điền biểu mẫu...';
+                                       
+                                       // Polling fallback
+                                       const pollInterval = setInterval(() => {
+                                           fetch(`/devices/analysis/${analysisId}/status`)
+                                               .then(r => r.json())
+                                               .then(statusRes => {
+                                                   if (statusRes.status === 'completed') {
+                                                       clearInterval(pollInterval);
+                                                       this.isAnalyzing = false;
+                                                       this.populateForm(statusRes.data);
+                                                   } else if (statusRes.status === 'failed') {
+                                                       clearInterval(pollInterval);
+                                                       this.isAnalyzing = false;
+                                                       this.statusMessage = statusRes.message || 'Không thể trích xuất được thông số từ hình ảnh.';
+                                                       this.statusType = 'error';
+                                                   }
+                                               })
+                                               .catch(err => {
+                                                   console.error('Polling error:', err);
+                                               });
+                                       }, 2000);
+
+                                       // WebSocket / Echo integration
+                                       if (window.Echo) {
+                                           window.Echo.channel('device-analysis')
+                                               .listen('.scanned', (e) => {
+                                                   if (e.analysisId === analysisId) {
+                                                       clearInterval(pollInterval);
+                                                       fetch(`/devices/analysis/${analysisId}/status`)
+                                                           .then(r => r.json())
+                                                           .then(statusRes => {
+                                                               this.isAnalyzing = false;
+                                                               if (statusRes.status === 'completed') {
+                                                                   this.populateForm(statusRes.data);
+                                                               } else {
+                                                                   this.statusMessage = statusRes.message || 'Phân tích ảnh thất bại.';
+                                                                   this.statusType = 'error';
+                                                               }
+                                                           })
+                                                           .catch(err => {
+                                                               console.error('Status fetch error:', err);
+                                                               this.isAnalyzing = false;
+                                                               this.statusMessage = 'Không thể tải kết quả phân tích ảnh.';
+                                                               this.statusType = 'error';
+                                                           });
+                                                   }
+                                               });
+                                       }
+                                   } else {
+                                       throw new Error(res.message || 'Không thể khởi động tiến trình phân tích ảnh.');
+                                   }
+                               })
+                               .catch(err => {
+                                   console.error(err);
+                                   this.statusMessage = err.message;
+                                   this.statusType = 'error';
+                                   this.isAnalyzing = false;
+                               });
+                           }
                       }">
                     @csrf
 
@@ -118,7 +166,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                                 </svg>
                                 <span>Chụp ảnh / Chọn ảnh</span>
-                                <input type="file" accept="image/*" class="hidden" @change="analyzeImage($event)">
+                                <input type="file" accept="image/*" capture="environment" class="hidden" @change="analyzeImage($event)">
                             </label>
                             
                             <div x-show="isAnalyzing" class="flex items-center gap-2 text-xs text-slate-500 animate-pulse">

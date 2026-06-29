@@ -44,10 +44,10 @@ class MassAssignmentTest extends TestCase
         $owner = User::factory()->create();
         $member = User::factory()->create();
 
-        $home = Home::create([
-            'owner_id' => $owner->id,
+        $home = new Home([
             'name' => 'My Home',
         ]);
+        $home->forceFill(['owner_id' => $owner->id])->save();
         HomeMember::create([
             'home_id' => $home->id,
             'user_id' => $member->id,

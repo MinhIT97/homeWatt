@@ -21,6 +21,20 @@ class TelegramWebhookController extends Controller
             abort(403, 'Invalid webhook token');
         }
 
+        // Handle Callback Queries (Inline Button Clicks)
+        $callbackQuery = $request->input('callback_query');
+        if ($callbackQuery) {
+            try {
+                $this->handleCallbackQuery($callbackQuery, $expenseService);
+            } catch (\Throwable $e) {
+                Log::error('Telegram callback query handling failed', [
+                    'error' => $e->getMessage(),
+                    'callback_query_id' => $callbackQuery['id'] ?? null,
+                ]);
+            }
+            return response()->json(['ok' => true]);
+        }
+
         $chatId = $request->input('message.chat.id');
         $text = trim($request->input('message.text', ''));
         $photo = $request->input('message.photo');
@@ -251,7 +265,17 @@ class TelegramWebhookController extends Controller
                             . "*Từ ví*: " . $fromWallet->name . " (Số dư: " . number_format((float) $fromWallet->fresh()->calculatedBalance(), 0, ',', '.') . " đ)\n"
                             . "*Sang ví*: " . $toWallet->name . " (Số dư: " . number_format((float) $toWallet->fresh()->calculatedBalance(), 0, ',', '.') . " đ)\n"
                             . "*Ghi chú*: " . $parsed['description'];
-                $this->sendMessage($chatId, $confirmMsg);
+
+                $replyMarkup = [
+                    'inline_keyboard' => [
+                        [
+                            ['text' => '↩️ Hoàn tác', 'callback_data' => 'undo_transfer:' . $transfer->id],
+                            ['text' => '💳 Số dư ví', 'callback_data' => 'view_wallets'],
+                        ]
+                    ]
+                ];
+
+                $this->sendMessage($chatId, $confirmMsg, $replyMarkup);
             } catch (\Throwable $e) {
                 $this->sendMessage($chatId, "❌ Lỗi: " . $e->getMessage());
             }
@@ -296,7 +320,16 @@ class TelegramWebhookController extends Controller
                     . "*Ghi chú*: " . $parsed['description'] . "\n"
                     . "*Ví*: " . $selectedWallet->name . " (Số dư: " . number_format((float) $selectedWallet->fresh()->calculatedBalance(), 0, ',', '.') . " đ)";
 
-        $this->sendMessage($chatId, $confirmMsg);
+        $replyMarkup = [
+            'inline_keyboard' => [
+                [
+                    ['text' => '↩️ Hoàn tác', 'callback_data' => 'undo_expense:' . $expense->id],
+                    ['text' => '💳 Số dư ví', 'callback_data' => 'view_wallets'],
+                ]
+            ]
+        ];
+
+        $this->sendMessage($chatId, $confirmMsg, $replyMarkup);
     }
 
     private function extractWallets(string $text, $allWallets): array
@@ -525,6 +558,63 @@ class TelegramWebhookController extends Controller
 
         $base64 = base64_encode($imageResponse->body());
 
+        // 1. Try scanning as an electricity bill first
+        $electricScanner = new \Modules\AI\Services\GeminiElectricBillScanner();
+        $electricResult = $electricScanner->scan($base64);
+
+        if ($electricResult && $electricResult['is_electric_bill'] && !empty($electricResult['amount'])) {
+            $categories = \Modules\Expense\Models\ExpenseCategory::where('home_id', $home->id)->get();
+            $selectedCategory = $categories->first(fn($cat) => str_contains(mb_strtolower($cat->name, 'UTF-8'), 'điện'))
+                ?: $categories->first(fn($cat) => str_contains(mb_strtolower($cat->name, 'UTF-8'), 'hóa đơn'))
+                ?: $categories->first(fn($cat) => str_contains(mb_strtolower($cat->name, 'UTF-8'), 'sinh hoạt'))
+                ?: $categories->first(fn($cat) => $cat->type === 'expense');
+
+            if (!$selectedCategory) {
+                $this->sendMessage($chatId, '❌ Hệ thống chưa cấu hình danh mục chi tiêu nào.');
+                return;
+            }
+
+            $payload = [
+                'home_id' => $home->id,
+                'wallet_id' => $wallet->id,
+                'category_id' => $selectedCategory->id,
+                'amount' => $electricResult['amount'],
+                'type' => 'expense',
+                'description' => 'Hóa đơn tiền điện ' . ($electricResult['billing_month'] ?: now()->format('m/Y')),
+                'notes' => 'Chỉ số cũ: ' . ($electricResult['old_index'] ?? 'N/A') 
+                    . ' | Chỉ số mới: ' . ($electricResult['new_index'] ?? 'N/A') 
+                    . ' | Tiêu thụ: ' . ($electricResult['kwh'] ?? 'N/A') . ' kWh. '
+                    . 'Quét tự động qua Telegram.',
+                'occurred_at' => now()->toDateTimeString(),
+            ];
+
+            $expense = $expenseService->createExpense($payload, $user);
+
+            $billingMonth = $electricResult['billing_month'] ?: now()->format('m/Y');
+            $confirmMsg = "✅ *QUÉT HÓA ĐƠN ĐIỆN THÀNH CÔNG (AI)*\n\n"
+                        . "• 🔴 *CHI TIÊU*\n"
+                        . "• *Kỳ hóa đơn*: *" . $billingMonth . "*\n"
+                        . "• *Số tiền*: *" . number_format($expense->amount, 0, ',', '.') . " đ*\n"
+                        . "• *Sản lượng*: *" . ($electricResult['kwh'] ? number_format($electricResult['kwh'], 1, ',', '.') . " kWh" : "N/A") . "*\n"
+                        . "• *Chỉ số cũ/mới*: " . ($electricResult['old_index'] ?? 'N/A') . " ➡️ " . ($electricResult['new_index'] ?? 'N/A') . "\n"
+                        . "• *Khách hàng*: " . ($electricResult['customer_name'] ?: 'N/A') . " (" . ($electricResult['customer_code'] ?: 'N/A') . ")\n"
+                        . "• *Ví*: *" . $wallet->name . "* (Số dư: " . number_format((float) $wallet->fresh()->calculatedBalance(), 0, ',', '.') . " đ)\n\n"
+                        . "🤖 _Hóa đơn điện đã được tự động ghi nhận!_";
+
+            $replyMarkup = [
+                'inline_keyboard' => [
+                    [
+                        ['text' => '↩️ Hoàn tác', 'callback_data' => 'undo_expense:' . $expense->id],
+                        ['text' => '💳 Số dư ví', 'callback_data' => 'view_wallets'],
+                    ]
+                ]
+            ];
+
+            $this->sendMessage($chatId, $confirmMsg, $replyMarkup);
+            return;
+        }
+
+        // 2. Fallback to normal receipt scanner
         $scanner = new \Modules\AI\Services\GeminiBillScanner();
         $result = $scanner->scan($base64);
 
@@ -585,10 +675,122 @@ class TelegramWebhookController extends Controller
                     . "• *Ví*: *" . $wallet->name . "* (Số dư: " . number_format((float) $wallet->fresh()->calculatedBalance(), 0, ',', '.') . " đ)\n\n"
                     . "🤖 _Hóa đơn đã được tự động ghi nhận vào tài khoản!_";
 
-        $this->sendMessage($chatId, $confirmMsg);
+        $replyMarkup = [
+            'inline_keyboard' => [
+                [
+                    ['text' => '↩️ Hoàn tác', 'callback_data' => 'undo_expense:' . $expense->id],
+                    ['text' => '💳 Số dư ví', 'callback_data' => 'view_wallets'],
+                ]
+            ]
+        ];
+
+        $this->sendMessage($chatId, $confirmMsg, $replyMarkup);
     }
 
-    private function sendMessage(int $chatId, string $text): void
+    private function handleCallbackQuery(array $callbackQuery, ExpenseService $expenseService): void
+    {
+        $queryId = (string) ($callbackQuery['id'] ?? '');
+        $message = $callbackQuery['message'] ?? [];
+        $chatId = $message['chat']['id'] ?? null;
+        $data = $callbackQuery['data'] ?? '';
+        $messageId = $message['message_id'] ?? null;
+        $messageText = $message['text'] ?? $message['caption'] ?? 'Giao dịch';
+
+        if (empty($queryId) || empty($chatId) || empty($data)) {
+            $this->answerCallbackQuery($queryId, '⚠️ Dữ liệu không hợp lệ.');
+            return;
+        }
+
+        $user = User::where('telegram_chat_id', $chatId)->first();
+        if (!$user) {
+            $this->answerCallbackQuery($queryId, '❌ Tài khoản chưa liên kết.');
+            return;
+        }
+
+        if (str_starts_with($data, 'undo_expense:')) {
+            $expenseId = (int) substr($data, 13);
+            $expense = \Modules\Expense\Models\Expense::find($expenseId);
+
+            if (!$expense) {
+                $this->answerCallbackQuery($queryId, '⚠️ Giao dịch không tồn tại hoặc đã bị xóa.');
+                return;
+            }
+
+            $isMember = $user->homeMembers()->where('home_id', $expense->home_id)->exists();
+            if (!$isMember) {
+                $this->answerCallbackQuery($queryId, '❌ Bạn không có quyền thực hiện hành động này.');
+                return;
+            }
+
+            try {
+                $expenseService->deleteExpense($expense);
+                $this->answerCallbackQuery($queryId, '✅ Đã hoàn tác chi tiêu thành công.');
+                
+                $this->editMessageText($chatId, $messageId, $messageText . "\n\n🔄 *Đã hoàn tác giao dịch này.*");
+            } catch (\Throwable $e) {
+                $this->answerCallbackQuery($queryId, '❌ Lỗi: ' . $e->getMessage());
+            }
+        } elseif (str_starts_with($data, 'undo_transfer:')) {
+            $transferId = (int) substr($data, 14);
+            $transfer = \Modules\Expense\Models\Transfer::find($transferId);
+
+            if (!$transfer) {
+                $this->answerCallbackQuery($queryId, '⚠️ Giao dịch không tồn tại hoặc đã bị xóa.');
+                return;
+            }
+
+            $isMember = $user->homeMembers()->where('home_id', $transfer->home_id)->exists();
+            if (!$isMember) {
+                $this->answerCallbackQuery($queryId, '❌ Bạn không có quyền thực hiện hành động này.');
+                return;
+            }
+
+            try {
+                $transferService = app(\Modules\Expense\Services\TransferService::class);
+                $transferService->reverseTransfer($transfer);
+                $this->answerCallbackQuery($queryId, '✅ Đã hoàn tác chuyển khoản thành công.');
+
+                $this->editMessageText($chatId, $messageId, $messageText . "\n\n🔄 *Đã hoàn tác chuyển khoản này.*");
+            } catch (\Throwable $e) {
+                $this->answerCallbackQuery($queryId, '❌ Lỗi: ' . $e->getMessage());
+            }
+        } elseif ($data === 'view_wallets') {
+            $this->answerCallbackQuery($queryId, 'Đang tải danh sách ví...');
+            $this->handleWalletsCommand($chatId);
+        } else {
+            $this->answerCallbackQuery($queryId, '⚠️ Lệnh không xác định.');
+        }
+    }
+
+    private function answerCallbackQuery(string $callbackQueryId, string $text): void
+    {
+        $token = config('services.telegram.bot_token');
+        if (empty($token) || empty($callbackQueryId)) {
+            return;
+        }
+
+        Http::post("https://api.telegram.org/bot{$token}/answerCallbackQuery", [
+            'callback_query_id' => $callbackQueryId,
+            'text' => $text,
+        ]);
+    }
+
+    private function editMessageText(int $chatId, ?int $messageId, string $text): void
+    {
+        $token = config('services.telegram.bot_token');
+        if (empty($token) || empty($messageId)) {
+            return;
+        }
+
+        Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+            'text' => $text,
+            'parse_mode' => 'Markdown',
+        ]);
+    }
+
+    private function sendMessage(int $chatId, string $text, ?array $replyMarkup = null): void
     {
         $token = config('services.telegram.bot_token');
         if (empty($token)) {
@@ -599,10 +801,16 @@ class TelegramWebhookController extends Controller
             return;
         }
 
-        Http::post("https://api.telegram.org/bot{$token}/sendMessage", [
+        $params = [
             'chat_id' => $chatId,
             'text' => $text,
             'parse_mode' => 'Markdown',
-        ]);
+        ];
+
+        if ($replyMarkup) {
+            $params['reply_markup'] = $replyMarkup;
+        }
+
+        Http::post("https://api.telegram.org/bot{$token}/sendMessage", $params);
     }
 }

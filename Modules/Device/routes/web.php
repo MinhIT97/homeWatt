@@ -8,7 +8,11 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     Route::resource('devices', DeviceController::class);
 
     Route::post('/devices/analyze-image', [DeviceController::class, 'analyzeImage'])
+        ->middleware('throttle.ai')
         ->name('devices.analyze-image');
+
+    Route::get('/devices/analysis/{id}/status', [DeviceController::class, 'checkAnalysisStatus'])
+        ->name('devices.analysis.status');
 
     Route::post('/devices/{device}/upload-image', [DeviceController::class, 'uploadImage'])
         ->name('devices.upload-image');

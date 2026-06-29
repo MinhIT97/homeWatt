@@ -6,13 +6,16 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
-use Modules\AI\Contracts\DeviceImageAnalyzer;
 use Modules\AI\Models\AiAnalysisRequest;
 use Modules\Device\Http\Requests\StoreDeviceRequest;
 use Modules\Device\Http\Requests\UpdateDeviceRequest;
+use Modules\Device\Jobs\ScanDevicePhotoJob;
 use Modules\Device\Models\Device;
 use Modules\Device\Models\DeviceRepair;
 use Modules\Device\Models\DeviceSpecification;
@@ -223,7 +226,7 @@ class DeviceController extends Controller
         return back()->with('success', __('device.image_deleted'));
     }
 
-    public function analyzeImage(Request $request, DeviceImageAnalyzer $analyzer): JsonResponse
+    public function analyzeImage(Request $request): JsonResponse
     {
         $request->validate([
             'image' => ['required', 'image', 'mimes:jpeg,png,webp', 'max:20480'],
@@ -233,14 +236,21 @@ class DeviceController extends Controller
             $file = $request->file('image');
             $base64 = base64_encode(file_get_contents($file->getRealPath()));
 
-            $result = $analyzer->analyze($base64);
+            $analysisId = 'analysis_'.Str::uuid()->toString();
+            Cache::put("device_analysis:{$analysisId}", [
+                'status' => 'pending',
+                'user_id' => $request->user()->id,
+            ], 3600);
+
+            ScanDevicePhotoJob::dispatch($analysisId, $request->user()->id, $base64);
 
             return response()->json([
                 'success' => true,
-                'data' => $result,
+                'async' => true,
+                'analysis_id' => $analysisId,
             ]);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('AI upload-time analysis failed', [
+            Log::error('AI async upload-time analysis failed', [
                 'error' => $e->getMessage(),
             ]);
 
@@ -249,6 +259,26 @@ class DeviceController extends Controller
                 'message' => 'Phân tích ảnh thất bại: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function checkAnalysisStatus(Request $request, string $id): JsonResponse
+    {
+        $data = Cache::get("device_analysis:{$id}");
+
+        if (!$data) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Yêu cầu không tồn tại hoặc đã hết hạn.',
+            ], 404);
+        }
+
+        if (($data['user_id'] ?? null) !== $request->user()->id) {
+            abort(403);
+        }
+
+        unset($data['user_id']);
+
+        return response()->json($data);
     }
 
     protected function authorizeRoomMember(Request $request, Room $room): void

@@ -100,11 +100,11 @@ class RoomPricingTest extends TestCase
     public function test_home_show_displays_total_price(): void
     {
         $user = User::factory()->create();
-        $home = Home::create([
-            'owner_id' => $user->id,
+        $home = new Home([
             'name' => 'Price Home',
             'currency' => 'VND',
         ]);
+        $home->forceFill(['owner_id' => $user->id])->save();
         $m = HomeMember::create(['home_id' => $home->id, 'user_id' => $user->id]);
         $m->assignRole('owner');
 
