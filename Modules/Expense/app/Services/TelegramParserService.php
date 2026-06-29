@@ -28,8 +28,12 @@ class TelegramParserService
         $categoryName = 'Khác'; // default
         $cleanText = $lowercaseText;
 
-        // Pattern matching for Lending / Borrowing first since they are multi-word
-        if ($this->hasPrefix($lowercaseText, ['cho vay', 'cho muon', 'cho mượn'])) {
+        // Pattern matching for Lending / Borrowing/Transfer first since they are multi-word
+        if ($this->hasPrefix($lowercaseText, ['chuyen khoan', 'chuyển khoản', 'chuyen tien', 'chuyển tiền', 'chuyen', 'chuyển', 'ck', 'transfer'])) {
+            $type = 'transfer';
+            $categoryName = 'Chuyển tiền';
+            $cleanText = $this->removePrefix($lowercaseText, ['chuyen khoan', 'chuyển khoản', 'chuyen tien', 'chuyển tiền', 'chuyen', 'chuyển', 'ck', 'transfer']);
+        } elseif ($this->hasPrefix($lowercaseText, ['cho vay', 'cho muon', 'cho mượn'])) {
             $type = 'expense';
             $categoryGroup = ExpenseCategory::GROUP_LENDING;
             $categoryName = 'Cho vay';
@@ -114,9 +118,9 @@ class TelegramParserService
         // Original casing for description if possible
         $originalDesc = $text;
         // Strip out command prefix from original casing
-        foreach (['cho vay', 'cho muon', 'cho mượn', 'thu no', 'thu nợ', 'đòi nợ', 'doi no', 'tra no', 'trả nợ', 'trả tiền', 'tra tien', 'di vay', 'đi vay', 'vay tiền', 'vay tien', 'vay', 'mượn', 'muon', 'chi', 'tieu', 'tiêu', 'mua', 'pay', 'out', 'thu', 'nhan', 'nhận', 'luong', 'lương', 'in'] as $prefix) {
-            if (str_starts_with(mb_strtolower($originalDesc), $prefix)) {
-                $originalDesc = trim(mb_substr($originalDesc, mb_strlen($prefix)));
+        foreach (['chuyen khoan', 'chuyển khoản', 'chuyen tien', 'chuyển tiền', 'chuyen', 'chuyển', 'ck', 'transfer', 'cho vay', 'cho muon', 'cho mượn', 'thu no', 'thu nợ', 'đòi nợ', 'doi no', 'tra no', 'trả nợ', 'trả tiền', 'tra tien', 'di vay', 'đi vay', 'vay tiền', 'vay tien', 'vay', 'mượn', 'muon', 'chi', 'tieu', 'tiêu', 'mua', 'pay', 'out', 'thu', 'nhan', 'nhận', 'luong', 'lương', 'in'] as $prefix) {
+            if (str_starts_with(mb_strtolower($originalDesc, 'UTF-8'), $prefix)) {
+                $originalDesc = trim(mb_substr($originalDesc, mb_strlen($prefix, 'UTF-8'), null, 'UTF-8'));
                 break;
             }
         }
@@ -125,6 +129,65 @@ class TelegramParserService
         if (!empty($origAmountMatches)) {
             $originalDesc = trim(str_replace($origAmountMatches[0], '', $originalDesc));
         }
+
+        // For transfers, strip prepositions and wallet candidates to make description clean
+        if ($type === 'transfer') {
+            $wallets = \Modules\Wallet\Models\Wallet::where('home_id', $homeId)
+                ->where('is_archived', false)
+                ->get();
+            $candidates = ['từ', 'tu', 'sang', 'đến', 'den', 'qua', 'vào', 'vao', '->'];
+            foreach ($wallets as $w) {
+                $walletNameLower = mb_strtolower($w->name, 'UTF-8');
+                $walletNameNoSpaces = str_replace(' ', '', $walletNameLower);
+                $candidates[] = $w->name;
+                $candidates[] = $walletNameLower;
+                $candidates[] = $walletNameNoSpaces;
+                $candidates[] = 'tài khoản ' . $walletNameLower;
+                $candidates[] = 'tài khoản ' . $walletNameNoSpaces;
+                $candidates[] = 'taikhoan ' . $walletNameLower;
+                $candidates[] = 'taikhoan ' . $walletNameNoSpaces;
+                $candidates[] = 'tk ' . $walletNameLower;
+                $candidates[] = 'tk ' . $walletNameNoSpaces;
+                $candidates[] = 'ví ' . $walletNameLower;
+                $candidates[] = 'ví ' . $walletNameNoSpaces;
+                $candidates[] = 'vi ' . $walletNameLower;
+                $candidates[] = 'vi ' . $walletNameNoSpaces;
+
+                if (str_contains($walletNameLower, 'techcombank')) {
+                    $candidates[] = 'tech';
+                    $candidates[] = 'tcb';
+                    $candidates[] = 'ví thấu chi tech';
+                    $candidates[] = 'ví thấu chi techcombank';
+                }
+                if (str_contains($walletNameLower, 'vietcombank')) {
+                    $candidates[] = 'vcb';
+                }
+                if (str_contains($walletNameLower, 'momo')) {
+                    $candidates[] = 'momo';
+                }
+                if (str_contains($walletNameLower, 'tiền mặt') || str_contains($walletNameLower, 'tien mat')) {
+                    $candidates[] = 'tien mat';
+                    $candidates[] = 'tiền mặt';
+                    $candidates[] = 'tm';
+                }
+                if (str_contains($walletNameLower, 'vpbank') || str_contains($walletNameLower, 'vp bank')) {
+                    $candidates[] = 'vpbank';
+                    $candidates[] = 'vp bank';
+                    $candidates[] = 'vp';
+                }
+            }
+
+            // Sort by length descending to replace longer candidates first
+            $candidates = array_values(array_unique(array_filter($candidates)));
+            usort($candidates, fn($a, $b) => mb_strlen($b, 'UTF-8') <=> mb_strlen($a, 'UTF-8'));
+
+            foreach ($candidates as $cand) {
+                // Use case-insensitive replacement
+                $originalDesc = preg_replace('/\b' . preg_quote($cand, '/') . '\b/iu', '', $originalDesc);
+                $originalDesc = str_ireplace($cand, '', $originalDesc);
+            }
+        }
+
         $originalDesc = trim($originalDesc, " -:,=");
         
         if (empty($originalDesc)) {

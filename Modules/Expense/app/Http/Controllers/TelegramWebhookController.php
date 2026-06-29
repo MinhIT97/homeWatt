@@ -158,102 +158,22 @@ class TelegramWebhookController extends Controller
             return;
         }
 
-        // 1. Match wallet across ALL homes
-        $selectedWallet = null;
-        $selectedHome = null;
-        $cleanTextLower = mb_strtolower($text, 'UTF-8');
+        // 1. Match wallets across ALL homes
+        $extracted = $this->extractWallets($text, $allWallets);
+        $modifiedText = $extracted['text'];
+        $matchedWallets = $extracted['matched_wallets'];
 
-        foreach ($allWallets as $w) {
-            $walletNameLower = mb_strtolower($w->name, 'UTF-8');
-            $walletNameNoSpaces = str_replace(' ', '', $walletNameLower);
-
-            // Xây dựng danh sách các từ khóa có thể khớp với ví này
-            $matchCandidates = [
-                $w->name,
-                $walletNameLower,
-                $walletNameNoSpaces,
-                'tài khoản ' . $walletNameLower,
-                'tài khoản ' . $walletNameNoSpaces,
-                'taikhoan ' . $walletNameLower,
-                'taikhoan ' . $walletNameNoSpaces,
-                'tk ' . $walletNameLower,
-                'tk ' . $walletNameNoSpaces,
-            ];
-
-            // Tự động thêm các viết tắt phổ biến
-            if (str_contains($walletNameLower, 'techcombank')) {
-                $matchCandidates[] = 'tech';
-                $matchCandidates[] = 'tcb';
-            }
-            if (str_contains($walletNameLower, 'vietcombank')) {
-                $matchCandidates[] = 'vcb';
-            }
-            if (str_contains($walletNameLower, 'momo')) {
-                $matchCandidates[] = 'momo';
-            }
-            if (str_contains($walletNameLower, 'tiền mặt') || str_contains($walletNameLower, 'tien mat')) {
-                $matchCandidates[] = 'tien mat';
-                $matchCandidates[] = 'tiền mặt';
-                $matchCandidates[] = 'tm';
-            }
-            if (str_contains($walletNameLower, 'vpbank') || str_contains($walletNameLower, 'vp bank')) {
-                $matchCandidates[] = 'vpbank';
-                $matchCandidates[] = 'vp bank';
-                $matchCandidates[] = 'vp';
-            }
-
-            // Sắp xếp các ứng viên khớp theo độ dài giảm dần để khớp cụm từ dài trước (tránh khớp nhầm từ ngắn)
-            usort($matchCandidates, fn($a, $b) => strlen($b) <=> strlen($a));
-
-            foreach ($matchCandidates as $candidate) {
-                $candidateLower = mb_strtolower($candidate, 'UTF-8');
-                
-                // Khớp trực tiếp trong tin nhắn
-                if (str_contains($cleanTextLower, $candidateLower)) {
-                    $selectedWallet = $w;
-                    $selectedHome = $memberships->firstWhere('home_id', $w->home_id)?->home;
-                    $text = str_ireplace($candidateLower, '', $text);
-                    break 2;
-                }
-                
-                // Khớp không dấu/không cách (ví dụ "vp bank" khớp với "vpbank")
-                $candidateNoSpaces = str_replace(' ', '', $candidateLower);
-                $textNoSpaces = str_replace(' ', '', $cleanTextLower);
-                if (str_contains($textNoSpaces, $candidateNoSpaces)) {
-                    $selectedWallet = $w;
-                    $selectedHome = $memberships->firstWhere('home_id', $w->home_id)?->home;
-                    
-                    // Loại bỏ phần khớp khỏi tin nhắn gốc để không bị đưa vào mô tả
-                    $text = str_ireplace($w->name, '', $text);
-                    $text = str_ireplace($candidateLower, '', $text);
-                    foreach (explode(' ', $candidateLower) as $part) {
-                        if (strlen($part) > 1) {
-                            $text = str_ireplace($part, '', $text);
-                        }
-                    }
-                    break 2;
-                }
-            }
-        }
-
-        // 2. Fallback to first home's default wallets
-        if (!$selectedWallet) {
-            $firstHome = $memberships->first()->home;
-            $homeWallets = $allWallets->where('home_id', $firstHome->id);
-            $selectedWallet = $homeWallets->first(fn($w) => str_contains(mb_strtolower($w->name, 'UTF-8'), 'tiền mặt'))
-                ?: $homeWallets->first(fn($w) => str_contains(mb_strtolower($w->name, 'UTF-8'), 'chính'))
-                ?: $homeWallets->first();
-            $selectedHome = $firstHome;
-
-            // Notify multi-home users which home is being used
-            if ($memberships->count() > 1) {
-                $this->sendMessage($chatId, "ℹ️ Đang ghi giao dịch vào nhà *{$selectedHome->name}*.\nĐể chọn nhà khác, hãy thêm tên ví thuộc nhà đó vào tin nhắn.");
-            }
+        // Determine active home
+        if (count($matchedWallets) > 0) {
+            $selectedHome = $memberships->firstWhere('home_id', $matchedWallets[0]->home_id)?->home;
+        } else {
+            $selectedHome = $memberships->first()->home;
         }
 
         $home = $selectedHome;
 
-        $parsed = $parser->parse($text, $home->id);
+        // Parse command text
+        $parsed = $parser->parse($modifiedText, $home->id);
 
         if (!$parsed) {
             $msg = "❓ Cú pháp không hợp lệ. Vui lòng nhập theo các ví dụ sau:\n\n"
@@ -262,10 +182,96 @@ class TelegramWebhookController extends Controller
                  . "• *Cho vay*: `cho vay 200k cho bạn`\n"
                  . "• *Đi vay*: `vay 1tr mua đồ ăn`\n"
                  . "• *Trả nợ*: `trả nợ 100k`\n"
-                 . "• *Thu nợ*: `thu nợ 300k từ Nam`\n\n"
+                 . "• *Thu nợ*: `thu nợ 300k từ Nam`\n"
+                 . "• *Chuyển khoản*: `chuyển 80k từ techcombank sang vpbank` hoặc `ck 50k sang momo`\n\n"
                  . "💡 *Lưu ý:* Hệ thống tự động ghi nhận vào ví đúng nếu bạn ghi tên ví hoặc tên viết tắt (như vcb, tech, momo, tm) trong nội dung tin nhắn.";
             $this->sendMessage($chatId, $msg);
             return;
+        }
+
+        // Check if it's a transfer
+        if ($parsed['type'] === 'transfer') {
+            $fromWallet = null;
+            $toWallet = null;
+            $modifiedTextLower = mb_strtolower($modifiedText, 'UTF-8');
+
+            if (count($matchedWallets) >= 2) {
+                if (preg_match('/\{wallet_(\d+)\}\s*(?:sang|đến|den|qua|vào|vao|->)\s*\{wallet_(\d+)\}/i', $modifiedTextLower, $matches)) {
+                    $fromWallet = $matchedWallets[(int)$matches[1]] ?? null;
+                    $toWallet = $matchedWallets[(int)$matches[2]] ?? null;
+                } elseif (preg_match('/(?:sang|đến|den|qua|vào|vao|->)\s*\{wallet_(\d+)\}\s*(?:từ|tu)\s*\{wallet_(\d+)\}/i', $modifiedTextLower, $matches)) {
+                    $toWallet = $matchedWallets[(int)$matches[1]] ?? null;
+                    $fromWallet = $matchedWallets[(int)$matches[2]] ?? null;
+                } else {
+                    $fromWallet = $matchedWallets[0] ?? null;
+                    $toWallet = $matchedWallets[1] ?? null;
+                }
+            } elseif (count($matchedWallets) === 1) {
+                $wallet = $matchedWallets[0];
+                if (preg_match('/(?:sang|đến|den|qua|vào|vao|->)\s*\{wallet_0\}/i', $modifiedTextLower)) {
+                    $toWallet = $wallet;
+                } elseif (preg_match('/(?:từ|tu)\s*\{wallet_0\}/i', $modifiedTextLower)) {
+                    $fromWallet = $wallet;
+                } else {
+                    $toWallet = $wallet;
+                }
+            }
+
+            // Fill default wallets
+            $homeWallets = $allWallets->where('home_id', $home->id);
+            $defaultWallet = $homeWallets->first(fn($w) => str_contains(mb_strtolower($w->name, 'UTF-8'), 'tiền mặt'))
+                ?: $homeWallets->first(fn($w) => str_contains(mb_strtolower($w->name, 'UTF-8'), 'chính'))
+                ?: $homeWallets->first();
+
+            if (!$fromWallet) {
+                $fromWallet = $defaultWallet;
+            }
+            if (!$toWallet) {
+                $toWallet = $homeWallets->first(fn($w) => $w->id !== $fromWallet->id) ?: $defaultWallet;
+            }
+
+            if ($fromWallet->id === $toWallet->id) {
+                $this->sendMessage($chatId, "❌ Không thể chuyển tiền đến cùng một ví ({$fromWallet->name}). Vui lòng nhập lại ví nguồn và ví đích khác nhau.");
+                return;
+            }
+
+            try {
+                $transferService = app(\Modules\Expense\Services\TransferService::class);
+                $transfer = $transferService->createTransfer([
+                    'home_id' => $home->id,
+                    'from_wallet_id' => $fromWallet->id,
+                    'to_wallet_id' => $toWallet->id,
+                    'amount' => $parsed['amount'],
+                    'description' => $parsed['description'],
+                    'occurred_at' => now()->toDateTimeString(),
+                ], $user);
+
+                $confirmMsg = "✅ *Chuyển khoản thành công!*\n\n"
+                            . "*Số tiền*: " . number_format($parsed['amount'], 0, ',', '.') . " đ\n"
+                            . "*Từ ví*: " . $fromWallet->name . " (Số dư: " . number_format((float) $fromWallet->fresh()->calculatedBalance(), 0, ',', '.') . " đ)\n"
+                            . "*Sang ví*: " . $toWallet->name . " (Số dư: " . number_format((float) $toWallet->fresh()->calculatedBalance(), 0, ',', '.') . " đ)\n"
+                            . "*Ghi chú*: " . $parsed['description'];
+                $this->sendMessage($chatId, $confirmMsg);
+            } catch (\Throwable $e) {
+                $this->sendMessage($chatId, "❌ Lỗi: " . $e->getMessage());
+            }
+
+            return;
+        }
+
+        // 2. Normal income/expense
+        $selectedWallet = count($matchedWallets) > 0 ? $matchedWallets[0] : null;
+
+        if (!$selectedWallet) {
+            $homeWallets = $allWallets->where('home_id', $home->id);
+            $selectedWallet = $homeWallets->first(fn($w) => str_contains(mb_strtolower($w->name, 'UTF-8'), 'tiền mặt'))
+                ?: $homeWallets->first(fn($w) => str_contains(mb_strtolower($w->name, 'UTF-8'), 'chính'))
+                ?: $homeWallets->first();
+
+            // Notify multi-home users which home is being used
+            if ($memberships->count() > 1) {
+                $this->sendMessage($chatId, "ℹ️ Đang ghi giao dịch vào nhà *{$home->name}*.\nĐể chọn nhà khác, hãy thêm tên ví thuộc nhà đó vào tin nhắn.");
+            }
         }
 
         // Add default values to payload for ExpenseService
@@ -291,6 +297,98 @@ class TelegramWebhookController extends Controller
                     . "*Ví*: " . $selectedWallet->name . " (Số dư: " . number_format((float) $selectedWallet->fresh()->calculatedBalance(), 0, ',', '.') . " đ)";
 
         $this->sendMessage($chatId, $confirmMsg);
+    }
+
+    private function extractWallets(string $text, $allWallets): array
+    {
+        $cleanTextLower = mb_strtolower($text, 'UTF-8');
+        $matchedWallets = [];
+        $placeholderIndex = 0;
+        
+        // Generate candidates
+        $candidates = [];
+        foreach ($allWallets as $w) {
+            $walletNameLower = mb_strtolower($w->name, 'UTF-8');
+            $walletNameNoSpaces = str_replace(' ', '', $walletNameLower);
+
+            $matchCandidates = [
+                $w->name,
+                $walletNameLower,
+                $walletNameNoSpaces,
+                'tài khoản ' . $walletNameLower,
+                'tài khoản ' . $walletNameNoSpaces,
+                'taikhoan ' . $walletNameLower,
+                'taikhoan ' . $walletNameNoSpaces,
+                'tk ' . $walletNameLower,
+                'tk ' . $walletNameNoSpaces,
+                'ví ' . $walletNameLower,
+                'ví ' . $walletNameNoSpaces,
+                'vi ' . $walletNameLower,
+                'vi ' . $walletNameNoSpaces,
+            ];
+
+            if (str_contains($walletNameLower, 'techcombank')) {
+                $matchCandidates[] = 'tech';
+                $matchCandidates[] = 'tcb';
+                $matchCandidates[] = 'ví thấu chi tech';
+                $matchCandidates[] = 'ví thấu chi techcombank';
+                $matchCandidates[] = 'thấu chi techcombank';
+            }
+            if (str_contains($walletNameLower, 'vietcombank')) {
+                $matchCandidates[] = 'vcb';
+            }
+            if (str_contains($walletNameLower, 'momo')) {
+                $matchCandidates[] = 'momo';
+            }
+            if (str_contains($walletNameLower, 'tiền mặt') || str_contains($walletNameLower, 'tien mat')) {
+                $matchCandidates[] = 'tien mat';
+                $matchCandidates[] = 'tiền mặt';
+                $matchCandidates[] = 'tm';
+            }
+            if (str_contains($walletNameLower, 'vpbank') || str_contains($walletNameLower, 'vp bank')) {
+                $matchCandidates[] = 'vpbank';
+                $matchCandidates[] = 'vp bank';
+                $matchCandidates[] = 'vp';
+            }
+
+            // De-duplicate candidates and filter out empty
+            $matchCandidates = array_values(array_unique(array_filter($matchCandidates)));
+
+            foreach ($matchCandidates as $candidate) {
+                $candidates[] = [
+                    'wallet' => $w,
+                    'candidate' => mb_strtolower($candidate, 'UTF-8'),
+                ];
+            }
+        }
+
+        // Sort by candidate length descending
+        usort($candidates, fn($a, $b) => mb_strlen($b['candidate'], 'UTF-8') <=> mb_strlen($a['candidate'], 'UTF-8'));
+
+        $modifiedOriginal = $text;
+
+        foreach ($candidates as $item) {
+            $candidateLower = $item['candidate'];
+            
+            // Check in lowercase text
+            $modifiedLower = mb_strtolower($modifiedOriginal, 'UTF-8');
+            if (($pos = mb_strpos($modifiedLower, $candidateLower, 0, 'UTF-8')) !== false) {
+                $placeholder = "{wallet_{$placeholderIndex}}";
+                $matchedWallets[$placeholderIndex] = $item['wallet'];
+                
+                // Replace in original text using multibyte functions
+                $modifiedOriginal = mb_substr($modifiedOriginal, 0, $pos, 'UTF-8') 
+                    . $placeholder 
+                    . mb_substr($modifiedOriginal, $pos + mb_strlen($candidateLower, 'UTF-8'), null, 'UTF-8');
+                
+                $placeholderIndex++;
+            }
+        }
+
+        return [
+            'text' => $modifiedOriginal,
+            'matched_wallets' => $matchedWallets,
+        ];
     }
 
     private function handleHelpCommand(int $chatId): void
