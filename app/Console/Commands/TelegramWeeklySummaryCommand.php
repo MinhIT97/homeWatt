@@ -73,7 +73,8 @@ class TelegramWeeklySummaryCommand extends Command
             if ($wallets->isNotEmpty()) {
                 foreach ($wallets as $w) {
                     $balanceStr = number_format($w->calculatedBalance(), 0, ',', '.') . ' ' . $w->currency;
-                    $msg .= "  • " . ($w->type === 'credit_card' ? '💳' : '💵') . " *{$w->name}*: {$balanceStr}\n";
+                    $emoji = ($w->type === 'credit_card' || $w->type === 'overdraft') ? '💳' : '💵';
+                    $msg .= "  • {$emoji} *{$w->name}*: {$balanceStr}\n";
                 }
             } else {
                 $msg .= "  • _Chưa có thông tin ví_\n";

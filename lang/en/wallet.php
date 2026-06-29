@@ -14,6 +14,7 @@ return [
     'type_cash' => 'Cash',
     'type_bank' => 'Bank Account',
     'type_credit_card' => 'Credit Card',
+    'type_overdraft' => 'Overdraft Account',
     'opening_balance' => 'Opening Balance',
     'opening_balance_help' => 'Initial amount of money in this wallet.',
     'opening_balance_warning' => 'Changing this will adjust the current balance accordingly.',

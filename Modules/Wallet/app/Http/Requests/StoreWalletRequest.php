@@ -28,7 +28,7 @@ class StoreWalletRequest extends FormRequest
         return [
             'home_id' => ['required', 'exists:homes,id'],
             'name' => ['required', 'string', 'max:100'],
-            'type' => ['required', 'string', 'in:cash,bank,credit_card'],
+            'type' => ['required', 'string', 'in:' . implode(',', \Modules\Wallet\Models\Wallet::TYPES)],
             'currency' => ['nullable', 'string', 'size:3'],
             'opening_balance' => ['required', 'numeric', 'min:0', 'max:99999999999999.99'],
             'icon' => ['nullable', 'string', 'max:50'],

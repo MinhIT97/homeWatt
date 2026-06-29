@@ -14,6 +14,7 @@ return [
     'type_cash' => 'Tiền mặt',
     'type_bank' => 'Tài khoản ngân hàng',
     'type_credit_card' => 'Thẻ tín dụng',
+    'type_overdraft' => 'Tài khoản/Ví thấu chi',
     'opening_balance' => 'Số dư ban đầu',
     'opening_balance_help' => 'Số tiền ban đầu có trong ví.',
     'opening_balance_warning' => 'Thay đổi số này sẽ điều chỉnh số dư hiện tại tương ứng.',

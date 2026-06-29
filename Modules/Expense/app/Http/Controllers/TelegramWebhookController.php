@@ -346,12 +346,15 @@ class TelegramWebhookController extends Controller
             $homeName = $memberships->firstWhere('home_id', $homeId)?->home?->name ?? 'Nhà';
             $msg .= "🏠 *{$homeName}:*\n";
             foreach ($homeWallets as $w) {
-                $typeEmoji = $w->type === Wallet::TYPE_CREDIT_CARD ? '💳' : ($w->type === Wallet::TYPE_BANK ? '🏦' : '💵');
+                $typeEmoji = ($w->type === Wallet::TYPE_CREDIT_CARD || $w->type === Wallet::TYPE_OVERDRAFT) ? '💳' : ($w->type === Wallet::TYPE_BANK ? '🏦' : '💵');
                 $balanceStr = number_format($w->calculatedBalance(), 0, ',', '.') . ' ' . $w->currency;
                 
                 if ($w->type === Wallet::TYPE_CREDIT_CARD) {
                     $debt = (float) $w->opening_balance - $w->calculatedBalance();
                     $msg .= "  • {$typeEmoji} *{$w->name}*: Hạn mức " . number_format($w->opening_balance, 0, ',', '.') . " | Đang nợ: " . number_format($debt, 0, ',', '.') . " {$w->currency}\n";
+                } elseif ($w->type === Wallet::TYPE_OVERDRAFT) {
+                    $debt = (float) $w->opening_balance - $w->calculatedBalance();
+                    $msg .= "  • {$typeEmoji} *{$w->name}*: Hạn mức thấu chi " . number_format($w->opening_balance, 0, ',', '.') . " | Đang nợ: " . number_format($debt, 0, ',', '.') . " {$w->currency}\n";
                 } else {
                     $msg .= "  • {$typeEmoji} *{$w->name}*: {$balanceStr}\n";
                 }

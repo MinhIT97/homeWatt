@@ -31,14 +31,14 @@ class WalletController extends Controller
         $totalBalance = (float) $allWallets->sum(fn ($w) => $w->netBalance());
 
         $totalOpening = (float) $allWallets->sum(function ($w) {
-            if ($w->type === 'credit_card') {
+            if ($w->type === Wallet::TYPE_CREDIT_CARD || $w->type === Wallet::TYPE_OVERDRAFT) {
                 return 0.0;
             }
             return (float) $w->opening_balance;
         });
 
         $creditCardDebt = (float) $allWallets->sum(function ($w) {
-            if ($w->type === 'credit_card') {
+            if ($w->type === Wallet::TYPE_CREDIT_CARD || $w->type === Wallet::TYPE_OVERDRAFT) {
                 return $w->netBalance();
             }
             return 0.0;

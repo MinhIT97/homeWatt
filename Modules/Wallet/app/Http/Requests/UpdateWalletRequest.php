@@ -27,7 +27,7 @@ class UpdateWalletRequest extends FormRequest
     {
         return [
             'name' => ['sometimes', 'required', 'string', 'max:100'],
-            'type' => ['sometimes', 'required', 'string', 'in:cash,bank,credit_card'],
+            'type' => ['sometimes', 'required', 'string', 'in:' . implode(',', \Modules\Wallet\Models\Wallet::TYPES)],
             'currency' => ['sometimes', 'nullable', 'string', 'size:3'],
             'opening_balance' => ['sometimes', 'required', 'numeric', 'min:0', 'max:99999999999999.99'],
             'icon' => ['sometimes', 'nullable', 'string', 'max:50'],

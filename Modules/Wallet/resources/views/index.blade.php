@@ -22,7 +22,7 @@
                         </div>
                     </div>
                     <div>
-                        <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Dư nợ thẻ tín dụng</div>
+                        <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Dư nợ tín dụng & thấu chi</div>
                         <div class="mt-1 text-2xl font-bold text-red-650 font-outfit">
                             {{ number_format($creditCardDebt, 0, ',', '.') }} {{ $homeCurrency }}
                         </div>

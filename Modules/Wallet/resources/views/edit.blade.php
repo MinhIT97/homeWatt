@@ -43,6 +43,7 @@
                             <option value="cash" @selected($wallet->type === 'cash')>💵 {{ __('wallet.type_cash') }}</option>
                             <option value="bank" @selected($wallet->type === 'bank')>🏦 {{ __('wallet.type_bank') }}</option>
                             <option value="credit_card" @selected($wallet->type === 'credit_card')>💳 {{ __('wallet.type_credit_card') }}</option>
+                            <option value="overdraft" @selected($wallet->type === 'overdraft')>🏦 {{ __('wallet.type_overdraft') }}</option>
                         </select>
                     </div>
 

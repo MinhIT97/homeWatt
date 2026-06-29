@@ -54,6 +54,7 @@
                             <option value="cash" @selected(old('type') === 'cash')>💵 {{ __('wallet.type_cash') }}</option>
                             <option value="bank" @selected(old('type') === 'bank')>🏦 {{ __('wallet.type_bank') }}</option>
                             <option value="credit_card" @selected(old('type') === 'credit_card')>💳 {{ __('wallet.type_credit_card') }}</option>
+                            <option value="overdraft" @selected(old('type') === 'overdraft')>🏦 {{ __('wallet.type_overdraft') }}</option>
                         </select>
                         <x-input-error :messages="$errors->get('type')" class="mt-2" />
                     </div>

@@ -137,7 +137,7 @@ class WalletTest extends TestCase
         $wallet->archive();
         $this->assertTrue($wallet->fresh()->is_archived);
 
-        $wallet->restore();
+        $wallet->unarchive();
         $this->assertFalse($wallet->fresh()->is_archived);
     }
 
@@ -196,5 +196,26 @@ class WalletTest extends TestCase
         $response = $this->actingAs($owner)->delete(route('wallets.destroy', $wallet));
         $response->assertRedirect();
         $this->assertSoftDeleted('wallets', ['id' => $wallet->id]);
+    }
+
+    public function test_user_can_create_overdraft_wallet_and_net_balance_is_correct(): void
+    {
+        $user = User::factory()->create();
+        $home = $this->setupHome($user);
+
+        $response = $this->actingAs($user)->post(route('wallets.store'), [
+            'home_id' => $home->id,
+            'name' => 'Ví thấu chi test',
+            'type' => 'overdraft',
+            'opening_balance' => 10000000,
+            'currency' => 'VND',
+        ]);
+
+        $response->assertRedirect();
+        $wallet = Wallet::where('name', 'Ví thấu chi test')->first();
+        $this->assertNotNull($wallet);
+        $this->assertSame('overdraft', $wallet->type);
+        $this->assertEquals(10000000.0, (float) $wallet->opening_balance);
+        $this->assertEquals(0.0, $wallet->netBalance());
     }
 }

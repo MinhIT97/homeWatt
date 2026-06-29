@@ -44,7 +44,9 @@ class Wallet extends Model
 
     public const TYPE_CREDIT_CARD = 'credit_card';
 
-    public const TYPES = [self::TYPE_CASH, self::TYPE_BANK, self::TYPE_CREDIT_CARD];
+    public const TYPE_OVERDRAFT = 'overdraft';
+
+    public const TYPES = [self::TYPE_CASH, self::TYPE_BANK, self::TYPE_CREDIT_CARD, self::TYPE_OVERDRAFT];
 
     public function home(): BelongsTo
     {
@@ -128,7 +130,7 @@ class Wallet extends Model
     public function netBalance(): float
     {
         $currentBalance = $this->calculatedBalance();
-        if ($this->type === self::TYPE_CREDIT_CARD) {
+        if ($this->type === self::TYPE_CREDIT_CARD || $this->type === self::TYPE_OVERDRAFT) {
             return $currentBalance - (float) $this->opening_balance;
         }
         return $currentBalance;
