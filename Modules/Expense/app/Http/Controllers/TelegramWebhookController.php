@@ -8,6 +8,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use Modules\AI\Services\GeminiBillScanner;
+use Modules\AI\Services\GeminiElectricBillScanner;
+use Modules\Energy\Services\ElectricBillRecorder;
 use Modules\Expense\Services\ExpenseService;
 use Modules\Expense\Services\TelegramParserService;
 use Modules\Wallet\Models\Wallet;
@@ -559,7 +563,7 @@ class TelegramWebhookController extends Controller
         $base64 = base64_encode($imageResponse->body());
 
         // 1. Try scanning as an electricity bill first
-        $electricScanner = new \Modules\AI\Services\GeminiElectricBillScanner();
+        $electricScanner = app(GeminiElectricBillScanner::class);
         $electricResult = $electricScanner->scan($base64);
 
         if ($electricResult && $electricResult['is_electric_bill'] && !empty($electricResult['amount'])) {
@@ -588,7 +592,12 @@ class TelegramWebhookController extends Controller
                 'occurred_at' => now()->toDateTimeString(),
             ];
 
-            $expense = $expenseService->createExpense($payload, $user);
+            [$expense, $energyBill] = DB::transaction(function () use ($expenseService, $payload, $user, $electricResult) {
+                $expense = $expenseService->createExpense($payload, $user);
+                $energyBill = app(ElectricBillRecorder::class)->recordFromScan($expense, $electricResult);
+
+                return [$expense, $energyBill];
+            });
 
             $billingMonth = $electricResult['billing_month'] ?: now()->format('m/Y');
             $confirmMsg = "✅ *QUÉT HÓA ĐƠN ĐIỆN THÀNH CÔNG (AI)*\n\n"
@@ -599,7 +608,8 @@ class TelegramWebhookController extends Controller
                         . "• *Chỉ số cũ/mới*: " . ($electricResult['old_index'] ?? 'N/A') . " ➡️ " . ($electricResult['new_index'] ?? 'N/A') . "\n"
                         . "• *Khách hàng*: " . ($electricResult['customer_name'] ?: 'N/A') . " (" . ($electricResult['customer_code'] ?: 'N/A') . ")\n"
                         . "• *Ví*: *" . $wallet->name . "* (Số dư: " . number_format((float) $wallet->fresh()->calculatedBalance(), 0, ',', '.') . " đ)\n\n"
-                        . "🤖 _Hóa đơn điện đã được tự động ghi nhận!_";
+                        . "⚡ *Energy Bill*: #" . $energyBill->id . "\n\n"
+                        . "🤖 _Hóa đơn điện đã được tự động ghi nhận vào Chi tiêu và Energy!_";
 
             $replyMarkup = [
                 'inline_keyboard' => [
@@ -615,7 +625,7 @@ class TelegramWebhookController extends Controller
         }
 
         // 2. Fallback to normal receipt scanner
-        $scanner = new \Modules\AI\Services\GeminiBillScanner();
+        $scanner = app(GeminiBillScanner::class);
         $result = $scanner->scan($base64);
 
         if (!$result || empty($result['amount'])) {

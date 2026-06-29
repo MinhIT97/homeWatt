@@ -6,8 +6,10 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\Home\Models\Home;
+use Modules\Energy\Models\EnergyBill;
 use Modules\Wallet\Models\Wallet;
 
 class Expense extends Model
@@ -66,6 +68,11 @@ class Expense extends Model
     public function transfer(): BelongsTo
     {
         return $this->belongsTo(Transfer::class, 'transfer_id');
+    }
+
+    public function energyBill(): HasOne
+    {
+        return $this->hasOne(EnergyBill::class);
     }
 
     public function signedAmount(): float

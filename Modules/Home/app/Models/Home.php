@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\Device\Models\Device;
+use Modules\Energy\Models\EnergyBill;
 use Modules\Room\Models\Room;
 
 class Home extends Model
@@ -54,6 +55,11 @@ class Home extends Model
     public function rooms(): HasMany
     {
         return $this->hasMany(Room::class);
+    }
+
+    public function energyBills(): HasMany
+    {
+        return $this->hasMany(EnergyBill::class);
     }
 
     public function scopeActive($query)

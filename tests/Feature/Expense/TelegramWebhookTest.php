@@ -5,6 +5,8 @@ namespace Tests\Feature\Expense;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Modules\AI\Services\GeminiElectricBillScanner;
+use Modules\Energy\Models\EnergyBill;
 use Modules\Expense\Models\Expense;
 use Modules\Expense\Models\ExpenseCategory;
 use Modules\Expense\Models\Transfer;
@@ -142,6 +144,86 @@ class TelegramWebhookTest extends TestCase
         });
     }
 
+    public function test_telegram_photo_electric_bill_creates_expense_and_energy_bill(): void
+    {
+        config(['services.telegram.bot_token' => 'fake_token']);
+        Http::fake([
+            'api.telegram.org/botfake_token/getFile*' => Http::response([
+                'ok' => true,
+                'result' => [
+                    'file_path' => 'photos/electric-bill.jpg',
+                ],
+            ], 200),
+            'api.telegram.org/file/botfake_token/*' => Http::response('fake-image-bytes', 200),
+            'api.telegram.org/*' => Http::response(['ok' => true], 200),
+        ]);
+
+        $this->app->instance(GeminiElectricBillScanner::class, new class extends GeminiElectricBillScanner {
+            public function __construct()
+            {
+            }
+
+            public function scan(string $imageBase64): ?array
+            {
+                return [
+                    'is_electric_bill' => true,
+                    'old_index' => 1200.0,
+                    'new_index' => 1358.0,
+                    'kwh' => 158.0,
+                    'amount' => 456789.0,
+                    'merchant' => 'EVN',
+                    'customer_name' => 'Nguyen Van A',
+                    'customer_code' => 'PE123456789',
+                    'billing_month' => '06/2026',
+                ];
+            }
+        });
+
+        ['user' => $user, 'home' => $home, 'techcombank' => $tech] = $this->setupUserWithWallets();
+
+        $response = $this->postJson('/api/v1/telegram/webhook', [
+            'message' => [
+                'chat' => [
+                    'id' => 123456789,
+                ],
+                'photo' => [
+                    ['file_id' => 'small_photo'],
+                    ['file_id' => 'large_photo'],
+                ],
+            ],
+        ]);
+
+        $response->assertOk();
+
+        $expense = Expense::where('home_id', $home->id)
+            ->where('amount', '456789.00')
+            ->first();
+
+        $this->assertNotNull($expense);
+        $this->assertSame($tech->id, $expense->wallet_id);
+
+        $this->assertDatabaseHas('energy_bills', [
+            'home_id' => $home->id,
+            'expense_id' => $expense->id,
+            'user_id' => $user->id,
+            'provider' => 'EVN',
+            'customer_code' => 'PE123456789',
+            'billing_period' => '06/2026',
+        ]);
+
+        $energyBill = EnergyBill::where('expense_id', $expense->id)->first();
+        $this->assertNotNull($energyBill);
+        $this->assertEquals(158.0, $energyBill->kwh);
+        $this->assertSame('2026-06-01', $energyBill->period_start->toDateString());
+        $this->assertSame('2026-06-30', $energyBill->period_end->toDateString());
+        $this->assertSame('456789.00', $energyBill->amount);
+
+        Http::assertSent(function ($request) {
+            return str_contains($request->url(), 'sendMessage') &&
+                str_contains($request['text'], 'Energy Bill');
+        });
+    }
+
     public function test_telegram_callback_query_undo_expense(): void
     {
         config(['services.telegram.bot_token' => 'fake_token']);
@@ -160,6 +242,14 @@ class TelegramWebhookTest extends TestCase
             'type' => 'expense',
             'amount' => 50000,
             'occurred_at' => now(),
+        ]);
+        EnergyBill::create([
+            'home_id' => $tech->home_id,
+            'expense_id' => $expense->id,
+            'user_id' => $user->id,
+            'billing_period' => '06/2026',
+            'kwh' => 20,
+            'amount' => 50000,
         ]);
         $tech->decrement('balance', 50000);
 
@@ -184,6 +274,10 @@ class TelegramWebhookTest extends TestCase
         // Assert Expense was deleted/soft-deleted
         $this->assertSoftDeleted('expenses', [
             'id' => $expense->id,
+        ]);
+
+        $this->assertSoftDeleted('energy_bills', [
+            'expense_id' => $expense->id,
         ]);
 
         // Assert balance was restored

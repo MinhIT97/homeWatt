@@ -5,6 +5,7 @@ namespace Modules\Expense\Services;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Modules\Expense\Models\Expense;
+use Modules\Energy\Models\EnergyBill;
 use Modules\Wallet\Models\Wallet;
 use App\Support\AuditLogger;
 
@@ -133,6 +134,7 @@ class ExpenseService
                 'type' => $locked->type,
             ]);
 
+            EnergyBill::where('expense_id', $locked->id)->delete();
             $locked->delete();
         });
     }
