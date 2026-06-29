@@ -89,12 +89,49 @@ class WalletController extends Controller
 
         $currentBalance = $wallet->calculatedBalance();
 
-        $expenses = $wallet->expenses()
+        $period = $request->get('period', 'all');
+        $dateVal = $request->get('date', now()->format('Y-m-d'));
+        $monthVal = $request->get('month', now()->format('Y-m'));
+        $yearVal = (int) $request->get('year', now()->format('Y'));
+
+        // Base queries
+        $expenseQuery = $wallet->expenses()
             ->whereNull('transfer_id')
-            ->with('category')
-            ->latest('occurred_at')
-            ->limit(30)
-            ->get()
+            ->with('category');
+
+        $transfersOutQuery = $wallet->transfersFrom()
+            ->with('toWallet');
+
+        $transfersInQuery = $wallet->transfersTo()
+            ->with('fromWallet');
+
+        // Apply filters
+        if ($period === 'day') {
+            $expenseQuery->whereDate('occurred_at', $dateVal);
+            $transfersOutQuery->whereDate('occurred_at', $dateVal);
+            $transfersInQuery->whereDate('occurred_at', $dateVal);
+        } elseif ($period === 'month') {
+            try {
+                $carbonMonth = \Carbon\Carbon::createFromFormat('Y-m', $monthVal);
+            } catch (\Exception $e) {
+                $carbonMonth = now();
+                $monthVal = $carbonMonth->format('Y-m');
+            }
+            $expenseQuery->whereYear('occurred_at', $carbonMonth->year)->whereMonth('occurred_at', $carbonMonth->month);
+            $transfersOutQuery->whereYear('occurred_at', $carbonMonth->year)->whereMonth('occurred_at', $carbonMonth->month);
+            $transfersInQuery->whereYear('occurred_at', $carbonMonth->year)->whereMonth('occurred_at', $carbonMonth->month);
+        } elseif ($period === 'year') {
+            $expenseQuery->whereYear('occurred_at', $yearVal);
+            $transfersOutQuery->whereYear('occurred_at', $yearVal);
+            $transfersInQuery->whereYear('occurred_at', $yearVal);
+        } else {
+            // limit to prevent memory issue on "all"
+            $expenseQuery->limit(100);
+            $transfersOutQuery->limit(100);
+            $transfersInQuery->limit(100);
+        }
+
+        $expenses = $expenseQuery->latest('occurred_at')->get()
             ->map(fn($item) => [
                 'type' => $item->type,
                 'amount' => (float) $item->amount,
@@ -104,11 +141,7 @@ class WalletController extends Controller
                 'occurred_at' => $item->occurred_at,
             ]);
 
-        $transfersOut = $wallet->transfersFrom()
-            ->with('toWallet')
-            ->latest('occurred_at')
-            ->limit(30)
-            ->get()
+        $transfersOut = $transfersOutQuery->latest('occurred_at')->get()
             ->map(fn($item) => [
                 'type' => 'expense',
                 'amount' => (float) $item->amount,
@@ -118,11 +151,7 @@ class WalletController extends Controller
                 'occurred_at' => $item->occurred_at,
             ]);
 
-        $transfersIn = $wallet->transfersTo()
-            ->with('fromWallet')
-            ->latest('occurred_at')
-            ->limit(30)
-            ->get()
+        $transfersIn = $transfersInQuery->latest('occurred_at')->get()
             ->map(fn($item) => [
                 'type' => 'income',
                 'amount' => (float) $item->amount,
@@ -133,10 +162,30 @@ class WalletController extends Controller
             ]);
 
         $recentExpenses = $expenses->concat($transfersOut)->concat($transfersIn)
-            ->sortByDesc('occurred_at')
-            ->take(30);
+            ->sortByDesc('occurred_at');
 
-        return view('wallet::show', compact('wallet', 'currentBalance', 'recentExpenses'));
+        if ($period === 'all') {
+            $recentExpenses = $recentExpenses->take(100);
+        }
+
+        // Sum statistics for the filtered period
+        $totalSpent = (float) $recentExpenses->where('type', 'expense')->sum('amount');
+        $totalIncome = (float) $recentExpenses->where('type', 'income')->sum('amount');
+
+        // Group by date Y-m-d
+        $groupedExpenses = $recentExpenses->groupBy(fn($item) => $item['occurred_at']->format('Y-m-d'));
+
+        return view('wallet::show', compact(
+            'wallet',
+            'currentBalance',
+            'groupedExpenses',
+            'totalSpent',
+            'totalIncome',
+            'period',
+            'dateVal',
+            'monthVal',
+            'yearVal'
+        ));
     }
 
     public function edit(Request $request, Wallet $wallet): View

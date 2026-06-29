@@ -67,29 +67,154 @@
                 @endif
             </div>
 
-            <h3 class="text-lg font-bold text-slate-800 font-outfit mb-4">{{ __('wallet.recent_transactions') }}</h3>
-            @if($recentExpenses->isEmpty())
+            <!-- Filters Header -->
+            <div class="glass-panel rounded-2xl border border-slate-200/60 shadow-sm bg-white/70 p-6 mb-8">
+                <form method="GET" action="{{ route('wallets.show', $wallet) }}" class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button type="submit" name="period" value="all" 
+                                class="px-4 py-2 text-sm font-semibold rounded-xl transition duration-150 {{ $period === 'all' ? 'bg-primary-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
+                            Tất cả
+                        </button>
+                        <button type="submit" name="period" value="day" 
+                                class="px-4 py-2 text-sm font-semibold rounded-xl transition duration-150 {{ $period === 'day' ? 'bg-primary-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
+                            Theo Ngày
+                        </button>
+                        <button type="submit" name="period" value="month" 
+                                class="px-4 py-2 text-sm font-semibold rounded-xl transition duration-150 {{ $period === 'month' ? 'bg-primary-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
+                            Theo Tháng
+                        </button>
+                        <button type="submit" name="period" value="year" 
+                                class="px-4 py-2 text-sm font-semibold rounded-xl transition duration-150 {{ $period === 'year' ? 'bg-primary-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
+                            Theo Năm
+                        </button>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        @if($period === 'day')
+                            <div class="flex items-center gap-2">
+                                <label for="date" class="text-xs font-semibold text-slate-500">Chọn ngày:</label>
+                                <input type="date" id="date" name="date" value="{{ $dateVal }}" onchange="this.form.submit()" 
+                                       class="bg-white/80 border border-slate-300 rounded-xl px-3 py-1.5 text-sm text-slate-800 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition shadow-sm" />
+                            </div>
+                        @elseif($period === 'month')
+                            <div class="flex items-center gap-2">
+                                <label for="month" class="text-xs font-semibold text-slate-500">Chọn tháng:</label>
+                                <input type="month" id="month" name="month" value="{{ $monthVal }}" onchange="this.form.submit()" 
+                                       class="bg-white/80 border border-slate-300 rounded-xl px-3 py-1.5 text-sm text-slate-800 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition shadow-sm" />
+                            </div>
+                        @elseif($period === 'year')
+                            <div class="flex items-center gap-2">
+                                <label for="year" class="text-xs font-semibold text-slate-500">Chọn năm:</label>
+                                <select id="year" name="year" onchange="this.form.submit()" 
+                                        class="bg-white/80 border border-slate-300 rounded-xl px-3 py-1.5 text-sm text-slate-800 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition shadow-sm">
+                                    @for($y = now()->year; $y >= now()->year - 10; $y--)
+                                        <option value="{{ $y }}" @selected($y === $yearVal)>{{ $y }}</option>
+                                    @endfor
+                                </select>
+                            </div>
+                        @endif
+                    </div>
+                </form>
+            </div>
+
+            <!-- Statistics Panel -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <!-- Total Income Card -->
+                <div class="glass-panel rounded-2xl border border-green-200/60 shadow-sm bg-green-50/20 p-5 flex items-center justify-between">
+                    <div>
+                        <span class="text-xs font-bold text-green-600 uppercase tracking-wider">Đã thu (Thu nhập)</span>
+                        <h4 class="text-2xl font-extrabold text-green-700 font-outfit mt-1">
+                            +{{ number_format($totalIncome, 0, ',', '.') }} {{ $wallet->currency }}
+                        </h4>
+                    </div>
+                    <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-2xl">
+                        📈
+                    </div>
+                </div>
+
+                <!-- Total Spent Card -->
+                <div class="glass-panel rounded-2xl border border-red-200/60 shadow-sm bg-red-50/20 p-5 flex items-center justify-between">
+                    <div>
+                        <span class="text-xs font-bold text-red-500 uppercase tracking-wider">Đã chi (Chi tiêu)</span>
+                        <h4 class="text-2xl font-extrabold text-red-650 font-outfit mt-1">
+                            -{{ number_format($totalSpent, 0, ',', '.') }} {{ $wallet->currency }}
+                        </h4>
+                    </div>
+                    <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-650 text-2xl">
+                        📉
+                    </div>
+                </div>
+            </div>
+
+            <h3 class="text-lg font-bold text-slate-800 font-outfit mb-6">{{ __('wallet.recent_transactions') }}</h3>
+
+            @if($groupedExpenses->isEmpty())
                 <div class="glass-panel rounded-2xl border border-slate-200/60 shadow-sm bg-white/70 p-8 text-center">
                     <p class="text-slate-500 text-sm">{{ __('wallet.no_transactions') }}</p>
                 </div>
             @else
-                <div class="glass-panel rounded-2xl border border-slate-200/60 shadow-sm bg-white/70 overflow-hidden">
-                    <ul class="divide-y divide-slate-100">
-                        @foreach($recentExpenses as $expense)
-                            <li class="p-4 flex items-center justify-between hover:bg-slate-50 transition">
-                                <div class="flex items-center gap-3">
-                                    <span class="text-xl w-8 h-8 rounded-lg bg-slate-50 border flex items-center justify-center shadow-sm">{{ $expense['icon'] }}</span>
-                                    <div>
-                                        <div class="font-semibold text-slate-800 text-sm">{{ $expense['description'] }}</div>
-                                        <div class="text-[11px] text-slate-550">{{ $expense['occurred_at']?->format('d/m/Y H:i') }} · {{ $expense['category_name'] }}</div>
+                @php
+                    $today = now()->format('Y-m-d');
+                    $yesterday = now()->subDay()->format('Y-m-d');
+                    $vietnameseDays = [
+                        'Monday' => 'Thứ Hai',
+                        'Tuesday' => 'Thứ Ba',
+                        'Wednesday' => 'Thứ Tư',
+                        'Thursday' => 'Thứ Năm',
+                        'Friday' => 'Thứ Sáu',
+                        'Saturday' => 'Thứ Bảy',
+                        'Sunday' => 'Chủ Nhật'
+                    ];
+                @endphp
+
+                <div class="relative pl-8">
+                    <!-- Vertical timeline line -->
+                    <div class="absolute left-4 top-2 bottom-2 w-0.5 bg-slate-200"></div>
+
+                    @foreach($groupedExpenses as $date => $transactions)
+                        @php
+                            $carbonDate = \Carbon\Carbon::parse($date);
+                            $englishDay = $carbonDate->format('l');
+                            $vnDay = $vietnameseDays[$englishDay] ?? $englishDay;
+                        @endphp
+                        <div class="relative mb-8 last:mb-0">
+                            <!-- Timeline node icon -->
+                            <div class="absolute -left-8 top-1 w-8 h-8 rounded-full bg-white border-2 border-slate-200 flex items-center justify-center shadow-sm z-10">
+                                <span class="text-xs font-bold text-slate-500">{{ $carbonDate->format('d') }}</span>
+                            </div>
+
+                            <!-- Date Header -->
+                            <div class="mb-4">
+                                <h4 class="text-sm font-bold text-slate-800 font-outfit">
+                                    @if($date === $today)
+                                        Hôm nay - {{ $carbonDate->format('d/m/Y') }}
+                                    @elseif($date === $yesterday)
+                                        Hôm qua - {{ $carbonDate->format('d/m/Y') }}
+                                    @else
+                                        {{ $vnDay }}, {{ $carbonDate->format('d/m/Y') }}
+                                    @endif
+                                </h4>
+                            </div>
+
+                            <!-- Transactions list -->
+                            <div class="space-y-3">
+                                @foreach($transactions as $expense)
+                                    <div class="flex items-center justify-between p-4 bg-white/60 hover:bg-white rounded-xl border border-slate-200/60 shadow-sm transition hover:shadow-md">
+                                        <div class="flex items-center gap-3">
+                                            <span class="text-xl w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center shadow-sm">{{ $expense['icon'] }}</span>
+                                            <div>
+                                                <div class="font-semibold text-slate-800 text-sm">{{ $expense['description'] }}</div>
+                                                <div class="text-[11px] text-slate-500">{{ $expense['occurred_at']?->format('H:i') }} · {{ $expense['category_name'] }}</div>
+                                            </div>
+                                        </div>
+                                        <div class="font-bold text-sm {{ $expense['type'] === 'income' ? 'text-green-600' : 'text-red-600' }}">
+                                            {{ $expense['type'] === 'income' ? '+' : '-' }}{{ number_format($expense['amount'], 0, ',', '.') }} {{ $wallet->currency }}
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="font-bold text-sm {{ $expense['type'] === 'income' ? 'text-green-600' : 'text-red-650' }}">
-                                    {{ $expense['type'] === 'income' ? '+' : '-' }}{{ number_format($expense['amount'], 0, ',', '.') }}
-                                </div>
-                            </li>
-                        @endforeach
-                    </ul>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endforeach
                 </div>
             @endif
         </div>

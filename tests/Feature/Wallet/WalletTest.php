@@ -218,4 +218,72 @@ class WalletTest extends TestCase
         $this->assertEquals(10000000.0, (float) $wallet->opening_balance);
         $this->assertEquals(0.0, $wallet->netBalance());
     }
+
+    public function test_user_can_view_wallet_details_with_time_filters(): void
+    {
+        $user = User::factory()->create();
+        $home = $this->setupHome($user);
+        $wallet = Wallet::create([
+            'home_id' => $home->id,
+            'name' => 'Cash Wallet',
+            'type' => 'cash',
+            'opening_balance' => 1000000,
+            'balance' => 1000000,
+            'currency' => 'VND',
+        ]);
+
+        // Create an expense for today
+        \Modules\Expense\Models\Expense::factory()->create([
+            'home_id' => $home->id,
+            'wallet_id' => $wallet->id,
+            'type' => 'expense',
+            'amount' => 50000,
+            'occurred_at' => now(),
+        ]);
+
+        // Create an income for last month
+        \Modules\Expense\Models\Expense::factory()->create([
+            'home_id' => $home->id,
+            'wallet_id' => $wallet->id,
+            'type' => 'income',
+            'amount' => 120000,
+            'occurred_at' => now()->subMonth(),
+        ]);
+
+        // Test period = all
+        $response = $this->actingAs($user)->get(route('wallets.show', [$wallet, 'period' => 'all']));
+        $response->assertOk();
+        $response->assertViewHas('totalSpent', 50000.0);
+        $response->assertViewHas('totalIncome', 120000.0);
+
+        // Test period = day (today)
+        $response = $this->actingAs($user)->get(route('wallets.show', [
+            $wallet,
+            'period' => 'day',
+            'date' => now()->format('Y-m-d'),
+        ]));
+        $response->assertOk();
+        $response->assertViewHas('totalSpent', 50000.0);
+        $response->assertViewHas('totalIncome', 0.0);
+
+        // Test period = month (this month)
+        $response = $this->actingAs($user)->get(route('wallets.show', [
+            $wallet,
+            'period' => 'month',
+            'month' => now()->format('Y-m'),
+        ]));
+        $response->assertOk();
+        $response->assertViewHas('totalSpent', 50000.0);
+        $response->assertViewHas('totalIncome', 0.0);
+
+        // Test period = month (last month)
+        $response = $this->actingAs($user)->get(route('wallets.show', [
+            $wallet,
+            'period' => 'month',
+            'month' => now()->subMonth()->format('Y-m'),
+        ]));
+        $response->assertOk();
+        $response->assertViewHas('totalSpent', 0.0);
+        $response->assertViewHas('totalIncome', 120000.0);
+    }
 }
