@@ -10,6 +10,27 @@
                       x-data="{
                           amountRaw: '{{ old('opening_balance', (int)$wallet->opening_balance) }}',
                           amountDisplay: '',
+                          icon: '{{ old('icon', $wallet->icon) }}',
+                          color: '{{ old('color', $wallet->color ?? '#10b981') }}',
+                          presets: [
+                              { name: 'Vietcombank', code: 'vcb', color: '#009f3c' },
+                              { name: 'Techcombank', code: 'tcb', color: '#e02020' },
+                              { name: 'VPBank', code: 'vpbank', color: '#009845' },
+                              { name: 'MB Bank', code: 'mbbank', color: '#004b87' },
+                              { name: 'ACB', code: 'acb', color: '#0067b2' },
+                              { name: 'TPBank', code: 'tpbank', color: '#6f2c91' },
+                              { name: 'BIDV', code: 'bidv', color: '#005a3c' },
+                              { name: 'VietinBank', code: 'vietinbank', color: '#0072bc' },
+                              { name: 'Sacombank', code: 'sacombank', color: '#00529b' },
+                              { name: 'Visa', code: 'visa', color: '#1a1f71' },
+                              { name: 'Mastercard', code: 'mastercard', color: '#111111' },
+                              { name: 'JCB', code: 'jcb', color: '#002c87' },
+                              { name: 'Napas', code: 'napas', color: '#e77817' }
+                          ],
+                          selectPreset(preset) {
+                              this.icon = preset.code;
+                              this.color = preset.color;
+                          },
                           init() {
                               if (this.amountRaw) {
                                   this.amountDisplay = this.formatNumber(this.amountRaw);
@@ -57,11 +78,27 @@
                     <div class="grid grid-cols-2 gap-6">
                         <div>
                             <x-input-label for="icon" value="{{ __('wallet.icon_label') }}" />
-                            <x-text-input id="icon" name="icon" type="text" class="mt-1 block w-full" :value="old('icon', $wallet->icon)" maxlength="10" />
+                            <x-text-input id="icon" name="icon" type="text" class="mt-1 block w-full" x-model="icon" placeholder="💰" maxlength="10" />
                         </div>
                         <div>
                             <x-input-label for="color" value="{{ __('wallet.color_label') }}" />
-                            <input id="color" name="color" type="color" class="mt-1 block w-full h-10 rounded-xl border border-slate-300" value="{{ old('color', $wallet->color ?? '#10b981') }}" />
+                            <input id="color" name="color" type="color" class="mt-1 block w-full h-10 rounded-xl border border-slate-300" x-model="color" />
+                        </div>
+                    </div>
+
+                    <div>
+                        <x-input-label value="Gợi ý logo ngân hàng & thẻ" class="mb-2" />
+                        <div class="grid grid-cols-4 sm:grid-cols-7 gap-2">
+                            <template x-for="preset in presets" :key="preset.code">
+                                <button type="button" @click="selectPreset(preset)" 
+                                        class="flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200/60 bg-white hover:border-primary-500 hover:shadow-sm transition text-center group">
+                                    <div class="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold mb-1 group-hover:scale-105 transition"
+                                         :style="'background-color: ' + preset.color + '20; color: ' + preset.color">
+                                        <span x-text="preset.code.toUpperCase().substring(0, 3)"></span>
+                                    </div>
+                                    <span class="text-[10px] font-semibold text-slate-500 truncate w-full" x-text="preset.name"></span>
+                                </button>
+                            </template>
                         </div>
                     </div>
 

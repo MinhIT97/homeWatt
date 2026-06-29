@@ -2,8 +2,10 @@
     <x-slot name="header">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-                <h2 class="font-extrabold text-2xl text-slate-900 font-outfit leading-tight flex items-center gap-2">
-                    @if($wallet->icon)<span>{{ $wallet->icon }}</span>@endif
+                <h2 class="font-extrabold text-2xl text-slate-900 font-outfit leading-tight flex items-center gap-3">
+                    @if($wallet->icon)
+                        <x-wallet-icon :icon="$wallet->icon" :color="$wallet->color" class="w-10 h-10 rounded-xl flex items-center justify-center text-xl" />
+                    @endif
                     {{ $wallet->name }}
                 </h2>
                 <p class="text-sm text-slate-500">{{ $wallet->home->name }}</p>

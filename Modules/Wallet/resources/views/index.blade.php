@@ -56,9 +56,7 @@
                             <div class="flex items-start justify-between mb-4">
                                 <div class="flex items-center gap-3">
                                     @if($wallet->icon)
-                                        <div class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl" style="background-color: {{ $wallet->color ?? '#e2e8f0' }}20;">
-                                            {{ $wallet->icon }}
-                                        </div>
+                                        <x-wallet-icon :icon="$wallet->icon" :color="$wallet->color" class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl" />
                                     @endif
                                     <div>
                                         <h3 class="font-bold text-slate-800 group-hover:text-primary-600 transition">{{ $wallet->name }}</h3>
