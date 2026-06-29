@@ -125,4 +125,48 @@ class TransferTest extends TestCase
         $this->assertEquals(50000.0, (float) $outExpense->amount);
         $this->assertEquals(50000.0, (float) $inExpense->amount);
     }
+
+    public function test_user_can_view_transfer_details(): void
+    {
+        $user = User::factory()->create();
+        ['home' => $home, 'w1' => $from, 'w2' => $to] = $this->setupTwoWallets($user);
+
+        $transfer = Transfer::create([
+            'home_id' => $home->id,
+            'from_wallet_id' => $from->id,
+            'to_wallet_id' => $to->id,
+            'user_id' => $user->id,
+            'amount' => 50000,
+            'fee' => 0,
+            'currency' => 'VND',
+            'occurred_at' => now(),
+        ]);
+
+        $response = $this->actingAs($user)->get(route('transfers.show', $transfer));
+
+        $response->assertOk();
+        $response->assertViewHas('transfer');
+    }
+
+    public function test_unauthorized_user_cannot_view_transfer_details(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+        ['home' => $home, 'w1' => $from, 'w2' => $to] = $this->setupTwoWallets($user);
+
+        $transfer = Transfer::create([
+            'home_id' => $home->id,
+            'from_wallet_id' => $from->id,
+            'to_wallet_id' => $to->id,
+            'user_id' => $user->id,
+            'amount' => 50000,
+            'fee' => 0,
+            'currency' => 'VND',
+            'occurred_at' => now(),
+        ]);
+
+        $response = $this->actingAs($otherUser)->get(route('transfers.show', $transfer));
+
+        $response->assertForbidden();
+    }
 }

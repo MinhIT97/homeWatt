@@ -8,6 +8,7 @@ use Modules\Expense\Models\ExpenseCategory;
 use Modules\Expense\Models\Transfer;
 use Modules\Expense\Policies\ExpenseCategoryPolicy;
 use Modules\Expense\Policies\ExpensePolicy;
+use Modules\Expense\Policies\TransferPolicy;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 
 class ExpenseServiceProvider extends ModuleServiceProvider
@@ -27,6 +28,6 @@ class ExpenseServiceProvider extends ModuleServiceProvider
 
         Gate::policy(Expense::class, ExpensePolicy::class);
         Gate::policy(ExpenseCategory::class, ExpenseCategoryPolicy::class);
-        Gate::policy(Transfer::class, ExpensePolicy::class);
+        Gate::policy(Transfer::class, TransferPolicy::class);
     }
 }
