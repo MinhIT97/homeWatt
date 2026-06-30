@@ -149,20 +149,27 @@ jobs:
               working-directory: ${{ env.PROJECT_DIR }}
               env:
                   TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+                  TELEGRAM_WEBHOOK_SECRET: ${{ secrets.TELEGRAM_WEBHOOK_SECRET }}
               run: |
                   # Ensure TELEGRAM_BOT_TOKEN is set in .env
                   if ! grep -q "^TELEGRAM_BOT_TOKEN=" .env; then
                       echo "TELEGRAM_BOT_TOKEN=" >> .env
                   fi
-                  sed -i "s|^TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN|" .env
+                  if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
+                      sed -i "s|^TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN|" .env
+                  fi
 
                   # Ensure TELEGRAM_WEBHOOK_SECRET is set in .env
                   if ! grep -q "^TELEGRAM_WEBHOOK_SECRET=" .env; then
                       echo "TELEGRAM_WEBHOOK_SECRET=" >> .env
                   fi
-                  current_secret=$(grep "^TELEGRAM_WEBHOOK_SECRET=" .env | cut -d'=' -f2-)
-                  if [ -z "$current_secret" ]; then
-                      sed -i "s|^TELEGRAM_WEBHOOK_SECRET=.*|TELEGRAM_WEBHOOK_SECRET=homewatt_secure_webhook_token_2026|" .env
+                  if [ -n "$TELEGRAM_WEBHOOK_SECRET" ]; then
+                      sed -i "s|^TELEGRAM_WEBHOOK_SECRET=.*|TELEGRAM_WEBHOOK_SECRET=$TELEGRAM_WEBHOOK_SECRET|" .env
+                  else
+                      current_secret=$(grep "^TELEGRAM_WEBHOOK_SECRET=" .env | cut -d'=' -f2-)
+                      if [ -z "$current_secret" ]; then
+                          sed -i "s|^TELEGRAM_WEBHOOK_SECRET=.*|TELEGRAM_WEBHOOK_SECRET=homewatt_secure_webhook_token_2026|" .env
+                      fi
                   fi
 
             - name: Preserve current production images
