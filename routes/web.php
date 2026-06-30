@@ -41,6 +41,30 @@ Route::get('/telegram-test-info', function () {
     ]);
 });
 
+Route::get('/telegram-env-check', function () {
+    $path = base_path('.env');
+    if (file_exists($path)) {
+        $lines = file($path);
+        $output = [];
+        foreach ($lines as $line) {
+            if (str_contains($line, 'TELEGRAM')) {
+                $output[] = trim($line);
+            }
+        }
+
+        return response()->json([
+            'exists' => true,
+            'path' => $path,
+            'lines' => $output,
+        ]);
+    }
+
+    return response()->json([
+        'exists' => false,
+        'path' => $path,
+    ]);
+});
+
 Route::get('/', function () {
     return view('core::welcome');
 })->name('home');
