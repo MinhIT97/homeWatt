@@ -17,7 +17,6 @@ use Modules\Device\Http\Requests\StoreDeviceRequest;
 use Modules\Device\Http\Requests\UpdateDeviceRequest;
 use Modules\Device\Jobs\ScanDevicePhotoJob;
 use Modules\Device\Models\Device;
-use Modules\Device\Models\DeviceRepair;
 use Modules\Device\Models\DeviceSpecification;
 use Modules\Device\Models\DeviceType;
 use Modules\Device\Models\DeviceUsageProfile;
@@ -256,7 +255,7 @@ class DeviceController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Phân tích ảnh thất bại: ' . $e->getMessage(),
+                'message' => 'Phân tích ảnh thất bại: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -265,7 +264,7 @@ class DeviceController extends Controller
     {
         $data = Cache::get("device_analysis:{$id}");
 
-        if (!$data) {
+        if (! $data) {
             return response()->json([
                 'success' => false,
                 'message' => 'Yêu cầu không tồn tại hoặc đã hết hạn.',

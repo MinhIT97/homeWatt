@@ -133,6 +133,7 @@ class Wallet extends Model
         if ($this->type === self::TYPE_CREDIT_CARD || $this->type === self::TYPE_OVERDRAFT) {
             return $currentBalance - (float) $this->opening_balance;
         }
+
         return $currentBalance;
     }
 }

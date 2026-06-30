@@ -8,7 +8,9 @@ use Illuminate\Support\Facades\Log;
 class GeminiElectricBillScanner
 {
     protected array $apiKeys;
+
     protected string $defaultModel;
+
     protected array $fallbackModels;
 
     public function __construct()
@@ -22,6 +24,7 @@ class GeminiElectricBillScanner
     {
         if (empty($this->apiKeys)) {
             Log::warning('Gemini API key is not configured for Electric Bill Scanner.');
+
             return null;
         }
 
@@ -38,7 +41,7 @@ class GeminiElectricBillScanner
                                 [
                                     'parts' => [
                                         [
-                                            'text' => $this->systemPrompt() . "\n\nAnalyze this image. If it is an electricity bill, return the JSON. Otherwise, return is_electric_bill as false.",
+                                            'text' => $this->systemPrompt()."\n\nAnalyze this image. If it is an electricity bill, return the JSON. Otherwise, return is_electric_bill as false.",
                                         ],
                                         [
                                             'inlineData' => [
@@ -57,6 +60,7 @@ class GeminiElectricBillScanner
 
                     if ($response->failed()) {
                         $lastError = $response->json('error.message') ?? "Status {$response->status()}";
+
                         continue;
                     }
 
@@ -83,12 +87,13 @@ class GeminiElectricBillScanner
                     }
                 } catch (\Throwable $e) {
                     $lastError = $e->getMessage();
-                    Log::warning('Gemini Electric Bill Scanner attempt raised exception: ' . $e->getMessage());
+                    Log::warning('Gemini Electric Bill Scanner attempt raised exception: '.$e->getMessage());
                 }
             }
         }
 
-        Log::error('All Gemini Electric Bill Scanner attempts failed. Last error: ' . $lastError);
+        Log::error('All Gemini Electric Bill Scanner attempts failed. Last error: '.$lastError);
+
         return null;
     }
 

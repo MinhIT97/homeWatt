@@ -3,9 +3,8 @@
 use Illuminate\Support\Facades\Route;
 use Modules\Expense\Http\Controllers\ExpenseCategoryController;
 use Modules\Expense\Http\Controllers\ExpenseController;
-use Modules\Expense\Http\Controllers\TransferController;
-
 use Modules\Expense\Http\Controllers\TelegramWebhookController;
+use Modules\Expense\Http\Controllers\TransferController;
 
 Route::post('v1/telegram/webhook', [TelegramWebhookController::class, 'handle'])
     ->middleware('throttle:30,1')

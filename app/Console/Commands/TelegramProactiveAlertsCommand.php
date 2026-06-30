@@ -2,15 +2,15 @@
 
 namespace App\Console\Commands;
 
+use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
-use App\Models\User;
 use Modules\Device\Models\Device;
 
 class TelegramProactiveAlertsCommand extends Command
 {
     protected $signature = 'telegram:send-alerts';
+
     protected $description = 'Quét thiết bị và gửi cảnh báo bảo hành/bảo dưỡng định kỳ qua Telegram cho người dùng';
 
     public function handle()
@@ -18,15 +18,16 @@ class TelegramProactiveAlertsCommand extends Command
         $token = config('services.telegram.bot_token');
         if (empty($token)) {
             $this->error('Token Telegram Bot chưa được cấu hình.');
+
             return 1;
         }
 
         $users = User::whereNotNull('telegram_chat_id')->get();
-        $this->info("Tìm thấy " . $users->count() . " người dùng đã liên kết Telegram.");
+        $this->info('Tìm thấy '.$users->count().' người dùng đã liên kết Telegram.');
 
         foreach ($users as $user) {
             $this->info("Đang kiểm tra thiết bị của người dùng: {$user->name}...");
-            
+
             // Lấy tất cả thiết bị của các nhà mà người dùng tham gia
             $devices = Device::whereHas('room.home.members', function ($q) use ($user) {
                 $q->where('user_id', $user->id);
@@ -43,7 +44,7 @@ class TelegramProactiveAlertsCommand extends Command
                 if ($expiresAt) {
                     // diffInDays(..., false) trả về số âm nếu đã qua hạn
                     $daysDiff = $today->diffInDays($expiresAt, false);
-                    
+
                     if ($daysDiff === 30) {
                         $warrantyAlerts[] = "📅 Thiết bị *{$device->name}* sẽ hết hạn bảo hành sau *30 ngày* (ngày {$expiresAt->format('d/m/Y')}).";
                     } elseif ($daysDiff === 7) {
@@ -75,15 +76,15 @@ class TelegramProactiveAlertsCommand extends Command
             }
 
             // Gửi tin nhắn nếu có cảnh báo
-            if (!empty($warrantyAlerts) || !empty($maintenanceAlerts)) {
+            if (! empty($warrantyAlerts) || ! empty($maintenanceAlerts)) {
                 $msg = "🔔 *THÔNG BÁO THIẾT BỊ HOMEWATT*\n\n";
-                
-                if (!empty($warrantyAlerts)) {
-                    $msg .= "ℹ️ *Thông tin bảo hành:*\n" . implode("\n", $warrantyAlerts) . "\n\n";
+
+                if (! empty($warrantyAlerts)) {
+                    $msg .= "ℹ️ *Thông tin bảo hành:*\n".implode("\n", $warrantyAlerts)."\n\n";
                 }
-                
-                if (!empty($maintenanceAlerts)) {
-                    $msg .= "🛠️ *Lịch bảo trì định kỳ:*\n" . implode("\n", $maintenanceAlerts) . "\n\n";
+
+                if (! empty($maintenanceAlerts)) {
+                    $msg .= "🛠️ *Lịch bảo trì định kỳ:*\n".implode("\n", $maintenanceAlerts)."\n\n";
                 }
 
                 $msg .= "💡 _Gợi ý: Sau khi thực hiện sửa chữa hoặc bảo dưỡng, hãy nhấn 'Ghi nhận sửa chữa' trên website hoặc điền lịch sử để đặt lại chu kỳ bảo dưỡng._";

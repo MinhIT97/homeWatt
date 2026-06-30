@@ -23,7 +23,7 @@ class DefaultCategoriesSeeder extends Seeder
                     ['name' => 'Đi chợ/siêu thị', 'icon' => '🛒'],
                     ['name' => 'Nước ngọt', 'icon' => '🥤'],
                     ['name' => 'Thực phẩm bổ sung', 'icon' => '💊'],
-                ]
+                ],
             ],
             [
                 'name' => 'Đi lại', 'icon' => '🚗', 'color' => '#3b82f6',
@@ -35,7 +35,7 @@ class DefaultCategoriesSeeder extends Seeder
                     ['name' => 'Sửa xe/bảo dưỡng', 'icon' => '🛠️'],
                     ['name' => 'Vé xe/tàu/máy bay', 'icon' => '🎫'],
                     ['name' => 'Bảo hiểm xe', 'icon' => '🛡️'],
-                ]
+                ],
             ],
             [
                 'name' => 'Nhà cửa', 'icon' => '🏠', 'color' => '#8b5cf6',
@@ -48,7 +48,7 @@ class DefaultCategoriesSeeder extends Seeder
                     ['name' => 'Internet & TV', 'icon' => '🌐'],
                     ['name' => 'Đồ dùng gia đình', 'icon' => '🛋️'],
                     ['name' => 'Sửa chữa nhà', 'icon' => '🔨'],
-                ]
+                ],
             ],
             [
                 'name' => 'Hóa đơn', 'icon' => '📄', 'color' => '#ef4444',
@@ -56,7 +56,7 @@ class DefaultCategoriesSeeder extends Seeder
                     ['name' => 'Điện thoại/3G/4G', 'icon' => '📱'],
                     ['name' => 'Phí dịch vụ chung cư', 'icon' => '🏢'],
                     ['name' => 'Gia hạn dịch vụ khác', 'icon' => '💳'],
-                ]
+                ],
             ],
             [
                 'name' => 'Mua sắm', 'icon' => '🛍️', 'color' => '#ec4899',
@@ -66,7 +66,7 @@ class DefaultCategoriesSeeder extends Seeder
                     ['name' => 'Mỹ phẩm & làm đẹp', 'icon' => '💄'],
                     ['name' => 'Thiết bị điện tử', 'icon' => '💻'],
                     ['name' => 'Sách truyện', 'icon' => '📚'],
-                ]
+                ],
             ],
             [
                 'name' => 'Giải trí', 'icon' => '🎮', 'color' => '#06b6d4',
@@ -75,7 +75,7 @@ class DefaultCategoriesSeeder extends Seeder
                     ['name' => 'Du lịch & dã ngoại', 'icon' => '✈️'],
                     ['name' => 'Chơi game', 'icon' => '🎮'],
                     ['name' => 'Đồ chơi/sở thích', 'icon' => '🧩'],
-                ]
+                ],
             ],
             [
                 'name' => 'Sức khỏe', 'icon' => '🏥', 'color' => '#10b981',
@@ -84,7 +84,7 @@ class DefaultCategoriesSeeder extends Seeder
                     ['name' => 'Khám sức khỏe', 'icon' => '🏥'],
                     ['name' => 'Bảo hiểm y tế', 'icon' => '🛡️'],
                     ['name' => 'Gym & Yoga', 'icon' => '🏋️'],
-                ]
+                ],
             ],
             [
                 'name' => 'Giáo dục', 'icon' => '📚', 'color' => '#6366f1',
@@ -92,24 +92,24 @@ class DefaultCategoriesSeeder extends Seeder
                     ['name' => 'Học phí', 'icon' => '🏫'],
                     ['name' => 'Khóa học ngoài', 'icon' => '📝'],
                     ['name' => 'Đồ dùng học tập', 'icon' => '✏️'],
-                ]
+                ],
             ],
             [
                 'name' => 'Cho vay', 'icon' => '🤝', 'color' => '#eab308', 'category_group' => 'lending',
                 'children' => [
                     ['name' => 'Cho bạn bè vay', 'icon' => '🤝', 'category_group' => 'lending'],
                     ['name' => 'Cho người thân mượn', 'icon' => '🏠', 'category_group' => 'lending'],
-                ]
+                ],
             ],
             [
                 'name' => 'Trả nợ', 'icon' => '💸', 'color' => '#a855f7', 'category_group' => 'debt_repayment',
                 'children' => [
                     ['name' => 'Trả nợ ngân hàng', 'icon' => '🏦', 'category_group' => 'debt_repayment'],
                     ['name' => 'Trả nợ bạn bè', 'icon' => '💸', 'category_group' => 'debt_repayment'],
-                ]
+                ],
             ],
             [
-                'name' => 'Khác', 'icon' => '📝', 'color' => '#64748b'
+                'name' => 'Khác', 'icon' => '📝', 'color' => '#64748b',
             ],
         ];
 
@@ -119,41 +119,41 @@ class DefaultCategoriesSeeder extends Seeder
                 'children' => [
                     ['name' => 'Lương cứng', 'icon' => '💵'],
                     ['name' => 'Làm thêm (Freelance)', 'icon' => '💻'],
-                ]
+                ],
             ],
             [
                 'name' => 'Thưởng', 'icon' => '🎁', 'color' => '#22c55e',
                 'children' => [
                     ['name' => 'Thưởng dự án', 'icon' => '🚀'],
                     ['name' => 'Thưởng tết/lễ', 'icon' => '🧧'],
-                ]
+                ],
             ],
             [
-                'name' => 'Quà tặng', 'icon' => '🎉', 'color' => '#f59e0b'
+                'name' => 'Quà tặng', 'icon' => '🎉', 'color' => '#f59e0b',
             ],
             [
                 'name' => 'Bán đồ', 'icon' => '🏷️', 'color' => '#06b6d4',
                 'children' => [
                     ['name' => 'Thanh lý đồ cũ', 'icon' => '📦'],
                     ['name' => 'Bán sản phẩm tự làm', 'icon' => '🎨'],
-                ]
+                ],
             ],
             [
                 'name' => 'Đi vay', 'icon' => '🏦', 'color' => '#0284c7', 'category_group' => 'borrowing',
                 'children' => [
                     ['name' => 'Vay bạn bè', 'icon' => '🏦', 'category_group' => 'borrowing'],
                     ['name' => 'Vay ngân hàng', 'icon' => '🏛️', 'category_group' => 'borrowing'],
-                ]
+                ],
             ],
             [
                 'name' => 'Thu nợ', 'icon' => '🪙', 'color' => '#14b8a6', 'category_group' => 'debt_collection',
                 'children' => [
                     ['name' => 'Thu nợ bạn bè', 'icon' => '🪙', 'category_group' => 'debt_collection'],
                     ['name' => 'Thu nợ người thân', 'icon' => '🏡', 'category_group' => 'debt_collection'],
-                ]
+                ],
             ],
             [
-                'name' => 'Thu nhập khác', 'icon' => '💰', 'color' => '#64748b'
+                'name' => 'Thu nhập khác', 'icon' => '💰', 'color' => '#64748b',
             ],
         ];
 

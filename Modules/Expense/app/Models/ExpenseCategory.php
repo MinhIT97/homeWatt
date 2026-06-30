@@ -38,10 +38,15 @@ class ExpenseCategory extends Model
     public const TYPES = [self::TYPE_INCOME, self::TYPE_EXPENSE];
 
     public const GROUP_LENDING = 'lending';
+
     public const GROUP_DEBT_COLLECTION = 'debt_collection';
+
     public const GROUP_BORROWING = 'borrowing';
+
     public const GROUP_DEBT_REPAYMENT = 'debt_repayment';
+
     public const GROUP_TRANSFER = 'transfer';
+
     public const GROUP_OTHER = 'other';
 
     public const DEBT_GROUPS = [

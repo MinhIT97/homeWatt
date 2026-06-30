@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 use Modules\Energy\Models\EnergyReading;
 use Modules\Media\Models\Media;
 use Modules\Room\Models\Room;
@@ -53,26 +54,27 @@ class Device extends Model
 
     public function getNextMaintenanceAtAttribute()
     {
-        if (!$this->maintenance_interval) {
+        if (! $this->maintenance_interval) {
             return null;
         }
 
-        $baseDate = $this->last_maintained_at 
+        $baseDate = $this->last_maintained_at
             ?: ($this->purchased_at ?: $this->created_at);
 
-        if (!$baseDate) {
+        if (! $baseDate) {
             return null;
         }
 
         // Handle case where baseDate is string from database
-        $base = \Illuminate\Support\Carbon::parse($baseDate);
+        $base = Carbon::parse($baseDate);
+
         return $base->addMonths($this->maintenance_interval);
     }
 
     public function getIsDueForMaintenanceAttribute(): bool
     {
         $next = $this->next_maintenance_at;
-        if (!$next) {
+        if (! $next) {
             return false;
         }
 
@@ -86,6 +88,7 @@ class Device extends Model
         }
 
         $unit = $this->warranty_unit === 'year' ? 'addYears' : 'addMonths';
+
         return $this->purchased_at->copy()->$unit($this->warranty_duration);
     }
 

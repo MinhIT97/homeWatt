@@ -5,12 +5,14 @@ namespace Modules\Energy\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Modules\Device\Models\Device;
 use Modules\Energy\Models\EnergyEstimate;
 use Modules\Energy\Models\EnergyReading;
 use Modules\Energy\Services\EnergyCalculator;
+use Modules\Home\Models\Home;
 use Modules\Tariff\Models\TariffPlan;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
@@ -140,17 +142,17 @@ class EnergyController extends Controller
     public function tieredReport(Request $request): View
     {
         $user = $request->user();
-        
-        $homes = \Modules\Home\Models\Home::whereHas('members', fn($q) => $q->where('user_id', $user->id))->get();
+
+        $homes = Home::whereHas('members', fn ($q) => $q->where('user_id', $user->id))->get();
         $selectedHomeId = $request->get('home_id', $homes->first()?->id);
         $selectedMonth = $request->get('month', now()->format('Y-m'));
 
-        $home = \Modules\Home\Models\Home::findOrFail($selectedHomeId);
+        $home = Home::findOrFail($selectedHomeId);
 
-        $startOfMonth = \Illuminate\Support\Carbon::parse($selectedMonth . '-01')->startOfMonth();
-        $endOfMonth = \Illuminate\Support\Carbon::parse($selectedMonth . '-01')->endOfMonth();
+        $startOfMonth = Carbon::parse($selectedMonth.'-01')->startOfMonth();
+        $endOfMonth = Carbon::parse($selectedMonth.'-01')->endOfMonth();
 
-        $devices = Device::whereHas('room', fn($q) => $q->where('home_id', $selectedHomeId))->get();
+        $devices = Device::whereHas('room', fn ($q) => $q->where('home_id', $selectedHomeId))->get();
         $deviceIds = $devices->pluck('id');
 
         $totalKwh = 0.0;
@@ -160,7 +162,7 @@ class EnergyController extends Controller
                 ->sum('kwh');
         }
 
-        $tariffPlan = TariffPlan::where('status', 'active')->first() 
+        $tariffPlan = TariffPlan::where('status', 'active')->first()
             ?: TariffPlan::orderByDesc('id')->first();
 
         $tiers = $tariffPlan ? $tariffPlan->tiers()->orderBy('tier_number')->get() : collect();
@@ -172,7 +174,7 @@ class EnergyController extends Controller
 
         foreach ($tiers as $index => $tier) {
             $limit = $tier->limit_kwh;
-            
+
             if (is_null($limit)) {
                 $consumedInTier = $remainingKwh;
             } else {
@@ -220,7 +222,7 @@ class EnergyController extends Controller
                 }
             }
 
-            usort($deviceBreakdown, fn($a, $b) => $b['kwh'] <=> $a['kwh']);
+            usort($deviceBreakdown, fn ($a, $b) => $b['kwh'] <=> $a['kwh']);
         }
 
         return view('energy::tiered_report', compact(

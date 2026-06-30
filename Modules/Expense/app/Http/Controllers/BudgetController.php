@@ -8,8 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\View\View;
 use Modules\Expense\Models\Expense;
-use Modules\Expense\Models\ExpenseCategory;
 use Modules\Expense\Models\ExpenseBudget;
+use Modules\Expense\Models\ExpenseCategory;
 use Modules\Home\Models\Home;
 
 class BudgetController extends Controller
@@ -17,14 +17,14 @@ class BudgetController extends Controller
     public function index(Request $request): View
     {
         $user = $request->user();
-        $homes = Home::whereHas('members', fn($q) => $q->where('user_id', $user->id))->get();
-        
+        $homes = Home::whereHas('members', fn ($q) => $q->where('user_id', $user->id))->get();
+
         $selectedHomeId = $request->get('home_id', $homes->first()?->id);
         $selectedMonth = $request->get('month', now()->format('Y-m'));
 
         $home = Home::findOrFail($selectedHomeId);
         $member = $home->members()->where('user_id', $user->id)->first();
-        if (!$member) {
+        if (! $member) {
             abort(403);
         }
 
@@ -37,8 +37,8 @@ class BudgetController extends Controller
             ->get();
 
         // Calculate expenses for each category in this month
-        $startOfMonth = Carbon::parse($selectedMonth . '-01')->startOfMonth();
-        $endOfMonth = Carbon::parse($selectedMonth . '-01')->endOfMonth();
+        $startOfMonth = Carbon::parse($selectedMonth.'-01')->startOfMonth();
+        $endOfMonth = Carbon::parse($selectedMonth.'-01')->endOfMonth();
 
         $monthlyExpenses = Expense::where('home_id', $selectedHomeId)
             ->where('type', 'expense')
@@ -99,7 +99,7 @@ class BudgetController extends Controller
 
         $home = Home::findOrFail($validated['home_id']);
         $member = $home->members()->where('user_id', $request->user()->id)->first();
-        if (!$member || !$member->canEdit()) {
+        if (! $member || ! $member->canEdit()) {
             abort(403);
         }
 
@@ -119,7 +119,7 @@ class BudgetController extends Controller
     {
         $home = $budget->home;
         $member = $home->members()->where('user_id', $request->user()->id)->first();
-        if (!$member || !$member->canEdit()) {
+        if (! $member || ! $member->canEdit()) {
             abort(403);
         }
 

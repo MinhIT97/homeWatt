@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Modules\Expense\Http\Controllers\BudgetController;
 use Modules\Expense\Http\Controllers\ExpenseCategoryController;
 use Modules\Expense\Http\Controllers\ExpenseController;
 use Modules\Expense\Http\Controllers\ExpenseReportController;
@@ -38,7 +39,7 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     Route::get('reports/category', [ExpenseReportController::class, 'byCategory'])->name('reports.category');
 
     // Budgets
-    Route::get('budgets', [\Modules\Expense\Http\Controllers\BudgetController::class, 'index'])->name('budgets.index');
-    Route::post('budgets', [\Modules\Expense\Http\Controllers\BudgetController::class, 'store'])->name('budgets.store');
-    Route::delete('budgets/{budget}', [\Modules\Expense\Http\Controllers\BudgetController::class, 'destroy'])->name('budgets.destroy');
+    Route::get('budgets', [BudgetController::class, 'index'])->name('budgets.index');
+    Route::post('budgets', [BudgetController::class, 'store'])->name('budgets.store');
+    Route::delete('budgets/{budget}', [BudgetController::class, 'destroy'])->name('budgets.destroy');
 });

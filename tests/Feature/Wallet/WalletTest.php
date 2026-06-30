@@ -4,6 +4,7 @@ namespace Tests\Feature\Wallet;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Modules\Expense\Models\Expense;
 use Modules\Home\Models\Home;
 use Modules\Home\Models\HomeMember;
 use Modules\Wallet\Models\Wallet;
@@ -233,7 +234,7 @@ class WalletTest extends TestCase
         ]);
 
         // Create an expense for today
-        \Modules\Expense\Models\Expense::factory()->create([
+        Expense::factory()->create([
             'home_id' => $home->id,
             'wallet_id' => $wallet->id,
             'type' => 'expense',
@@ -242,7 +243,7 @@ class WalletTest extends TestCase
         ]);
 
         // Create an income for last month
-        \Modules\Expense\Models\Expense::factory()->create([
+        Expense::factory()->create([
             'home_id' => $home->id,
             'wallet_id' => $wallet->id,
             'type' => 'income',

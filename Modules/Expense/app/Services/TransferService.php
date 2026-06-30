@@ -3,12 +3,12 @@
 namespace Modules\Expense\Services;
 
 use App\Models\User;
+use App\Support\AuditLogger;
 use Illuminate\Support\Facades\DB;
 use Modules\Expense\Models\Expense;
 use Modules\Expense\Models\ExpenseCategory;
 use Modules\Expense\Models\Transfer;
 use Modules\Wallet\Models\Wallet;
-use App\Support\AuditLogger;
 
 class TransferService
 {

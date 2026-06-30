@@ -205,7 +205,7 @@ class DashboardController extends Controller
                         'today_kwh' => $todayKwh,
                         'pct_vs_yesterday' => $pctYesterday,
                         'pct_vs_last_month' => $pctLastMonth,
-                        'top_devices' => $topDevicesRows->map(fn($row) => (array) $row)->all(),
+                        'top_devices' => $topDevicesRows->map(fn ($row) => (array) $row)->all(),
                         'daily_labels' => $dailyLabels,
                         'daily_data' => $dailyData,
                         'last_month_daily_data' => $lastMonthDailyData,
@@ -221,7 +221,7 @@ class DashboardController extends Controller
                 $stats['pct_vs_yesterday'] = $payload['pct_vs_yesterday'];
                 $stats['pct_vs_last_month'] = $payload['pct_vs_last_month'];
 
-                $topDevices = collect($payload['top_devices'])->map(fn($row) => (object) $row);
+                $topDevices = collect($payload['top_devices'])->map(fn ($row) => (object) $row);
                 $dailyLabels = $payload['daily_labels'];
                 $dailyData = $payload['daily_data'];
                 $lastMonthDailyData = $payload['last_month_daily_data'];

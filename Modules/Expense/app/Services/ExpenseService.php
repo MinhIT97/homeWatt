@@ -3,11 +3,14 @@
 namespace Modules\Expense\Services;
 
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
-use Modules\Expense\Models\Expense;
-use Modules\Energy\Models\EnergyBill;
-use Modules\Wallet\Models\Wallet;
 use App\Support\AuditLogger;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Modules\Energy\Models\EnergyBill;
+use Modules\Expense\Models\Expense;
+use Modules\Expense\Models\ExpenseBudget;
+use Modules\Wallet\Models\Wallet;
 
 class ExpenseService
 {
@@ -34,7 +37,7 @@ class ExpenseService
             try {
                 $this->checkBudgetsAndAlert($expense);
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error('Error checking budget alerts: ' . $e->getMessage());
+                Log::error('Error checking budget alerts: '.$e->getMessage());
             }
 
             AuditLogger::log('expense.created', [
@@ -87,7 +90,7 @@ class ExpenseService
             try {
                 $this->checkBudgetsAndAlert($locked);
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error('Error checking budget alerts on update: ' . $e->getMessage());
+                Log::error('Error checking budget alerts on update: '.$e->getMessage());
             }
 
             AuditLogger::log('expense.updated', [
@@ -163,11 +166,11 @@ class ExpenseService
         $amount = (float) $expense->amount;
 
         // Find budgets (category specific & global)
-        $budgets = \Modules\Expense\Models\ExpenseBudget::where('home_id', $homeId)
+        $budgets = ExpenseBudget::where('home_id', $homeId)
             ->where('month', $month)
-            ->where(function($q) use ($categoryId) {
+            ->where(function ($q) use ($categoryId) {
                 $q->where('category_id', $categoryId)
-                  ->orWhereNull('category_id');
+                    ->orWhereNull('category_id');
             })
             ->get();
 
@@ -194,7 +197,7 @@ class ExpenseService
         }
 
         // Find home members with telegram_chat_id
-        $users = \App\Models\User::whereHas('homeMembers', fn($q) => $q->where('home_id', $homeId))
+        $users = User::whereHas('homeMembers', fn ($q) => $q->where('home_id', $homeId))
             ->whereNotNull('telegram_chat_id')
             ->get();
 
@@ -204,7 +207,9 @@ class ExpenseService
 
         foreach ($budgets as $budget) {
             $limit = (float) $budget->amount;
-            if ($limit <= 0) continue;
+            if ($limit <= 0) {
+                continue;
+            }
 
             $isGlobal = is_null($budget->category_id);
             $currentSpending = $isGlobal ? $totalSpending : $categorySpending;
@@ -218,23 +223,23 @@ class ExpenseService
 
             if ($prevPct < 100 && $newPct >= 100) {
                 $alertMessage = "🚨 *CẢNH BÁO VƯỢT HẠN MỨC CHI TIÊU* 🚨\n\n"
-                    . "• Danh mục: *{$catName}*\n"
-                    . "• Hạn mức tháng: *" . number_format($limit, 0, ',', '.') . " đ*\n"
-                    . "• Đã chi tiêu: *" . number_format($currentSpending, 0, ',', '.') . " đ* (Đạt *" . round($newPct, 1) . "%*)\n"
-                    . "• Giao dịch gây vượt hạn mức: *{$expense->description}* (+" . number_format($amount, 0, ',', '.') . " đ)\n\n"
-                    . "⚠️ Bạn đã chi tiêu quá hạn mức thiết lập cho tháng này!";
+                    ."• Danh mục: *{$catName}*\n"
+                    .'• Hạn mức tháng: *'.number_format($limit, 0, ',', '.')." đ*\n"
+                    .'• Đã chi tiêu: *'.number_format($currentSpending, 0, ',', '.').' đ* (Đạt *'.round($newPct, 1)."%*)\n"
+                    ."• Giao dịch gây vượt hạn mức: *{$expense->description}* (+".number_format($amount, 0, ',', '.')." đ)\n\n"
+                    .'⚠️ Bạn đã chi tiêu quá hạn mức thiết lập cho tháng này!';
             } elseif ($prevPct < 80 && $newPct >= 80) {
                 $alertMessage = "⚠️ *CẢNH BÁO SẮP ĐẠT HẠN MỨC CHI TIÊU* ⚠️\n\n"
-                    . "• Danh mục: *{$catName}*\n"
-                    . "• Hạn mức tháng: *" . number_format($limit, 0, ',', '.') . " đ*\n"
-                    . "• Đã chi tiêu: *" . number_format($currentSpending, 0, ',', '.') . " đ* (Đạt *" . round($newPct, 1) . "%*)\n"
-                    . "• Giao dịch gần nhất: *{$expense->description}* (+" . number_format($amount, 0, ',', '.') . " đ)\n\n"
-                    . "💡 Vui lòng cân đối chi tiêu hợp lý.";
+                    ."• Danh mục: *{$catName}*\n"
+                    .'• Hạn mức tháng: *'.number_format($limit, 0, ',', '.')." đ*\n"
+                    .'• Đã chi tiêu: *'.number_format($currentSpending, 0, ',', '.').' đ* (Đạt *'.round($newPct, 1)."%*)\n"
+                    ."• Giao dịch gần nhất: *{$expense->description}* (+".number_format($amount, 0, ',', '.')." đ)\n\n"
+                    .'💡 Vui lòng cân đối chi tiêu hợp lý.';
             }
 
             if ($alertMessage) {
                 foreach ($users as $user) {
-                    \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/sendMessage", [
+                    Http::post("https://api.telegram.org/bot{$token}/sendMessage", [
                         'chat_id' => $user->telegram_chat_id,
                         'text' => $alertMessage,
                         'parse_mode' => 'Markdown',

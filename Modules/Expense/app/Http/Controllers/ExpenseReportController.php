@@ -131,14 +131,14 @@ class ExpenseReportController extends Controller
             ->whereNull('transfer_id')
             ->whereNotIn('category_id', $debtCategoryIds)
             ->whereBetween('occurred_at', [$start, $end])
-            ->selectRaw("DATE(occurred_at) as date, type, SUM(amount) as total")
+            ->selectRaw('DATE(occurred_at) as date, type, SUM(amount) as total')
             ->groupByRaw('DATE(occurred_at), type')
             ->get();
 
         $dailyMap = [];
         foreach ($dailyRows as $row) {
             $key = $row->date;
-            if (!isset($dailyMap[$key])) {
+            if (! isset($dailyMap[$key])) {
                 $dailyMap[$key] = ['income' => 0.0, 'expense' => 0.0];
             }
             $dailyMap[$key][$row->type] = (float) $row->total;
@@ -164,7 +164,7 @@ class ExpenseReportController extends Controller
             'wallet_count' => $wallets->count(),
             'daily' => $dailyData,
             'period' => $start->format('Y-m'),
-            
+
             // Debt metrics
             'total_lent' => $totalLent,
             'total_collected' => $totalCollected,

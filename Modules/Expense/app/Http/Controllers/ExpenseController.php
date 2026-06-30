@@ -3,6 +3,7 @@
 namespace Modules\Expense\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -35,7 +36,7 @@ class ExpenseController extends Controller
             $query->whereDate('occurred_at', $dateVal);
         } elseif ($period === 'month') {
             try {
-                $carbonMonth = \Carbon\Carbon::createFromFormat('Y-m', $monthVal);
+                $carbonMonth = Carbon::createFromFormat('Y-m', $monthVal);
             } catch (\Exception $e) {
                 $carbonMonth = now();
                 $monthVal = $carbonMonth->format('Y-m');
@@ -72,7 +73,7 @@ class ExpenseController extends Controller
         $expenses = $query->latest('occurred_at')->paginate(20);
 
         // Group the paginated page collection by date
-        $groupedExpenses = $expenses->getCollection()->groupBy(fn($e) => $e->occurred_at?->format('Y-m-d') ?? now()->format('Y-m-d'));
+        $groupedExpenses = $expenses->getCollection()->groupBy(fn ($e) => $e->occurred_at?->format('Y-m-d') ?? now()->format('Y-m-d'));
 
         // For filter dropdowns
         $homes = Home::whereHas('members', fn ($q) => $q->where('user_id', $userId))->get();

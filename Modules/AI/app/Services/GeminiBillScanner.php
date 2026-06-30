@@ -8,7 +8,9 @@ use Illuminate\Support\Facades\Log;
 class GeminiBillScanner
 {
     protected array $apiKeys;
+
     protected string $defaultModel;
+
     protected array $fallbackModels;
 
     public function __construct()
@@ -22,6 +24,7 @@ class GeminiBillScanner
     {
         if (empty($this->apiKeys)) {
             Log::warning('Gemini API key is not configured for Bill Scanner.');
+
             return null;
         }
 
@@ -38,7 +41,7 @@ class GeminiBillScanner
                                 [
                                     'parts' => [
                                         [
-                                            'text' => $this->systemPrompt() . "\n\nAnalyze this Vietnamese receipt/invoice and return JSON matching the schema.",
+                                            'text' => $this->systemPrompt()."\n\nAnalyze this Vietnamese receipt/invoice and return JSON matching the schema.",
                                         ],
                                         [
                                             'inlineData' => [
@@ -57,6 +60,7 @@ class GeminiBillScanner
 
                     if ($response->failed()) {
                         $lastError = $response->json('error.message') ?? "Status {$response->status()}";
+
                         continue;
                     }
 
@@ -78,12 +82,13 @@ class GeminiBillScanner
                     }
                 } catch (\Throwable $e) {
                     $lastError = $e->getMessage();
-                    Log::warning('Gemini Bill Scanner attempt raised exception: ' . $e->getMessage());
+                    Log::warning('Gemini Bill Scanner attempt raised exception: '.$e->getMessage());
                 }
             }
         }
 
-        Log::error('All Gemini Bill Scanner attempts failed. Last error: ' . $lastError);
+        Log::error('All Gemini Bill Scanner attempts failed. Last error: '.$lastError);
+
         return null;
     }
 

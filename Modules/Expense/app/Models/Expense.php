@@ -8,8 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Modules\Home\Models\Home;
 use Modules\Energy\Models\EnergyBill;
+use Modules\Home\Models\Home;
 use Modules\Wallet\Models\Wallet;
 
 class Expense extends Model

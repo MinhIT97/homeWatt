@@ -3,15 +3,12 @@
 namespace Modules\Expense\Services;
 
 use Modules\Expense\Models\ExpenseCategory;
+use Modules\Wallet\Models\Wallet;
 
 class TelegramParserService
 {
     /**
      * Parse a Telegram message into structured transaction data.
-     *
-     * @param string $text
-     * @param int $homeId
-     * @return array|null
      */
     public function parse(string $text, int $homeId): ?array
     {
@@ -83,9 +80,9 @@ class TelegramParserService
 
         // Remove the matched amount from the text to get description
         $description = trim(str_replace($matches[0], '', $cleanText));
-        
+
         // Clean up description prefix/suffix characters
-        $description = trim($description, " -:,=");
+        $description = trim($description, ' -:,=');
 
         // 3. Match Category if it hasn't been explicitly matched above
         if ($categoryName === 'Khác') {
@@ -105,13 +102,13 @@ class TelegramParserService
         }
 
         // Fallback to general "Khác" if not found
-        if (!$category) {
+        if (! $category) {
             $category = ExpenseCategory::where('home_id', $homeId)
                 ->where('category_group', ExpenseCategory::GROUP_OTHER)
                 ->first();
         }
 
-        if (!$category) {
+        if (! $category) {
             throw new \RuntimeException(__('expense.default_category_not_found'));
         }
 
@@ -126,13 +123,13 @@ class TelegramParserService
         }
         // Strip out amount match
         preg_match('/(\d+(?:[.,]\d+)?)\s*(k|m|tr|triệu|trieu)?/i', $originalDesc, $origAmountMatches);
-        if (!empty($origAmountMatches)) {
+        if (! empty($origAmountMatches)) {
             $originalDesc = trim(str_replace($origAmountMatches[0], '', $originalDesc));
         }
 
         // For transfers, strip prepositions and wallet candidates to make description clean
         if ($type === 'transfer') {
-            $wallets = \Modules\Wallet\Models\Wallet::where('home_id', $homeId)
+            $wallets = Wallet::where('home_id', $homeId)
                 ->where('is_archived', false)
                 ->get();
             $candidates = ['từ', 'tu', 'sang', 'đến', 'den', 'qua', 'vào', 'vao', '->'];
@@ -142,16 +139,16 @@ class TelegramParserService
                 $candidates[] = $w->name;
                 $candidates[] = $walletNameLower;
                 $candidates[] = $walletNameNoSpaces;
-                $candidates[] = 'tài khoản ' . $walletNameLower;
-                $candidates[] = 'tài khoản ' . $walletNameNoSpaces;
-                $candidates[] = 'taikhoan ' . $walletNameLower;
-                $candidates[] = 'taikhoan ' . $walletNameNoSpaces;
-                $candidates[] = 'tk ' . $walletNameLower;
-                $candidates[] = 'tk ' . $walletNameNoSpaces;
-                $candidates[] = 'ví ' . $walletNameLower;
-                $candidates[] = 'ví ' . $walletNameNoSpaces;
-                $candidates[] = 'vi ' . $walletNameLower;
-                $candidates[] = 'vi ' . $walletNameNoSpaces;
+                $candidates[] = 'tài khoản '.$walletNameLower;
+                $candidates[] = 'tài khoản '.$walletNameNoSpaces;
+                $candidates[] = 'taikhoan '.$walletNameLower;
+                $candidates[] = 'taikhoan '.$walletNameNoSpaces;
+                $candidates[] = 'tk '.$walletNameLower;
+                $candidates[] = 'tk '.$walletNameNoSpaces;
+                $candidates[] = 'ví '.$walletNameLower;
+                $candidates[] = 'ví '.$walletNameNoSpaces;
+                $candidates[] = 'vi '.$walletNameLower;
+                $candidates[] = 'vi '.$walletNameNoSpaces;
 
                 if (str_contains($walletNameLower, 'techcombank')) {
                     $candidates[] = 'tech';
@@ -179,17 +176,17 @@ class TelegramParserService
 
             // Sort by length descending to replace longer candidates first
             $candidates = array_values(array_unique(array_filter($candidates)));
-            usort($candidates, fn($a, $b) => mb_strlen($b, 'UTF-8') <=> mb_strlen($a, 'UTF-8'));
+            usort($candidates, fn ($a, $b) => mb_strlen($b, 'UTF-8') <=> mb_strlen($a, 'UTF-8'));
 
             foreach ($candidates as $cand) {
                 // Use case-insensitive replacement
-                $originalDesc = preg_replace('/\b' . preg_quote($cand, '/') . '\b/iu', '', $originalDesc);
+                $originalDesc = preg_replace('/\b'.preg_quote($cand, '/').'\b/iu', '', $originalDesc);
                 $originalDesc = str_ireplace($cand, '', $originalDesc);
             }
         }
 
-        $originalDesc = trim($originalDesc, " -:,=");
-        
+        $originalDesc = trim($originalDesc, ' -:,=');
+
         if (empty($originalDesc)) {
             $originalDesc = $categoryName;
         }
@@ -199,7 +196,7 @@ class TelegramParserService
             'amount' => $amount,
             'category_id' => $category?->id,
             'category_name' => $category?->name ?? $categoryName,
-            'description' => mb_convert_case($originalDesc, MB_CASE_TITLE, "UTF-8"),
+            'description' => mb_convert_case($originalDesc, MB_CASE_TITLE, 'UTF-8'),
         ];
     }
 
@@ -210,6 +207,7 @@ class TelegramParserService
                 return true;
             }
         }
+
         return false;
     }
 
@@ -220,6 +218,7 @@ class TelegramParserService
                 return trim(mb_substr($text, mb_strlen($prefix)));
             }
         }
+
         return $text;
     }
 

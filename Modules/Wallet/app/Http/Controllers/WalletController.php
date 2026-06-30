@@ -4,6 +4,7 @@ namespace Modules\Wallet\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Support\AuditLogger;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -34,6 +35,7 @@ class WalletController extends Controller
             if ($w->type === Wallet::TYPE_CREDIT_CARD || $w->type === Wallet::TYPE_OVERDRAFT) {
                 return 0.0;
             }
+
             return (float) $w->opening_balance;
         });
 
@@ -41,6 +43,7 @@ class WalletController extends Controller
             if ($w->type === Wallet::TYPE_CREDIT_CARD || $w->type === Wallet::TYPE_OVERDRAFT) {
                 return $w->netBalance();
             }
+
             return 0.0;
         });
         $homeCurrency = $allWallets->first()?->home?->currency ?? 'VND';
@@ -112,7 +115,7 @@ class WalletController extends Controller
             $transfersInQuery->whereDate('occurred_at', $dateVal);
         } elseif ($period === 'month') {
             try {
-                $carbonMonth = \Carbon\Carbon::createFromFormat('Y-m', $monthVal);
+                $carbonMonth = Carbon::createFromFormat('Y-m', $monthVal);
             } catch (\Exception $e) {
                 $carbonMonth = now();
                 $monthVal = $carbonMonth->format('Y-m');
@@ -132,7 +135,7 @@ class WalletController extends Controller
         }
 
         $expenses = $expenseQuery->latest('occurred_at')->get()
-            ->map(fn($item) => [
+            ->map(fn ($item) => [
                 'type' => $item->type,
                 'amount' => (float) $item->amount,
                 'description' => $item->description ?: $item->category?->name,
@@ -142,20 +145,20 @@ class WalletController extends Controller
             ]);
 
         $transfersOut = $transfersOutQuery->latest('occurred_at')->get()
-            ->map(fn($item) => [
+            ->map(fn ($item) => [
                 'type' => 'expense',
                 'amount' => (float) $item->amount,
-                'description' => 'Chuyển đến ' . ($item->toWallet?->name ?? 'Ví khác'),
+                'description' => 'Chuyển đến '.($item->toWallet?->name ?? 'Ví khác'),
                 'icon' => '📤',
                 'category_name' => 'Chuyển khoản',
                 'occurred_at' => $item->occurred_at,
             ]);
 
         $transfersIn = $transfersInQuery->latest('occurred_at')->get()
-            ->map(fn($item) => [
+            ->map(fn ($item) => [
                 'type' => 'income',
                 'amount' => (float) $item->amount,
-                'description' => 'Nhận từ ' . ($item->fromWallet?->name ?? 'Ví khác'),
+                'description' => 'Nhận từ '.($item->fromWallet?->name ?? 'Ví khác'),
                 'icon' => '📥',
                 'category_name' => 'Chuyển khoản',
                 'occurred_at' => $item->occurred_at,
@@ -173,7 +176,7 @@ class WalletController extends Controller
         $totalIncome = (float) $recentExpenses->where('type', 'income')->sum('amount');
 
         // Group by date Y-m-d
-        $groupedExpenses = $recentExpenses->groupBy(fn($item) => $item['occurred_at']->format('Y-m-d'));
+        $groupedExpenses = $recentExpenses->groupBy(fn ($item) => $item['occurred_at']->format('Y-m-d'));
 
         return view('wallet::show', compact(
             'wallet',

@@ -10,6 +10,7 @@ use Modules\Energy\Models\EnergyBill;
 use Modules\Expense\Models\Expense;
 use Modules\Expense\Models\ExpenseCategory;
 use Modules\Expense\Models\Transfer;
+use Modules\Expense\Services\TransferService;
 use Modules\Home\Models\Home;
 use Modules\Home\Models\HomeMember;
 use Modules\Wallet\Models\Wallet;
@@ -92,8 +93,8 @@ class TelegramWebhookTest extends TestCase
         // Assert balances updated
         $tech->refresh();
         $vp->refresh();
-        $this->assertEquals(920000.0, (float)$tech->balance);
-        $this->assertEquals(580000.0, (float)$vp->balance);
+        $this->assertEquals(920000.0, (float) $tech->balance);
+        $this->assertEquals(580000.0, (float) $vp->balance);
 
         // Verify Telegram message was sent
         Http::assertSent(function ($request) {
@@ -134,7 +135,7 @@ class TelegramWebhookTest extends TestCase
 
         // Assert balance updated
         $tech->refresh();
-        $this->assertEquals(950000.0, (float)$tech->balance);
+        $this->assertEquals(950000.0, (float) $tech->balance);
 
         // Verify Inline Keyboard was sent
         Http::assertSent(function ($request) {
@@ -158,10 +159,9 @@ class TelegramWebhookTest extends TestCase
             'api.telegram.org/*' => Http::response(['ok' => true], 200),
         ]);
 
-        $this->app->instance(GeminiElectricBillScanner::class, new class extends GeminiElectricBillScanner {
-            public function __construct()
-            {
-            }
+        $this->app->instance(GeminiElectricBillScanner::class, new class extends GeminiElectricBillScanner
+        {
+            public function __construct() {}
 
             public function scan(string $imageBase64): ?array
             {
@@ -263,7 +263,7 @@ class TelegramWebhookTest extends TestCase
                     'message_id' => 777,
                     'text' => 'Giao dịch chi tiêu',
                 ],
-                'data' => 'undo_expense:' . $expense->id,
+                'data' => 'undo_expense:'.$expense->id,
             ],
         ];
 
@@ -282,7 +282,7 @@ class TelegramWebhookTest extends TestCase
 
         // Assert balance was restored
         $tech->refresh();
-        $this->assertEquals(1000000.0, (float)$tech->balance);
+        $this->assertEquals(1000000.0, (float) $tech->balance);
 
         // Verify Callback response and EditMessageText were called
         Http::assertSent(function ($request) {
@@ -305,7 +305,7 @@ class TelegramWebhookTest extends TestCase
         ['user' => $user, 'techcombank' => $tech, 'vpbank' => $vp] = $this->setupUserWithWallets();
 
         // Create a pre-existing transfer
-        $transferService = app(\Modules\Expense\Services\TransferService::class);
+        $transferService = app(TransferService::class);
         $transfer = $transferService->createTransfer([
             'home_id' => $tech->home_id,
             'from_wallet_id' => $tech->id,
@@ -316,8 +316,8 @@ class TelegramWebhookTest extends TestCase
 
         $tech->refresh();
         $vp->refresh();
-        $this->assertEquals(900000.0, (float)$tech->balance);
-        $this->assertEquals(600000.0, (float)$vp->balance);
+        $this->assertEquals(900000.0, (float) $tech->balance);
+        $this->assertEquals(600000.0, (float) $vp->balance);
 
         $payload = [
             'callback_query' => [
@@ -329,7 +329,7 @@ class TelegramWebhookTest extends TestCase
                     'message_id' => 888,
                     'text' => 'Giao dịch chuyển khoản',
                 ],
-                'data' => 'undo_transfer:' . $transfer->id,
+                'data' => 'undo_transfer:'.$transfer->id,
             ],
         ];
 
@@ -345,8 +345,8 @@ class TelegramWebhookTest extends TestCase
         // Assert balances were restored
         $tech->refresh();
         $vp->refresh();
-        $this->assertEquals(1000000.0, (float)$tech->balance);
-        $this->assertEquals(500000.0, (float)$vp->balance);
+        $this->assertEquals(1000000.0, (float) $tech->balance);
+        $this->assertEquals(500000.0, (float) $vp->balance);
 
         // Verify callback messages
         Http::assertSent(function ($request) {
@@ -388,7 +388,7 @@ class TelegramWebhookTest extends TestCase
                     ],
                     'message_id' => 999,
                 ],
-                'data' => 'undo_expense:' . $expense->id,
+                'data' => 'undo_expense:'.$expense->id,
             ],
         ];
 
