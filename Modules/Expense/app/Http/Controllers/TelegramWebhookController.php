@@ -381,13 +381,17 @@ class TelegramWebhookController extends Controller
             ];
 
             if (str_contains($walletNameLower, 'techcombank')) {
+                $matchCandidates[] = 'techcombank';
                 $matchCandidates[] = 'tech';
                 $matchCandidates[] = 'tcb';
                 $matchCandidates[] = 'ví thấu chi tech';
                 $matchCandidates[] = 'ví thấu chi techcombank';
                 $matchCandidates[] = 'thấu chi techcombank';
+                $matchCandidates[] = 'thấu chi tech';
+                $matchCandidates[] = 'thấu chi tcb';
             }
             if (str_contains($walletNameLower, 'vietcombank')) {
+                $matchCandidates[] = 'vietcombank';
                 $matchCandidates[] = 'vcb';
             }
             if (str_contains($walletNameLower, 'momo')) {

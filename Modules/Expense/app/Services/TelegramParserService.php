@@ -151,12 +151,17 @@ class TelegramParserService
                 $candidates[] = 'vi '.$walletNameNoSpaces;
 
                 if (str_contains($walletNameLower, 'techcombank')) {
+                    $candidates[] = 'techcombank';
                     $candidates[] = 'tech';
                     $candidates[] = 'tcb';
                     $candidates[] = 'ví thấu chi tech';
                     $candidates[] = 'ví thấu chi techcombank';
+                    $candidates[] = 'thấu chi techcombank';
+                    $candidates[] = 'thấu chi tech';
+                    $candidates[] = 'thấu chi tcb';
                 }
                 if (str_contains($walletNameLower, 'vietcombank')) {
+                    $candidates[] = 'vietcombank';
                     $candidates[] = 'vcb';
                 }
                 if (str_contains($walletNameLower, 'momo')) {
@@ -184,6 +189,11 @@ class TelegramParserService
                 $originalDesc = str_ireplace($cand, '', $originalDesc);
             }
         }
+
+        // Clean up wallet placeholders and prepositions (e.g., "từ {wallet_0}", "bằng {wallet_1}", or standalone "{wallet_0}")
+        $originalDesc = preg_replace('/\b(?:từ|tu|sang|đến|den|qua|vào|vao|bằng|bang|tại|tai)\s+\{wallet_\d+\}/iu', '', $originalDesc);
+        $originalDesc = preg_replace('/(?:->)\s*\{wallet_\d+\}/iu', '', $originalDesc);
+        $originalDesc = preg_replace('/\{wallet_\d+\}/iu', '', $originalDesc);
 
         $originalDesc = trim($originalDesc, ' -:,=');
 

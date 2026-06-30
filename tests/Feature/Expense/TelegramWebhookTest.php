@@ -88,6 +88,7 @@ class TelegramWebhookTest extends TestCase
             'from_wallet_id' => $tech->id,
             'to_wallet_id' => $vp->id,
             'amount' => '80000.00',
+            'description' => 'Chuyển Tiền',
         ]);
 
         // Assert balances updated
@@ -101,6 +102,50 @@ class TelegramWebhookTest extends TestCase
             return str_contains($request->url(), 'sendMessage') &&
                 str_contains($request['text'], 'Chuyển khoản thành công') &&
                 str_contains($request['text'], '80.000');
+        });
+    }
+
+    public function test_telegram_webhook_parses_transfer_transaction_with_overdraft_short_name(): void
+    {
+        config(['services.telegram.bot_token' => 'fake_token']);
+        Http::fake([
+            'api.telegram.org/*' => Http::response(['ok' => true], 200),
+        ]);
+
+        ['user' => $user, 'techcombank' => $tech, 'vpbank' => $vp] = $this->setupUserWithWallets();
+
+        $payload = [
+            'message' => [
+                'chat' => [
+                    'id' => 123456789,
+                ],
+                'text' => 'chuyển 35k từ thấu chi techcombank sang vpbank',
+            ],
+        ];
+
+        $response = $this->postJson('/api/v1/telegram/webhook', $payload);
+
+        $response->assertStatus(200);
+
+        // Assert Transfer was created in DB
+        $this->assertDatabaseHas('transfers', [
+            'from_wallet_id' => $tech->id,
+            'to_wallet_id' => $vp->id,
+            'amount' => '35000.00',
+            'description' => 'Chuyển Tiền',
+        ]);
+
+        // Assert balances updated
+        $tech->refresh();
+        $vp->refresh();
+        $this->assertEquals(965000.0, (float) $tech->balance);
+        $this->assertEquals(535000.0, (float) $vp->balance);
+
+        // Verify Telegram message was sent
+        Http::assertSent(function ($request) {
+            return str_contains($request->url(), 'sendMessage') &&
+                str_contains($request['text'], 'Chuyển khoản thành công') &&
+                str_contains($request['text'], '35.000');
         });
     }
 
@@ -131,6 +176,7 @@ class TelegramWebhookTest extends TestCase
             'wallet_id' => $tech->id,
             'amount' => '50000.00',
             'type' => 'expense',
+            'description' => 'Ăn Trưa',
         ]);
 
         // Assert balance updated
