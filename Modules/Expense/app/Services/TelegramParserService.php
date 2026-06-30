@@ -89,30 +89,7 @@ class TelegramParserService
             $categoryName = $this->autoMatchCategory($description, $type);
         }
 
-        // Find category model in DB
-        if ($categoryGroup) {
-            $category = ExpenseCategory::where('home_id', $homeId)
-                ->where('category_group', $categoryGroup)
-                ->first();
-        } else {
-            $category = ExpenseCategory::where('home_id', $homeId)
-                ->where('type', $type)
-                ->where('name', $categoryName)
-                ->first();
-        }
-
-        // Fallback to general "Khác" if not found
-        if (! $category) {
-            $category = ExpenseCategory::where('home_id', $homeId)
-                ->where('category_group', ExpenseCategory::GROUP_OTHER)
-                ->first();
-        }
-
-        if (! $category) {
-            throw new \RuntimeException(__('expense.default_category_not_found'));
-        }
-
-        // Original casing for description if possible
+        // Build clean description from original casing
         $originalDesc = $text;
         // Strip out command prefix from original casing
         foreach (['chuyen khoan', 'chuyển khoản', 'chuyen tien', 'chuyển tiền', 'chuyen', 'chuyển', 'ck', 'transfer', 'cho vay', 'cho muon', 'cho mượn', 'thu no', 'thu nợ', 'đòi nợ', 'doi no', 'tra no', 'trả nợ', 'trả tiền', 'tra tien', 'di vay', 'đi vay', 'vay tiền', 'vay tien', 'vay', 'mượn', 'muon', 'chi', 'tieu', 'tiêu', 'mua', 'pay', 'out', 'thu', 'nhan', 'nhận', 'luong', 'lương', 'in'] as $prefix) {
@@ -190,7 +167,7 @@ class TelegramParserService
             }
         }
 
-        // Clean up wallet placeholders and prepositions (e.g., "từ {wallet_0}", "bằng {wallet_1}", or standalone "{wallet_0}")
+        // Clean up wallet placeholders and prepositions
         $originalDesc = preg_replace('/\b(?:từ|tu|sang|đến|den|qua|vào|vao|bằng|bang|tại|tai)\s+\{wallet_\d+\}/iu', '', $originalDesc);
         $originalDesc = preg_replace('/(?:->)\s*\{wallet_\d+\}/iu', '', $originalDesc);
         $originalDesc = preg_replace('/\{wallet_\d+\}/iu', '', $originalDesc);
@@ -199,6 +176,40 @@ class TelegramParserService
 
         if (empty($originalDesc)) {
             $originalDesc = $categoryName;
+        }
+
+        // For transfers, skip category lookup — TransferService creates its own categories
+        if ($type === 'transfer') {
+            return [
+                'type' => $type,
+                'amount' => $amount,
+                'category_id' => null,
+                'category_name' => $categoryName,
+                'description' => mb_convert_case($originalDesc, MB_CASE_TITLE, 'UTF-8'),
+            ];
+        }
+
+        // Find category model in DB
+        if ($categoryGroup) {
+            $category = ExpenseCategory::where('home_id', $homeId)
+                ->where('category_group', $categoryGroup)
+                ->first();
+        } else {
+            $category = ExpenseCategory::where('home_id', $homeId)
+                ->where('type', $type)
+                ->where('name', $categoryName)
+                ->first();
+        }
+
+        // Fallback to general "Khác" if not found
+        if (! $category) {
+            $category = ExpenseCategory::where('home_id', $homeId)
+                ->where('category_group', ExpenseCategory::GROUP_OTHER)
+                ->first();
+        }
+
+        if (! $category) {
+            throw new \RuntimeException(__('expense.default_category_not_found'));
         }
 
         return [
