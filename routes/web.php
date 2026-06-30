@@ -21,20 +21,21 @@ Route::get('/telegram-test-info', function () {
     $token = config('services.telegram.bot_token');
     $secret = config('services.telegram.webhook_secret');
 
-    if (! $token) {
-        return response()->json([
-            'status' => 'error',
-            'message' => 'TELEGRAM_BOT_TOKEN is not configured',
-        ]);
+    $botInfo = null;
+    $webhookInfo = null;
+    if ($token) {
+        $botInfo = Http::get("https://api.telegram.org/bot{$token}/getMe")->json();
+        $webhookInfo = Http::get("https://api.telegram.org/bot{$token}/getWebhookInfo")->json();
     }
 
-    $botInfo = Http::get("https://api.telegram.org/bot{$token}/getMe")->json();
-    $webhookInfo = Http::get("https://api.telegram.org/bot{$token}/getWebhookInfo")->json();
-
     return response()->json([
-        'status' => 'ok',
+        'status' => ! empty($token) ? 'ok' : 'token_missing',
         'has_secret' => ! empty($secret),
         'secret_length' => strlen($secret),
+        'env_token' => getenv('TELEGRAM_BOT_TOKEN'),
+        'env_token_len' => strlen(getenv('TELEGRAM_BOT_TOKEN')),
+        'env_keys' => array_keys($_ENV),
+        'server_env_keys' => array_keys($_SERVER),
         'bot_info' => $botInfo,
         'webhook_info' => $webhookInfo,
     ]);
