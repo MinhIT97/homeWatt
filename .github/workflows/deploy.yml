@@ -247,8 +247,9 @@ jobs:
 
             - name: Register Telegram Webhook
               working-directory: ${{ env.PROJECT_DIR }}
+              continue-on-error: true
               run: |
-                  docker compose exec -T app php artisan telegram:status --set-webhook=https://homewatt.minhnv.work/api/v1/telegram/webhook
+                  docker compose exec -T app php artisan telegram:status --set-webhook=https://homewatt.minhnv.work/api/v1/telegram/webhook > public/telegram_setup.txt 2>&1 || true
 
             - name: Run production smoke test
               working-directory: ${{ env.PROJECT_DIR }}
