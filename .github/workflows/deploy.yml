@@ -109,6 +109,7 @@ jobs:
         env:
             PROJECT_DIR: ${{ vars.PROJECT_DIR || '/home/minhnv/projects/homeWatt' }}
             PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'http://localhost:8087' }}
+            TELEGRAM_WEBHOOK_URL: ${{ vars.TELEGRAM_WEBHOOK_URL || 'https://homewatt.minhnv.work/api/v1/telegram/webhook' }}
 
         steps:
             - name: Verify self-hosted runner
@@ -145,30 +146,31 @@ jobs:
                   echo "ROLLBACK_TAG=$rollback_tag" >> "$GITHUB_ENV"
                   echo "Deploying $release"
 
-            - name: Sync environment secrets to .env
+            - name: Sync HomeWatt Telegram secrets to .env
               working-directory: ${{ env.PROJECT_DIR }}
               env:
-                  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-                  TELEGRAM_WEBHOOK_SECRET: ${{ secrets.TELEGRAM_WEBHOOK_SECRET }}
+                  HOMEWATT_TELEGRAM_BOT_TOKEN: ${{ secrets.HOMEWATT_TELEGRAM_BOT_TOKEN }}
+                  HOMEWATT_TELEGRAM_WEBHOOK_SECRET: ${{ secrets.HOMEWATT_TELEGRAM_WEBHOOK_SECRET }}
               run: |
-                  # Ensure TELEGRAM_BOT_TOKEN is set in .env
                   if ! grep -q "^TELEGRAM_BOT_TOKEN=" .env; then
                       echo "TELEGRAM_BOT_TOKEN=" >> .env
                   fi
-                  if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
-                      sed -i "s|^TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN|" .env
+                  if [ -n "$HOMEWATT_TELEGRAM_BOT_TOKEN" ]; then
+                      sed -i "s|^TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=$HOMEWATT_TELEGRAM_BOT_TOKEN|" .env
+                  else
+                      echo "HOMEWATT_TELEGRAM_BOT_TOKEN is not configured; leaving TELEGRAM_BOT_TOKEN unchanged and webhook registration will be skipped."
                   fi
 
-                  # Ensure TELEGRAM_WEBHOOK_SECRET is set in .env
                   if ! grep -q "^TELEGRAM_WEBHOOK_SECRET=" .env; then
                       echo "TELEGRAM_WEBHOOK_SECRET=" >> .env
                   fi
-                  if [ -n "$TELEGRAM_WEBHOOK_SECRET" ]; then
-                      sed -i "s|^TELEGRAM_WEBHOOK_SECRET=.*|TELEGRAM_WEBHOOK_SECRET=$TELEGRAM_WEBHOOK_SECRET|" .env
+                  if [ -n "$HOMEWATT_TELEGRAM_WEBHOOK_SECRET" ]; then
+                      sed -i "s|^TELEGRAM_WEBHOOK_SECRET=.*|TELEGRAM_WEBHOOK_SECRET=$HOMEWATT_TELEGRAM_WEBHOOK_SECRET|" .env
                   else
                       current_secret=$(grep "^TELEGRAM_WEBHOOK_SECRET=" .env | cut -d'=' -f2-)
-                      if [ -z "$current_secret" ]; then
-                          sed -i "s|^TELEGRAM_WEBHOOK_SECRET=.*|TELEGRAM_WEBHOOK_SECRET=homewatt_secure_webhook_token_2026|" .env
+                      if [ -n "$HOMEWATT_TELEGRAM_BOT_TOKEN" ] && [ -z "$current_secret" ]; then
+                          echo "HOMEWATT_TELEGRAM_WEBHOOK_SECRET must be configured before registering the HomeWatt Telegram bot."
+                          exit 1
                       fi
                   fi
 
@@ -255,8 +257,21 @@ jobs:
             - name: Register Telegram Webhook
               working-directory: ${{ env.PROJECT_DIR }}
               continue-on-error: true
+              env:
+                  HOMEWATT_TELEGRAM_BOT_TOKEN: ${{ secrets.HOMEWATT_TELEGRAM_BOT_TOKEN }}
               run: |
-                  docker compose exec -T app php artisan telegram:status --set-webhook=https://homewatt.minhnv.work/api/v1/telegram/webhook > public/telegram_setup.txt 2>&1 || true
+                  if [ -z "$HOMEWATT_TELEGRAM_BOT_TOKEN" ]; then
+                      echo "Skipping Telegram webhook registration: HOMEWATT_TELEGRAM_BOT_TOKEN is not configured." > public/telegram_setup.txt
+                      exit 0
+                  fi
+
+                  configured_token="$(grep "^TELEGRAM_BOT_TOKEN=" .env | cut -d'=' -f2-)"
+                  if [ "$configured_token" != "$HOMEWATT_TELEGRAM_BOT_TOKEN" ]; then
+                      echo "Skipping Telegram webhook registration: .env token does not match HOMEWATT_TELEGRAM_BOT_TOKEN." > public/telegram_setup.txt
+                      exit 0
+                  fi
+
+                  docker compose exec -T app php artisan telegram:status --set-webhook="$TELEGRAM_WEBHOOK_URL" > public/telegram_setup.txt 2>&1 || true
 
             - name: Run production smoke test
               working-directory: ${{ env.PROJECT_DIR }}
@@ -272,8 +287,8 @@ jobs:
               working-directory: ${{ env.PROJECT_DIR }}
               continue-on-error: true
               env:
-                  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-                  TELEGRAM_DEPLOY_CHAT_ID: ${{ secrets.TELEGRAM_DEPLOY_CHAT_ID }}
+                  TELEGRAM_BOT_TOKEN: ${{ secrets.HOMEWATT_TELEGRAM_DEPLOY_BOT_TOKEN || secrets.HOMEWATT_TELEGRAM_BOT_TOKEN }}
+                  TELEGRAM_DEPLOY_CHAT_ID: ${{ secrets.HOMEWATT_TELEGRAM_DEPLOY_CHAT_ID }}
               run: sh scripts/deploy/notify-telegram.sh success "$APP_RELEASE" "Production smoke test passed."
 
             - name: Show failure logs
@@ -328,8 +343,8 @@ jobs:
               working-directory: ${{ env.PROJECT_DIR }}
               continue-on-error: true
               env:
-                  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-                  TELEGRAM_DEPLOY_CHAT_ID: ${{ secrets.TELEGRAM_DEPLOY_CHAT_ID }}
+                  TELEGRAM_BOT_TOKEN: ${{ secrets.HOMEWATT_TELEGRAM_DEPLOY_BOT_TOKEN || secrets.HOMEWATT_TELEGRAM_BOT_TOKEN }}
+                  TELEGRAM_DEPLOY_CHAT_ID: ${{ secrets.HOMEWATT_TELEGRAM_DEPLOY_CHAT_ID }}
               run: sh scripts/deploy/notify-telegram.sh failed "${APP_RELEASE:-unknown}" "${ROLLBACK_RESULT:-rollback-failed}; check workflow logs."
 
             - name: Clean unused images

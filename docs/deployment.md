@@ -52,6 +52,29 @@ does not reverse database migrations.
 
 ## Optional notifications
 
-Set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_DEPLOY_CHAT_ID` as repository secrets to
-receive success or failure notifications. Missing Telegram credentials do not
-fail deployment.
+Set `HOMEWATT_TELEGRAM_DEPLOY_BOT_TOKEN` and
+`HOMEWATT_TELEGRAM_DEPLOY_CHAT_ID` as repository secrets to receive success or
+failure notifications. If no dedicated deploy bot token is configured, the
+workflow can use `HOMEWATT_TELEGRAM_BOT_TOKEN` for notifications. Missing
+Telegram credentials do not fail deployment.
+
+## Telegram webhook
+
+HomeWatt must use its own bot token. Configure these repository secrets only
+with credentials for the HomeWatt bot:
+
+- `HOMEWATT_TELEGRAM_BOT_TOKEN`
+- `HOMEWATT_TELEGRAM_WEBHOOK_SECRET`
+
+If `HOMEWATT_TELEGRAM_BOT_TOKEN` is unset, deploy skips webhook registration.
+If the bot token is set, `HOMEWATT_TELEGRAM_WEBHOOK_SECRET` must also be set so
+the webhook endpoint can verify Telegram requests.
+
+The workflow intentionally does not read generic secret names such as
+`TELEGRAM_BOT_TOKEN` or `TELEGRAM_WEBHOOK_SECRET`, because those names can be
+shared with another app. Telegram allows only one webhook URL per bot token, so
+using the WorkLens bot token here would move that bot's webhook to HomeWatt
+during deploy.
+
+Set repository variable `TELEGRAM_WEBHOOK_URL` if the production webhook URL is
+not `https://homewatt.minhnv.work/api/v1/telegram/webhook`.
