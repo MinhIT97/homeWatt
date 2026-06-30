@@ -145,6 +145,26 @@ jobs:
                   echo "ROLLBACK_TAG=$rollback_tag" >> "$GITHUB_ENV"
                   echo "Deploying $release"
 
+            - name: Sync environment secrets to .env
+              working-directory: ${{ env.PROJECT_DIR }}
+              env:
+                  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+              run: |
+                  # Ensure TELEGRAM_BOT_TOKEN is set in .env
+                  if ! grep -q "^TELEGRAM_BOT_TOKEN=" .env; then
+                      echo "TELEGRAM_BOT_TOKEN=" >> .env
+                  fi
+                  sed -i "s|^TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN|" .env
+
+                  # Ensure TELEGRAM_WEBHOOK_SECRET is set in .env
+                  if ! grep -q "^TELEGRAM_WEBHOOK_SECRET=" .env; then
+                      echo "TELEGRAM_WEBHOOK_SECRET=" >> .env
+                  fi
+                  current_secret=$(grep "^TELEGRAM_WEBHOOK_SECRET=" .env | cut -d'=' -f2-)
+                  if [ -z "$current_secret" ]; then
+                      sed -i "s|^TELEGRAM_WEBHOOK_SECRET=.*|TELEGRAM_WEBHOOK_SECRET=homewatt_secure_webhook_token_2026|" .env
+                  fi
+
             - name: Preserve current production images
               working-directory: ${{ env.PROJECT_DIR }}
               run: |
@@ -224,6 +244,11 @@ jobs:
                   port=$(docker compose port nginx 80 | awk -F: '{print $NF}')
                   curl --fail --silent --show-error --retry 10 --retry-delay 3 \
                       "http://127.0.0.1:${port}/up"
+
+            - name: Register Telegram Webhook
+              working-directory: ${{ env.PROJECT_DIR }}
+              run: |
+                  docker compose exec -T app php artisan telegram:status --set-webhook=https://homewatt.minhnv.work/api/v1/telegram/webhook
 
             - name: Run production smoke test
               working-directory: ${{ env.PROJECT_DIR }}

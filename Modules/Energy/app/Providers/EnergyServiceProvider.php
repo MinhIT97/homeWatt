@@ -3,6 +3,8 @@
 namespace Modules\Energy\Providers;
 
 use Illuminate\Support\Facades\Gate;
+use Modules\Energy\Console\CheckThresholds;
+use Modules\Energy\Console\GenerateMonthlySummary;
 use Modules\Energy\Models\EnergyReading;
 use Modules\Energy\Policies\EnergyReadingPolicy;
 use Nwidart\Modules\Support\ModuleServiceProvider;
@@ -23,5 +25,12 @@ class EnergyServiceProvider extends ModuleServiceProvider
         parent::boot();
 
         Gate::policy(EnergyReading::class, EnergyReadingPolicy::class);
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                CheckThresholds::class,
+                GenerateMonthlySummary::class,
+            ]);
+        }
     }
 }
