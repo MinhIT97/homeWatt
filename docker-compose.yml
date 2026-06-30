@@ -14,11 +14,10 @@ x-app-environment: &app-environment
 x-app-service: &app-service
     image: homewatt-app:${APP_IMAGE_TAG:-latest}
     pull_policy: never
-    env_file:
-        - .env
     environment:
         <<: *app-environment
     volumes:
+        - ./.env:/var/www/.env:ro
         - storage_data:/var/www/storage
     networks:
         - homewatt-network
