@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/up', function () {
@@ -15,6 +16,29 @@ Route::get('/version', function () {
         'Cache-Control' => 'no-store, no-cache, must-revalidate',
     ]);
 })->name('version');
+
+Route::get('/telegram-test-info', function () {
+    $token = config('services.telegram.bot_token');
+    $secret = config('services.telegram.webhook_secret');
+
+    if (! $token) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'TELEGRAM_BOT_TOKEN is not configured',
+        ]);
+    }
+
+    $botInfo = Http::get("https://api.telegram.org/bot{$token}/getMe")->json();
+    $webhookInfo = Http::get("https://api.telegram.org/bot{$token}/getWebhookInfo")->json();
+
+    return response()->json([
+        'status' => 'ok',
+        'has_secret' => ! empty($secret),
+        'secret_length' => strlen($secret),
+        'bot_info' => $botInfo,
+        'webhook_info' => $webhookInfo,
+    ]);
+});
 
 Route::get('/', function () {
     return view('core::welcome');
