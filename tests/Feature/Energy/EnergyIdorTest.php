@@ -72,6 +72,21 @@ class EnergyIdorTest extends TestCase
         $response->assertForbidden();
     }
 
+    public function test_user_cannot_view_tiered_report_for_other_home(): void
+    {
+        $ownerA = User::factory()->create();
+        $ownerB = User::factory()->create();
+
+        ['home' => $home] = $this->createHomeWithDevice($ownerA);
+
+        $response = $this->actingAs($ownerB)->get(route('energy.tiered', [
+            'home_id' => $home->id,
+            'month' => now()->format('Y-m'),
+        ]));
+
+        $response->assertForbidden();
+    }
+
     public function test_owner_can_view_their_own_reading(): void
     {
         $owner = User::factory()->create();

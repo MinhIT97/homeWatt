@@ -22,8 +22,10 @@ class ExpenseController extends Controller
     public function index(Request $request): View
     {
         $userId = $request->user()->id;
+        $homeIds = Home::whereHas('members', fn ($q) => $q->where('user_id', $userId))->pluck('id');
 
         $query = Expense::whereHas('home.members', fn ($q) => $q->where('user_id', $userId))
+            ->whereNull('transfer_id')
             ->with(['wallet', 'category', 'user']);
 
         // Time range period filters
@@ -66,9 +68,27 @@ class ExpenseController extends Controller
             $query->whereDate('occurred_at', '<=', $to);
         }
 
-        // Calculate totals for the filtered results
-        $totalIncome = (float) (clone $query)->where('type', 'income')->sum('amount');
-        $totalSpent = (float) (clone $query)->where('type', 'expense')->sum('amount');
+        $debtCategoryIds = ExpenseCategory::whereIn('home_id', $homeIds)
+            ->whereIn('category_group', ExpenseCategory::DEBT_GROUPS)
+            ->pluck('id');
+
+        // Calculate totals for the filtered results, keeping debt flows separate from real income/spending.
+        $totalIncome = (float) (clone $query)
+            ->where('type', 'income')
+            ->whereNotIn('category_id', $debtCategoryIds)
+            ->sum('amount');
+        $totalSpent = (float) (clone $query)
+            ->where('type', 'expense')
+            ->whereNotIn('category_id', $debtCategoryIds)
+            ->sum('amount');
+        $totalDebtIn = (float) (clone $query)
+            ->where('type', 'income')
+            ->whereIn('category_id', $debtCategoryIds)
+            ->sum('amount');
+        $totalDebtOut = (float) (clone $query)
+            ->where('type', 'expense')
+            ->whereIn('category_id', $debtCategoryIds)
+            ->sum('amount');
 
         $expenses = $query->latest('occurred_at')->paginate(20);
 
@@ -84,9 +104,10 @@ class ExpenseController extends Controller
         $wallets = Wallet::whereHas('home.members', fn ($q) => $q->where('user_id', $userId))
             ->where('is_archived', false)
             ->get();
+        $quickSelectedHomeId = (int) ($request->get('home_id') ?: $homes->first()?->id);
 
         return view('expense::index', compact(
-            'expenses', 'groupedExpenses', 'totalIncome', 'totalSpent', 'homes', 'categories', 'wallets',
+            'expenses', 'groupedExpenses', 'totalIncome', 'totalSpent', 'totalDebtIn', 'totalDebtOut', 'homes', 'categories', 'wallets', 'quickSelectedHomeId',
             'period', 'dateVal', 'monthVal', 'yearVal'
         ));
     }

@@ -118,7 +118,7 @@
             </div>
 
             <!-- Statistics Panel -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
                 <!-- Total Income Card -->
                 <div class="glass-panel rounded-2xl border border-green-200/60 shadow-sm bg-green-50/20 p-5 flex items-center justify-between">
                     <div>
@@ -142,6 +142,32 @@
                     </div>
                     <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-650 text-2xl">
                         📉
+                    </div>
+                </div>
+
+                <!-- Transfer In Card -->
+                <div class="glass-panel rounded-2xl border border-blue-200/60 shadow-sm bg-blue-50/20 p-5 flex items-center justify-between">
+                    <div>
+                        <span class="text-xs font-bold text-blue-600 uppercase tracking-wider">Chuyển vào ví</span>
+                        <h4 class="text-2xl font-extrabold text-blue-700 font-outfit mt-1">
+                            +{{ number_format($totalTransferIn, 0, ',', '.') }} {{ $wallet->currency }}
+                        </h4>
+                    </div>
+                    <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-2xl">
+                        📥
+                    </div>
+                </div>
+
+                <!-- Transfer Out Card -->
+                <div class="glass-panel rounded-2xl border border-slate-200/80 shadow-sm bg-slate-50/50 p-5 flex items-center justify-between">
+                    <div>
+                        <span class="text-xs font-bold text-slate-600 uppercase tracking-wider">Chuyển khỏi ví</span>
+                        <h4 class="text-2xl font-extrabold text-slate-700 font-outfit mt-1">
+                            -{{ number_format($totalTransferOut, 0, ',', '.') }} {{ $wallet->currency }}
+                        </h4>
+                    </div>
+                    <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 text-2xl">
+                        📤
                     </div>
                 </div>
             </div>
@@ -199,6 +225,13 @@
                             <!-- Transactions list -->
                             <div class="space-y-3">
                                 @foreach($transactions as $expense)
+                                    @php
+                                        $isTransfer = str_starts_with($expense['type'], 'transfer_');
+                                        $isPositive = $expense['type'] === 'income' || $expense['type'] === 'transfer_in';
+                                        $amountClass = $isTransfer
+                                            ? 'text-blue-600'
+                                            : ($expense['type'] === 'income' ? 'text-green-600' : 'text-red-600');
+                                    @endphp
                                     <div class="flex items-center justify-between p-4 bg-white/60 hover:bg-white rounded-xl border border-slate-200/60 shadow-sm transition hover:shadow-md">
                                         <div class="flex items-center gap-3">
                                             <span class="text-xl w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center shadow-sm">{{ $expense['icon'] }}</span>
@@ -207,8 +240,8 @@
                                                 <div class="text-[11px] text-slate-500">{{ $expense['occurred_at']?->format('H:i') }} · {{ $expense['category_name'] }}</div>
                                             </div>
                                         </div>
-                                        <div class="font-bold text-sm {{ $expense['type'] === 'income' ? 'text-green-600' : 'text-red-600' }}">
-                                            {{ $expense['type'] === 'income' ? '+' : '-' }}{{ number_format($expense['amount'], 0, ',', '.') }} {{ $wallet->currency }}
+                                        <div class="font-bold text-sm {{ $amountClass }}">
+                                            {{ $isPositive ? '+' : '-' }}{{ number_format($expense['amount'], 0, ',', '.') }} {{ $wallet->currency }}
                                         </div>
                                     </div>
                                 @endforeach

@@ -5,7 +5,9 @@ namespace Modules\Media\Policies;
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
 use Modules\Device\Models\Device;
+use Modules\Home\Models\Home;
 use Modules\Media\Models\Media;
+use Modules\Room\Models\Room;
 
 class MediaPolicy
 {
@@ -13,13 +15,11 @@ class MediaPolicy
 
     public function view(User $user, Media $media): bool
     {
-        return $media->owner_type === 'device'
-            && $media->owner
-            && $media->owner->room
-            && $media->owner->room->home
-            && $media->owner->room->home->members()
-                ->where('user_id', $user->id)
-                ->exists();
+        $home = $this->resolveOwnerHome($media);
+
+        return $home?->members()
+            ->where('user_id', $user->id)
+            ->exists() ?? false;
     }
 
     public function create(User $user, ?Device $device = null): bool
@@ -39,13 +39,23 @@ class MediaPolicy
 
     public function delete(User $user, Media $media): bool
     {
-        if (! $media->owner || ! $media->owner->room) {
-            return false;
-        }
+        $home = $this->resolveOwnerHome($media);
 
-        return $media->owner->room->home->members()
+        return $home?->members()
             ->where('user_id', $user->id)
             ->whereIn('role', ['owner', 'manager'])
-            ->exists();
+            ->exists() ?? false;
+    }
+
+    private function resolveOwnerHome(Media $media): ?Home
+    {
+        $owner = $media->owner;
+
+        return match (true) {
+            $owner instanceof Device => $owner->room?->home,
+            $owner instanceof Room => $owner->home,
+            $owner instanceof Home => $owner,
+            default => null,
+        };
     }
 }

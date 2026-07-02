@@ -6,9 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Modules\AI\Services\GeminiBillScanner;
 use Modules\AI\Services\GeminiElectricBillScanner;
 use Modules\Energy\Services\ElectricBillRecorder;
@@ -16,6 +19,7 @@ use Modules\Expense\Models\Expense;
 use Modules\Expense\Models\ExpenseCategory;
 use Modules\Expense\Models\Transfer;
 use Modules\Expense\Services\ExpenseService;
+use Modules\Expense\Services\QuickEntryService;
 use Modules\Expense\Services\TelegramParserService;
 use Modules\Expense\Services\TransferService;
 use Modules\Wallet\Models\Wallet;
@@ -86,9 +90,55 @@ class TelegramWebhookController extends Controller
                 return response()->json(['ok' => true]);
             }
 
+            if ($this->matchesCommand($cleanTextLower, ['/commands', 'commands', '/lenh', 'lenh', '/menu', 'menu'])) {
+                $this->handleCommandListCommand($chatId);
+
+                return response()->json(['ok' => true]);
+            }
+
             // Handle /wallets or /vi command
             if ($cleanTextLower === '/wallets' || $cleanTextLower === '/vi' || $cleanTextLower === 'vi' || $cleanTextLower === '/balance' || $cleanTextLower === '/sodu' || $cleanTextLower === 'so du') {
                 $this->handleWalletsCommand($chatId);
+
+                return response()->json(['ok' => true]);
+            }
+
+            if ($this->matchesCommand($cleanTextLower, ['/today', 'today', '/homnay', 'hom nay', 'hôm nay', '/ngay', 'ngay'])) {
+                $this->handleSummaryCommand($chatId, 'day');
+
+                return response()->json(['ok' => true]);
+            }
+
+            if ($this->matchesCommand($cleanTextLower, ['/week', 'week', '/tuan', 'tuan', 'tuần này', 'tuan nay'])) {
+                $this->handleSummaryCommand($chatId, 'week');
+
+                return response()->json(['ok' => true]);
+            }
+
+            if ($this->matchesCommand($cleanTextLower, ['/month', 'month', '/thang', 'thang', 'tháng này', 'thang nay'])) {
+                $this->handleSummaryCommand($chatId, 'month');
+
+                return response()->json(['ok' => true]);
+            }
+
+            if (preg_match('/^(?:\/recent|recent|\/ganday|ganday|gan day|gần đây)(?:\s+(\d{1,2}))?$/u', $cleanTextLower, $matches)) {
+                $this->handleRecentCommand($chatId, isset($matches[1]) ? (int) $matches[1] : 5);
+
+                return response()->json(['ok' => true]);
+            }
+
+            if ($this->matchesCommand($cleanTextLower, ['/templates', 'templates', '/mau', 'mau', 'mẫu', '/goiy', 'goi y', 'gợi ý'])) {
+                $this->handleTemplatesCommand($chatId);
+
+                return response()->json(['ok' => true]);
+            }
+
+            if (! str_starts_with($text, '/') && $this->handlePendingTemplateAmount($chatId, $text)) {
+                return response()->json(['ok' => true]);
+            }
+
+            if ($this->hasBatchTransactionLines($text)) {
+                $this->handleBatchTransactionsCommand($chatId, $text, $parser, $expenseService);
 
                 return response()->json(['ok' => true]);
             }
@@ -149,11 +199,72 @@ class TelegramWebhookController extends Controller
              ."• `chi 150k vcb ăn tối` (Ghi nhận vào ví Vietcombank/vcb)\n"
              ."• `chi 100k vpbank xăng xe` (Ghi nhận vào ví VPBank)\n"
              ."• `thu 2.5tr bán điện mặt trời`\n"
-             ."• `cho vay 500k cho bạn Nam`\n"
+             ."• `cho Hường Nguyễn vay 35k techcombank` hoặc `cho vay 500k cho bạn Nam`\n"
              ."• `đi vay 1m từ anh Ba`\n\n"
+             ."Gõ `/lenh` để mở menu lệnh nhanh, xem báo cáo hôm nay, giao dịch gần đây và mẫu nhập.\n\n"
              .'💡 *Mẹo:* Bạn chỉ cần gõ thêm tên ví hoặc tên viết tắt (như `vcb`, `tech`, `momo`, `tm`...) vào tin nhắn để hệ thống tự nhận diện đúng ví ghi nhận!';
 
         $this->sendMessage($chatId, $msg);
+    }
+
+    private function matchesCommand(string $text, array $commands): bool
+    {
+        return in_array(preg_replace('/\s+/u', ' ', trim($text)), $commands, true);
+    }
+
+    private function hasBatchTransactionLines(string $text): bool
+    {
+        $lines = $this->transactionLines($text);
+
+        if (count($lines) < 2 || count($lines) > 10) {
+            return false;
+        }
+
+        foreach ($lines as $line) {
+            if (str_starts_with(trim($line), '/')) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function transactionLines(string $text): array
+    {
+        return array_values(array_filter(
+            array_map('trim', preg_split('/\R/u', $text) ?: []),
+            fn ($line) => $line !== ''
+        ));
+    }
+
+    private function handleBatchTransactionsCommand(int $chatId, string $text, TelegramParserService $parser, ExpenseService $expenseService): void
+    {
+        $lines = $this->transactionLines($text);
+
+        if (count($lines) > 10) {
+            $this->sendMessage($chatId, '⚠️ Mỗi lần nhập nhiều dòng tối đa 10 giao dịch để tránh ghi nhầm. Bạn tách bớt rồi gửi lại nhé.');
+
+            return;
+        }
+
+        $this->sendMessage($chatId, '🧾 Đang ghi '.count($lines).' dòng giao dịch...');
+
+        $processed = 0;
+        foreach ($lines as $line) {
+            try {
+                $this->handleTransactionCommand($chatId, $line, $parser, $expenseService);
+                $processed++;
+            } catch (\Throwable $e) {
+                Log::warning('Telegram batch line failed', [
+                    'chat_id' => $chatId,
+                    'line' => $line,
+                    'error' => $e->getMessage(),
+                ]);
+                $this->sendMessage($chatId, "⚠️ Không xử lý được dòng: `{$line}`");
+            }
+        }
+
+        $this->sendMessage($chatId, "✅ Đã xử lý {$processed}/".count($lines).' dòng. Mỗi giao dịch đều có nút hoàn tác riêng ở tin xác nhận.');
     }
 
     private function handleTransactionCommand(int $chatId, string $text, TelegramParserService $parser, ExpenseService $expenseService): void
@@ -190,6 +301,10 @@ class TelegramWebhookController extends Controller
             return;
         }
 
+        $dateExtraction = $this->extractOccurredAt($text);
+        $text = $dateExtraction['text'];
+        $occurredAt = $dateExtraction['occurred_at'];
+
         // 1. Match wallets across ALL homes
         $extracted = $this->extractWallets($text, $allWallets);
         $modifiedText = $extracted['text'];
@@ -211,7 +326,7 @@ class TelegramWebhookController extends Controller
             $msg = "❓ Cú pháp không hợp lệ. Vui lòng nhập theo các ví dụ sau:\n\n"
                  ."• *Chi tiêu*: `chi 75k mua rau quả` hoặc `tieu 200k vcb xang xe`\n"
                  ."• *Thu nhập*: `thu 12tr luong thang` hoặc `thu 500k momo bán đồ cũ`\n"
-                 ."• *Cho vay*: `cho vay 200k cho bạn`\n"
+                 ."• *Cho vay*: `cho Hường Nguyễn vay 35k techcombank` hoặc `cho vay 200k cho bạn`\n"
                  ."• *Đi vay*: `vay 1tr mua đồ ăn`\n"
                  ."• *Trả nợ*: `trả nợ 100k`\n"
                  ."• *Thu nợ*: `thu nợ 300k từ Nam`\n"
@@ -269,6 +384,21 @@ class TelegramWebhookController extends Controller
                 return;
             }
 
+            $transferItem = [
+                'mode' => 'transfer',
+                'home_id' => $home->id,
+                'from_wallet_id' => $fromWallet->id,
+                'to_wallet_id' => $toWallet->id,
+                'amount' => $parsed['amount'],
+                'fee' => 0,
+                'description' => $parsed['description'],
+                'occurred_at' => $occurredAt->toDateTimeString(),
+            ];
+
+            if ($this->sendDuplicateConfirmationIfNeeded($chatId, $user, $transferItem)) {
+                return;
+            }
+
             try {
                 $transferService = app(TransferService::class);
                 $transfer = $transferService->createTransfer([
@@ -277,7 +407,7 @@ class TelegramWebhookController extends Controller
                     'to_wallet_id' => $toWallet->id,
                     'amount' => $parsed['amount'],
                     'description' => $parsed['description'],
-                    'occurred_at' => now()->toDateTimeString(),
+                    'occurred_at' => $occurredAt->toDateTimeString(),
                 ], $user);
 
                 $confirmMsg = "✅ *Chuyển khoản thành công!*\n\n"
@@ -289,8 +419,15 @@ class TelegramWebhookController extends Controller
                 $replyMarkup = [
                     'inline_keyboard' => [
                         [
+                            ['text' => 'Đổi ví nguồn', 'callback_data' => 'change_tr_from:'.$transfer->id],
+                            ['text' => 'Đổi ví nhận', 'callback_data' => 'change_tr_to:'.$transfer->id],
+                        ],
+                        [
                             ['text' => '↩️ Hoàn tác', 'callback_data' => 'undo_transfer:'.$transfer->id],
                             ['text' => '💳 Số dư ví', 'callback_data' => 'view_wallets'],
+                        ],
+                        [
+                            ['text' => '📊 Hôm nay', 'callback_data' => 'cmd_today'],
                         ],
                     ],
                 ];
@@ -326,30 +463,94 @@ class TelegramWebhookController extends Controller
             'amount' => $parsed['amount'],
             'type' => $parsed['type'],
             'description' => $parsed['description'],
-            'occurred_at' => now()->toDateTimeString(),
+            'occurred_at' => $occurredAt->toDateTimeString(),
         ];
+
+        if ($this->sendDuplicateConfirmationIfNeeded($chatId, $user, ['mode' => 'transaction', ...$payload])) {
+            return;
+        }
 
         $expense = $expenseService->createExpense($payload, $user);
 
         // Success Confirmation Message
-        $typeEmoji = $parsed['type'] === 'income' ? '🟢 THU NHẬP' : '🔴 CHI TIÊU';
+        $typeEmoji = match ($parsed['category_group'] ?? null) {
+            ExpenseCategory::GROUP_LENDING => '🤝 CHO VAY',
+            ExpenseCategory::GROUP_BORROWING => '🏦 ĐI VAY',
+            ExpenseCategory::GROUP_DEBT_COLLECTION => '🪙 THU NỢ',
+            ExpenseCategory::GROUP_DEBT_REPAYMENT => '💸 TRẢ NỢ',
+            default => $parsed['type'] === 'income' ? '🟢 THU NHẬP' : '🔴 CHI TIÊU',
+        };
+        $counterpartyLine = ($parsed['category_group'] ?? null) === ExpenseCategory::GROUP_LENDING && ! empty($parsed['counterparty'])
+            ? '*Người vay*: '.$parsed['counterparty']."\n"
+            : '';
         $confirmMsg = "✅ *Ghi nhận thành công!*\n\n"
                     .'*Loại*: '.$typeEmoji."\n"
                     .'*Số tiền*: '.number_format($parsed['amount'], 0, ',', '.')." đ\n"
                     .'*Danh mục*: '.$parsed['category_name']."\n"
+                    .$counterpartyLine
                     .'*Ghi chú*: '.$parsed['description']."\n"
                     .'*Ví*: '.$selectedWallet->name.' (Số dư: '.number_format((float) $selectedWallet->fresh()->calculatedBalance(), 0, ',', '.').' đ)';
 
         $replyMarkup = [
             'inline_keyboard' => [
                 [
+                    ['text' => 'Đổi ví', 'callback_data' => 'change_wallet:'.$expense->id],
+                    ['text' => 'Đổi danh mục', 'callback_data' => 'change_category:'.$expense->id],
+                ],
+                [
+                    ['text' => 'Đổi loại', 'callback_data' => 'change_type:'.$expense->id],
                     ['text' => '↩️ Hoàn tác', 'callback_data' => 'undo_expense:'.$expense->id],
+                ],
+                [
                     ['text' => '💳 Số dư ví', 'callback_data' => 'view_wallets'],
+                    ['text' => '📊 Hôm nay', 'callback_data' => 'cmd_today'],
                 ],
             ],
         ];
 
         $this->sendMessage($chatId, $confirmMsg, $replyMarkup);
+    }
+
+    private function extractOccurredAt(string $text): array
+    {
+        $occurredAt = now();
+        $cleanText = $text;
+
+        if (preg_match('/(?:^|\s)(hôm qua|hom qua)(?:\s|$)/iu', $cleanText, $matches)) {
+            $occurredAt = now()->subDay();
+            $cleanText = trim(str_replace($matches[0], ' ', $cleanText));
+        } elseif (preg_match('/(?:ngày|ngay)\s+(\d{1,2})[\/.-](\d{1,2})(?:[\/.-](\d{2,4}))?/iu', $cleanText, $matches)) {
+            $occurredAt = $this->buildOccurredAtFromDateParts((int) $matches[1], (int) $matches[2], $matches[3] ?? null);
+            $cleanText = trim(str_replace($matches[0], ' ', $cleanText));
+        } elseif (preg_match('/(?:^|\s)(\d{1,2})[\/.-](\d{1,2})(?:[\/.-](\d{2,4}))?(?:\s|$)/u', $cleanText, $matches)) {
+            $occurredAt = $this->buildOccurredAtFromDateParts((int) $matches[1], (int) $matches[2], $matches[3] ?? null);
+            $cleanText = trim(str_replace($matches[0], ' ', $cleanText));
+        }
+
+        return [
+            'text' => preg_replace('/\s{2,}/u', ' ', $cleanText) ?: $text,
+            'occurred_at' => $occurredAt,
+        ];
+    }
+
+    private function buildOccurredAtFromDateParts(int $day, int $month, ?string $year): Carbon
+    {
+        $fullYear = $year ? (int) $year : now()->year;
+        if ($fullYear < 100) {
+            $fullYear += 2000;
+        }
+
+        try {
+            $date = Carbon::create($fullYear, $month, $day, now()->hour, now()->minute, now()->second);
+        } catch (\Throwable) {
+            return now();
+        }
+
+        if (! $year && $date->isFuture()) {
+            $date->subYear();
+        }
+
+        return $date->isFuture() ? now() : $date;
     }
 
     private function extractWallets(string $text, $allWallets): array
@@ -454,18 +655,60 @@ class TelegramWebhookController extends Controller
              ."🤖 Bot giúp ghi chép nhanh giao dịch bằng cú pháp tiếng Việt thông minh.\n\n"
              ."🔑 *CÁC LỆNH HỆ THỐNG:*\n"
              ."• `/help` hoặc `help`: Hiển thị hướng dẫn này\n"
+             ."• `/lenh` hoặc `menu`: Xem danh sách lệnh nhanh\n"
              ."• `/vi` hoặc `/wallets` hoặc `vi`: Xem danh sách các ví và số dư hiện tại\n\n"
              ."📝 *CÚ PHÁP GHI CHÉP GIAO DỊCH:*\n"
              ."Gõ theo định dạng: `[Hành động] [Số tiền] [Tên ví (nếu có)] [Mô tả/Hạng mục]`\n\n"
              ."• 🔴 *Chi tiêu*: `chi 75k mua rau` hoặc `tieu 200k vcb xang xe`\n"
              ."• 🟢 *Thu nhập*: `thu 12tr luong` hoặc `thu 500k momo ban do`\n"
-             ."• 🤝 *Cho vay*: `cho vay 200k cho ban`\n"
+             ."• 🤝 *Cho vay*: `cho Huong Nguyen vay 35k techcombank` hoặc `cho vay 200k cho ban`\n"
              ."• 💸 *Trả nợ*: `tra no 100k`\n"
              ."• 🏦 *Đi vay*: `vay 1tr mua do`\n"
-             ."• 🪙 *Thu nợ*: `thu no 300k tu Nam`\n\n"
+             ."• 🪙 *Thu nợ*: `thu no 300k tu Nam`\n"
+             ."• 🧾 *Nhiều dòng*: gửi nhiều giao dịch, mỗi dòng một khoản\n"
+             ."• 📅 *Ngày khác*: `hôm qua chi 50k ăn trưa` hoặc `01/07 chi 80k cafe`\n\n"
              .'💡 *Mẹo nhận diện ví:* Thêm tên ví hoặc viết tắt của ví (như `vcb`, `tech`, `momo`, `tm`) để hệ thống tự khớp. Mặc định sẽ ghi vào ví *Tiền mặt* nếu không ghi tên ví.';
 
         $this->sendMessage($chatId, $msg);
+    }
+
+    private function handleCommandListCommand(int $chatId): void
+    {
+        $msg = "⚡ *LỆNH NHANH HOMEWATT BOT*\n\n"
+             ."*Ghi giao dịch:*\n"
+             ."• `35k cafe tm`\n"
+             ."• `chi 75k ăn sáng`\n"
+             ."• `thu 12tr lương`\n"
+             ."• `chuyển 500k từ momo sang vcb`\n"
+             ."• `cho Hường Nguyễn vay 35k techcombank`\n\n"
+             ."*Báo cáo nhanh:*\n"
+             ."• `/today` hoặc `hôm nay`: Tóm tắt hôm nay\n"
+             ."• `/week` hoặc `tuần này`: Tóm tắt tuần này\n"
+             ."• `/month` hoặc `tháng này`: Tóm tắt tháng này\n"
+             ."• `/recent 5`: 5 giao dịch gần nhất\n"
+             ."• `/vi`: Số dư ví\n"
+             ."• `/mau`: Mẫu nhập nhanh\n\n"
+             ."*Nhập nhiều dòng:*\n"
+             ."```\n"
+             ."cafe 35k tm\n"
+             ."ăn trưa 60k\n"
+             ."gửi xe 5k\n"
+             .'```';
+
+        $replyMarkup = [
+            'inline_keyboard' => [
+                [
+                    ['text' => '📊 Hôm nay', 'callback_data' => 'cmd_today'],
+                    ['text' => '💳 Ví', 'callback_data' => 'view_wallets'],
+                ],
+                [
+                    ['text' => '🧾 Gần đây', 'callback_data' => 'cmd_recent'],
+                    ['text' => '✨ Mẫu nhập', 'callback_data' => 'cmd_templates'],
+                ],
+            ],
+        ];
+
+        $this->sendMessage($chatId, $msg, $replyMarkup);
     }
 
     private function handleWalletsCommand(int $chatId): void
@@ -521,6 +764,405 @@ class TelegramWebhookController extends Controller
         }
 
         $this->sendMessage($chatId, trim($msg));
+    }
+
+    private function handleTemplatesCommand(int $chatId): void
+    {
+        $context = $this->telegramContext($chatId);
+        if ($context) {
+            ['user' => $user, 'memberships' => $memberships] = $context;
+            $home = $memberships->first()?->home;
+
+            if ($home) {
+                try {
+                    $templates = app(QuickEntryService::class)->templatesForHome($user, (int) $home->id);
+                    if ($templates !== []) {
+                        $keyboard = collect($templates)
+                            ->chunk(2)
+                            ->map(fn ($row) => $row->map(fn ($template) => [
+                                'text' => ($template['icon'] ?? '✨').' '.$template['name'],
+                                'callback_data' => 'tpl:'.$template['id'],
+                            ])->values()->all())
+                            ->values()
+                            ->all();
+
+                        $this->sendMessage($chatId, "✨ *MẪU GIAO DỊCH THƯỜNG DÙNG*\n\nBấm một mẫu rồi nhập số tiền, ví dụ `35k` hoặc `1.2tr`.", [
+                            'inline_keyboard' => $keyboard,
+                        ]);
+
+                        return;
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('Telegram templates load failed', [
+                        'chat_id' => $chatId,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
+
+        $msg = "✨ *MẪU NHẬP NHANH*\n\n"
+             ."*Chi tiêu thường ngày:*\n"
+             ."• `35k cafe tm`\n"
+             ."• `ăn trưa 60k vpbank`\n"
+             ."• `chi 120k đi chợ tiền mặt`\n"
+             ."• `hôm qua chi 45k gửi xe`\n\n"
+             ."*Thu nhập:*\n"
+             ."• `thu 12tr lương techcombank`\n"
+             ."• `thu 500k bán đồ momo`\n\n"
+             ."*Vay nợ:*\n"
+             ."• `cho Hường Nguyễn vay 35k techcombank`\n"
+             ."• `thu nợ 300k từ Nam`\n"
+             ."• `trả nợ 1tr ngân hàng`\n"
+             ."• `vay 2tr từ anh Ba`\n\n"
+             ."*Chuyển ví:*\n"
+             ."• `chuyển 500k từ momo sang vcb`\n"
+             ."• `ck 80k từ tech sang vpbank`\n\n"
+             ."*Nhập nhiều dòng một lần:*\n"
+             ."```\n"
+             ."cafe 35k tm\n"
+             ."ăn trưa 60k\n"
+             ."gửi xe 5k\n"
+             .'```';
+
+        $this->sendMessage($chatId, $msg);
+    }
+
+    private function handleSummaryCommand(int $chatId, string $period): void
+    {
+        $context = $this->telegramContext($chatId);
+        if (! $context) {
+            return;
+        }
+
+        ['user' => $user, 'memberships' => $memberships] = $context;
+        $homeIds = $memberships->pluck('home_id');
+
+        [$start, $end, $title] = match ($period) {
+            'week' => [now()->startOfWeek()->startOfDay(), now()->endOfWeek()->endOfDay(), 'TUẦN NÀY'],
+            'month' => [now()->startOfMonth()->startOfDay(), now()->endOfMonth()->endOfDay(), 'THÁNG NÀY'],
+            default => [now()->startOfDay(), now()->endOfDay(), 'HÔM NAY'],
+        };
+
+        $debtCategoryIds = ExpenseCategory::whereIn('home_id', $homeIds)
+            ->whereIn('category_group', ExpenseCategory::DEBT_GROUPS)
+            ->pluck('id');
+
+        $baseExpenseQuery = Expense::whereIn('home_id', $homeIds)
+            ->whereNull('transfer_id')
+            ->whereBetween('occurred_at', [$start, $end]);
+
+        $income = (float) (clone $baseExpenseQuery)
+            ->where('type', Expense::TYPE_INCOME)
+            ->whereNotIn('category_id', $debtCategoryIds)
+            ->sum('amount');
+
+        $expense = (float) (clone $baseExpenseQuery)
+            ->where('type', Expense::TYPE_EXPENSE)
+            ->whereNotIn('category_id', $debtCategoryIds)
+            ->sum('amount');
+
+        $debtIn = (float) (clone $baseExpenseQuery)
+            ->where('type', Expense::TYPE_INCOME)
+            ->whereIn('category_id', $debtCategoryIds)
+            ->sum('amount');
+
+        $debtOut = (float) (clone $baseExpenseQuery)
+            ->where('type', Expense::TYPE_EXPENSE)
+            ->whereIn('category_id', $debtCategoryIds)
+            ->sum('amount');
+
+        $transferAmount = (float) Transfer::whereIn('home_id', $homeIds)
+            ->whereBetween('occurred_at', [$start, $end])
+            ->sum('amount');
+
+        $wallets = Wallet::whereIn('home_id', $homeIds)->where('is_archived', false)->get();
+        $totalBalance = (float) $wallets->sum(fn ($wallet) => $wallet->netBalance());
+
+        $recent = (clone $baseExpenseQuery)
+            ->with(['wallet', 'category'])
+            ->latest('occurred_at')
+            ->take(5)
+            ->get();
+
+        $msg = "📊 *TÓM TẮT {$title}*\n"
+             .'📅 _'.$start->format('d/m/Y').($period === 'day' ? '' : ' - '.$end->format('d/m/Y'))."_\n\n"
+             .'• 🟢 Thu nhập thật: *'.$this->money($income)." đ*\n"
+             .'• 🔴 Chi tiêu thật: *'.$this->money($expense)." đ*\n"
+             .'• ⚖️ Chênh lệch: *'.($income - $expense >= 0 ? '+' : '').$this->money($income - $expense)." đ*\n"
+             .'• 🤝 Vay/nợ vào: *'.$this->money($debtIn)." đ*\n"
+             .'• 💸 Vay/nợ ra: *'.$this->money($debtOut)." đ*\n"
+             .'• 🔁 Chuyển ví: *'.$this->money($transferAmount)." đ*\n"
+             .'• 💳 Tổng số dư ròng: *'.$this->money($totalBalance)." đ*\n";
+
+        if ($recent->isNotEmpty()) {
+            $msg .= "\n🧾 *Giao dịch gần nhất:*\n";
+            foreach ($recent as $item) {
+                $sign = $item->type === Expense::TYPE_INCOME ? '+' : '-';
+                $msg .= '• '.$item->occurred_at?->format('H:i').' '.$sign.$this->money((float) $item->amount).' - '.$this->plain($item->description ?: $item->category?->name ?: 'Giao dịch').' ('.$this->plain($item->wallet?->name ?: 'Ví').")\n";
+            }
+        }
+
+        $replyMarkup = [
+            'inline_keyboard' => [
+                [
+                    ['text' => '🧾 Gần đây', 'callback_data' => 'cmd_recent'],
+                    ['text' => '💳 Số dư ví', 'callback_data' => 'view_wallets'],
+                ],
+            ],
+        ];
+
+        $this->sendMessage($chatId, trim($msg), $replyMarkup);
+    }
+
+    private function handleRecentCommand(int $chatId, int $limit = 5): void
+    {
+        $context = $this->telegramContext($chatId);
+        if (! $context) {
+            return;
+        }
+
+        ['memberships' => $memberships] = $context;
+        $homeIds = $memberships->pluck('home_id');
+        $limit = max(1, min($limit, 10));
+
+        $expenses = Expense::whereIn('home_id', $homeIds)
+            ->whereNull('transfer_id')
+            ->with(['wallet', 'category'])
+            ->latest('occurred_at')
+            ->take($limit)
+            ->get()
+            ->map(fn ($expense) => [
+                'occurred_at' => $expense->occurred_at,
+                'line' => ($expense->type === Expense::TYPE_INCOME ? '🟢 +' : '🔴 -')
+                    .$this->money((float) $expense->amount).' đ - '
+                    .$this->plain($expense->description ?: $expense->category?->name ?: 'Giao dịch')
+                    .' · '.$this->plain($expense->wallet?->name ?: 'Ví'),
+            ]);
+
+        $transfers = Transfer::whereIn('home_id', $homeIds)
+            ->with(['fromWallet', 'toWallet'])
+            ->latest('occurred_at')
+            ->take($limit)
+            ->get()
+            ->map(fn ($transfer) => [
+                'occurred_at' => $transfer->occurred_at,
+                'line' => '🔁 '.$this->money((float) $transfer->amount).' đ - '
+                    .$this->plain($transfer->fromWallet?->name ?: 'Ví nguồn')
+                    .' → '.$this->plain($transfer->toWallet?->name ?: 'Ví nhận'),
+            ]);
+
+        $items = $expenses->concat($transfers)
+            ->sortByDesc('occurred_at')
+            ->take($limit)
+            ->values();
+
+        if ($items->isEmpty()) {
+            $this->sendMessage($chatId, '🧾 Chưa có giao dịch nào gần đây.');
+
+            return;
+        }
+
+        $msg = "🧾 *{$limit} GIAO DỊCH GẦN ĐÂY*\n\n";
+        foreach ($items as $item) {
+            $msg .= '• '.$item['occurred_at']?->format('d/m H:i').' '.$item['line']."\n";
+        }
+
+        $this->sendMessage($chatId, trim($msg));
+    }
+
+    private function telegramContext(int $chatId): ?array
+    {
+        $user = User::where('telegram_chat_id', $chatId)->first();
+
+        if (! $user) {
+            $this->sendMessage($chatId, "❌ Tài khoản Telegram của bạn chưa được liên kết với HomeWatt.\n\nVui lòng đăng nhập vào trang web, vào trang Cá nhân và lấy mã để liên kết tài khoản.");
+
+            return null;
+        }
+
+        $memberships = $user->homeMembers()->with('home')->get();
+
+        if ($memberships->isEmpty()) {
+            $this->sendMessage($chatId, '❌ Bạn chưa tham gia vào bất kỳ ngôi nhà nào trên HomeWatt.');
+
+            return null;
+        }
+
+        return compact('user', 'memberships');
+    }
+
+    private function money(float $amount): string
+    {
+        return number_format($amount, 0, ',', '.');
+    }
+
+    private function plain(?string $text): string
+    {
+        return str_replace(['*', '_', '`', '[', ']'], '', (string) $text);
+    }
+
+    private function sendDuplicateConfirmationIfNeeded(int $chatId, User $user, array $item): bool
+    {
+        $duplicate = app(QuickEntryService::class)->findDuplicate($item);
+        if (! $duplicate) {
+            return false;
+        }
+
+        $key = Str::random(10);
+        Cache::put($this->pendingTransactionCacheKey($key), [
+            'user_id' => $user->id,
+            'item' => $item,
+        ], now()->addMinutes(10));
+
+        $amount = number_format((float) ($item['amount'] ?? 0), 0, ',', '.');
+        $description = $this->plain($item['description'] ?? 'Giao dịch');
+        $message = "⚠️ *Có thể bị trùng giao dịch*\n\n"
+            ."• Số tiền: *{$amount} đ*\n"
+            ."• Nội dung: *{$description}*\n"
+            .'• Lý do: '.$duplicate['message']."\n\n"
+            .'Bạn muốn lưu thêm giao dịch này không?';
+
+        $this->sendMessage($chatId, $message, [
+            'inline_keyboard' => [
+                [
+                    ['text' => 'Vẫn lưu', 'callback_data' => 'dup_save:'.$key],
+                    ['text' => 'Bỏ qua', 'callback_data' => 'dup_cancel:'.$key],
+                ],
+            ],
+        ]);
+
+        return true;
+    }
+
+    private function pendingTransactionCacheKey(string $key): string
+    {
+        return 'telegram_pending_transaction:'.$key;
+    }
+
+    private function handlePendingTemplateAmount(int $chatId, string $text): bool
+    {
+        $templateId = Cache::get('telegram_template:'.$chatId);
+        if (! $templateId) {
+            return false;
+        }
+
+        $quickEntry = app(QuickEntryService::class);
+        if ($quickEntry->parseAmount($text) <= 0) {
+            $this->sendMessage($chatId, 'Nhập số tiền cho mẫu này nhé. Ví dụ: `35k`, `1.2tr`, `50000`.');
+
+            return true;
+        }
+
+        $user = User::where('telegram_chat_id', $chatId)->first();
+        if (! $user) {
+            Cache::forget('telegram_template:'.$chatId);
+
+            return false;
+        }
+
+        try {
+            $preview = $quickEntry->previewTemplate($user, (int) $templateId, $text);
+            $item = $preview['items'][0] ?? null;
+            if (! $item) {
+                return false;
+            }
+
+            if ($this->sendDuplicateConfirmationIfNeeded($chatId, $user, $item)) {
+                Cache::forget('telegram_template:'.$chatId);
+
+                return true;
+            }
+
+            $result = $quickEntry->storeItem($user, $item, true);
+            Cache::forget('telegram_template:'.$chatId);
+            $this->sendStoredQuickItemConfirmation($chatId, $result);
+
+            return true;
+        } catch (\Throwable $e) {
+            Log::warning('Telegram template amount failed', [
+                'chat_id' => $chatId,
+                'template_id' => $templateId,
+                'error' => $e->getMessage(),
+            ]);
+            $this->sendMessage($chatId, '❌ Không lưu được mẫu này: '.$e->getMessage());
+            Cache::forget('telegram_template:'.$chatId);
+
+            return true;
+        }
+    }
+
+    private function sendStoredQuickItemConfirmation(int $chatId, array $result): void
+    {
+        if (($result['mode'] ?? null) === 'transfer') {
+            $transfer = Transfer::with(['fromWallet', 'toWallet'])->find($result['id'] ?? null);
+            if (! $transfer) {
+                return;
+            }
+
+            $msg = "✅ *Chuyển khoản thành công!*\n\n"
+                .'*Số tiền*: '.number_format((float) $transfer->amount, 0, ',', '.')." đ\n"
+                .'*Từ ví*: '.$transfer->fromWallet?->name."\n"
+                .'*Sang ví*: '.$transfer->toWallet?->name."\n"
+                .'*Ghi chú*: '.$this->plain($transfer->description ?: 'Chuyển ví');
+
+            $this->sendMessage($chatId, $msg, $this->transferActionKeyboard($transfer));
+
+            return;
+        }
+
+        $expense = Expense::with(['wallet', 'category'])->find($result['id'] ?? null);
+        if (! $expense) {
+            return;
+        }
+
+        $msg = "✅ *Ghi nhận thành công!*\n\n"
+            .'*Loại*: '.($expense->isIncome() ? '🟢 THU NHẬP' : '🔴 CHI TIÊU')."\n"
+            .'*Số tiền*: '.number_format((float) $expense->amount, 0, ',', '.')." đ\n"
+            .'*Danh mục*: '.$expense->category?->name."\n"
+            .'*Ghi chú*: '.$this->plain($expense->description)."\n"
+            .'*Ví*: '.$expense->wallet?->name;
+
+        $this->sendMessage($chatId, $msg, $this->expenseActionKeyboard($expense));
+    }
+
+    private function expenseActionKeyboard(Expense $expense): array
+    {
+        return [
+            'inline_keyboard' => [
+                [
+                    ['text' => 'Đổi ví', 'callback_data' => 'change_wallet:'.$expense->id],
+                    ['text' => 'Đổi danh mục', 'callback_data' => 'change_category:'.$expense->id],
+                ],
+                [
+                    ['text' => 'Đổi loại', 'callback_data' => 'change_type:'.$expense->id],
+                    ['text' => '↩️ Hoàn tác', 'callback_data' => 'undo_expense:'.$expense->id],
+                ],
+                [
+                    ['text' => '💳 Số dư ví', 'callback_data' => 'view_wallets'],
+                    ['text' => '📊 Hôm nay', 'callback_data' => 'cmd_today'],
+                ],
+            ],
+        ];
+    }
+
+    private function transferActionKeyboard(Transfer $transfer): array
+    {
+        return [
+            'inline_keyboard' => [
+                [
+                    ['text' => 'Đổi ví nguồn', 'callback_data' => 'change_tr_from:'.$transfer->id],
+                    ['text' => 'Đổi ví nhận', 'callback_data' => 'change_tr_to:'.$transfer->id],
+                ],
+                [
+                    ['text' => '↩️ Hoàn tác', 'callback_data' => 'undo_transfer:'.$transfer->id],
+                    ['text' => '💳 Số dư ví', 'callback_data' => 'view_wallets'],
+                ],
+                [
+                    ['text' => '📊 Hôm nay', 'callback_data' => 'cmd_today'],
+                ],
+            ],
+        ];
     }
 
     private function handlePhotoUpload(int $chatId, array $photo, ExpenseService $expenseService): void
@@ -597,7 +1239,9 @@ class TelegramWebhookController extends Controller
         $electricResult = $electricScanner->scan($base64);
 
         if ($electricResult && $electricResult['is_electric_bill'] && ! empty($electricResult['amount'])) {
-            $categories = ExpenseCategory::where('home_id', $home->id)->get();
+            $categories = ExpenseCategory::where('home_id', $home->id)
+                ->where('type', 'expense')
+                ->get();
             $selectedCategory = $categories->first(fn ($cat) => str_contains(mb_strtolower($cat->name, 'UTF-8'), 'điện'))
                 ?: $categories->first(fn ($cat) => str_contains(mb_strtolower($cat->name, 'UTF-8'), 'hóa đơn'))
                 ?: $categories->first(fn ($cat) => str_contains(mb_strtolower($cat->name, 'UTF-8'), 'sinh hoạt'))
@@ -623,35 +1267,10 @@ class TelegramWebhookController extends Controller
                 'occurred_at' => now()->toDateTimeString(),
             ];
 
-            [$expense, $energyBill] = DB::transaction(function () use ($expenseService, $payload, $user, $electricResult) {
-                $expense = $expenseService->createExpense($payload, $user);
-                $energyBill = app(ElectricBillRecorder::class)->recordFromScan($expense, $electricResult);
-
-                return [$expense, $energyBill];
-            });
-
-            $billingMonth = $electricResult['billing_month'] ?: now()->format('m/Y');
-            $confirmMsg = "✅ *QUÉT HÓA ĐƠN ĐIỆN THÀNH CÔNG (AI)*\n\n"
-                        ."• 🔴 *CHI TIÊU*\n"
-                        .'• *Kỳ hóa đơn*: *'.$billingMonth."*\n"
-                        .'• *Số tiền*: *'.number_format($expense->amount, 0, ',', '.')." đ*\n"
-                        .'• *Sản lượng*: *'.($electricResult['kwh'] ? number_format($electricResult['kwh'], 1, ',', '.').' kWh' : 'N/A')."*\n"
-                        .'• *Chỉ số cũ/mới*: '.($electricResult['old_index'] ?? 'N/A').' ➡️ '.($electricResult['new_index'] ?? 'N/A')."\n"
-                        .'• *Khách hàng*: '.($electricResult['customer_name'] ?: 'N/A').' ('.($electricResult['customer_code'] ?: 'N/A').")\n"
-                        .'• *Ví*: *'.$wallet->name.'* (Số dư: '.number_format((float) $wallet->fresh()->calculatedBalance(), 0, ',', '.')." đ)\n\n"
-                        .'⚡ *Energy Bill*: #'.$energyBill->id."\n\n"
-                        .'🤖 _Hóa đơn điện đã được tự động ghi nhận vào Chi tiêu và Energy!_';
-
-            $replyMarkup = [
-                'inline_keyboard' => [
-                    [
-                        ['text' => '↩️ Hoàn tác', 'callback_data' => 'undo_expense:'.$expense->id],
-                        ['text' => '💳 Số dư ví', 'callback_data' => 'view_wallets'],
-                    ],
-                ],
-            ];
-
-            $this->sendMessage($chatId, $confirmMsg, $replyMarkup);
+            $this->sendReceiptPreview($chatId, $user, $payload, [
+                'scan_type' => 'electric',
+                'electric_result' => $electricResult,
+            ]);
 
             return;
         }
@@ -667,7 +1286,9 @@ class TelegramWebhookController extends Controller
         }
 
         // Match category
-        $categories = ExpenseCategory::all();
+        $categories = ExpenseCategory::where('home_id', $home->id)
+            ->where('type', 'expense')
+            ->get();
         $aiCategoryKey = $result['category'];
         $mappings = [
             'eating' => ['ăn', 'uống', 'nhà hàng', 'food', 'cafe', 'cà phê'],
@@ -688,7 +1309,7 @@ class TelegramWebhookController extends Controller
         }
 
         if (! $selectedCategory) {
-            $selectedCategory = $categories->where('type', 'expense')->first();
+            $selectedCategory = $categories->first();
         }
 
         if (! $selectedCategory) {
@@ -709,26 +1330,301 @@ class TelegramWebhookController extends Controller
             'occurred_at' => now()->toDateTimeString(),
         ];
 
-        $expense = $expenseService->createExpense($payload, $user);
+        $this->sendReceiptPreview($chatId, $user, $payload, [
+            'scan_type' => 'receipt',
+            'ai_result' => $result,
+        ]);
+    }
 
-        $confirmMsg = "✅ *QUÉT HÓA ĐƠN THÀNH CÔNG (AI)*\n\n"
-                    ."• 🔴 *CHI TIÊU*\n"
-                    .'• *Số tiền*: *'.number_format($expense->amount, 0, ',', '.')." đ*\n"
-                    .'• *Danh mục*: *'.$selectedCategory->name."*\n"
-                    .'• *Mô tả*: *'.$expense->description."*\n"
-                    .'• *Ví*: *'.$wallet->name.'* (Số dư: '.number_format((float) $wallet->fresh()->calculatedBalance(), 0, ',', '.')." đ)\n\n"
-                    .'🤖 _Hóa đơn đã được tự động ghi nhận vào tài khoản!_';
+    private function sendReceiptPreview(int $chatId, User $user, array $payload, array $meta, ?string $key = null): void
+    {
+        $key ??= Str::random(10);
+        Cache::put($this->receiptCacheKey($key), [
+            'user_id' => $user->id,
+            'payload' => $payload,
+            'meta' => $meta,
+        ], now()->addMinutes(30));
 
-        $replyMarkup = [
+        $wallet = Wallet::find($payload['wallet_id']);
+        $category = ExpenseCategory::find($payload['category_id']);
+        $duplicate = app(QuickEntryService::class)->findDuplicate(['mode' => 'transaction', ...$payload]);
+        $isElectric = ($meta['scan_type'] ?? null) === 'electric';
+        $electric = $meta['electric_result'] ?? [];
+
+        $msg = ($isElectric ? "⚡ *AI ĐÃ ĐỌC HÓA ĐƠN ĐIỆN*\n\n" : "🧾 *AI ĐÃ ĐỌC HÓA ĐƠN*\n\n")
+            .'• Loại: *Chi tiêu*'."\n"
+            .'• Số tiền: *'.number_format((float) $payload['amount'], 0, ',', '.')." đ*\n"
+            .'• Ví: *'.($wallet?->name ?: 'Chưa chọn')."*\n"
+            .'• Danh mục: *'.($category?->name ?: 'Chưa chọn')."*\n"
+            .'• Mô tả: *'.$this->plain($payload['description'] ?? 'Hóa đơn')."*\n";
+
+        if ($isElectric) {
+            $msg .= '• Kỳ hóa đơn: *'.($electric['billing_month'] ?: now()->format('m/Y'))."*\n"
+                .'• Sản lượng: *'.(! empty($electric['kwh']) ? number_format((float) $electric['kwh'], 1, ',', '.').' kWh' : 'N/A')."*\n"
+                .'• Chỉ số: '.($electric['old_index'] ?? 'N/A').' → '.($electric['new_index'] ?? 'N/A')."\n";
+        }
+
+        if ($duplicate) {
+            $msg .= "\n⚠️ ".$duplicate['message']."\n";
+        }
+
+        $msg .= "\nBấm *Lưu* để tạo giao dịch.";
+
+        $this->sendMessage($chatId, $msg, [
             'inline_keyboard' => [
                 [
-                    ['text' => '↩️ Hoàn tác', 'callback_data' => 'undo_expense:'.$expense->id],
-                    ['text' => '💳 Số dư ví', 'callback_data' => 'view_wallets'],
+                    ['text' => 'Lưu', 'callback_data' => 'r_save:'.$key],
+                    ['text' => 'Bỏ qua', 'callback_data' => 'r_cancel:'.$key],
+                ],
+                [
+                    ['text' => 'Đổi ví', 'callback_data' => 'r_wallet:'.$key],
+                    ['text' => 'Đổi danh mục', 'callback_data' => 'r_cat:'.$key],
                 ],
             ],
+        ]);
+    }
+
+    private function receiptCacheKey(string $key): string
+    {
+        return 'telegram_receipt_preview:'.$key;
+    }
+
+    private function receiptPreviewPayload(string $key, User $user): ?array
+    {
+        $pending = Cache::get($this->receiptCacheKey($key));
+        if (! $pending || (int) ($pending['user_id'] ?? 0) !== (int) $user->id) {
+            return null;
+        }
+
+        return $pending;
+    }
+
+    private function storeReceiptPreview(string $key, User $user): ?Expense
+    {
+        $pending = $this->receiptPreviewPayload($key, $user);
+        if (! $pending) {
+            return null;
+        }
+
+        $payload = $pending['payload'];
+        $meta = $pending['meta'] ?? [];
+        $expenseService = app(ExpenseService::class);
+
+        $expense = DB::transaction(function () use ($expenseService, $payload, $user, $meta) {
+            $expense = $expenseService->createExpense($payload, $user);
+
+            if (($meta['scan_type'] ?? null) === 'electric') {
+                app(ElectricBillRecorder::class)->recordFromScan($expense, $meta['electric_result'] ?? []);
+            }
+
+            return $expense;
+        });
+
+        Cache::forget($this->receiptCacheKey($key));
+
+        return $expense->fresh(['wallet', 'category']);
+    }
+
+    private function sendReceiptWalletChoices(int $chatId, string $key, User $user): void
+    {
+        $pending = $this->receiptPreviewPayload($key, $user);
+        if (! $pending) {
+            $this->sendMessage($chatId, '⚠️ Preview hóa đơn đã hết hạn.');
+
+            return;
+        }
+
+        $wallets = Wallet::where('home_id', $pending['payload']['home_id'])
+            ->where('is_archived', false)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        $keyboard = $wallets->chunk(2)->map(fn ($row) => $row->map(fn ($wallet) => [
+            'text' => $wallet->name,
+            'callback_data' => 'r_set_w:'.$key.':'.$wallet->id,
+        ])->values()->all())->values()->all();
+
+        $this->sendMessage($chatId, 'Chọn ví cho hóa đơn:', ['inline_keyboard' => $keyboard]);
+    }
+
+    private function sendReceiptCategoryChoices(int $chatId, string $key, User $user): void
+    {
+        $pending = $this->receiptPreviewPayload($key, $user);
+        if (! $pending) {
+            $this->sendMessage($chatId, '⚠️ Preview hóa đơn đã hết hạn.');
+
+            return;
+        }
+
+        $categories = ExpenseCategory::where('home_id', $pending['payload']['home_id'])
+            ->where('type', Expense::TYPE_EXPENSE)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->take(24)
+            ->get();
+
+        $keyboard = $categories->chunk(2)->map(fn ($row) => $row->map(fn ($category) => [
+            'text' => ($category->icon ?: '🧾').' '.$category->name,
+            'callback_data' => 'r_set_c:'.$key.':'.$category->id,
+        ])->values()->all())->values()->all();
+
+        $this->sendMessage($chatId, 'Chọn danh mục cho hóa đơn:', ['inline_keyboard' => $keyboard]);
+    }
+
+    private function updateReceiptPreviewChoice(int $chatId, string $key, User $user, string $field, int $id): void
+    {
+        $pending = $this->receiptPreviewPayload($key, $user);
+        if (! $pending) {
+            $this->sendMessage($chatId, '⚠️ Preview hóa đơn đã hết hạn.');
+
+            return;
+        }
+
+        if ($field === 'wallet_id') {
+            Wallet::where('home_id', $pending['payload']['home_id'])->where('is_archived', false)->findOrFail($id);
+        } else {
+            ExpenseCategory::where('home_id', $pending['payload']['home_id'])->where('type', Expense::TYPE_EXPENSE)->findOrFail($id);
+        }
+
+        $pending['payload'][$field] = $id;
+        Cache::put($this->receiptCacheKey($key), $pending, now()->addMinutes(30));
+        $this->sendReceiptPreview($chatId, $user, $pending['payload'], $pending['meta'], $key);
+    }
+
+    private function sendExpenseWalletChoices(int $chatId, Expense $expense, User $user): void
+    {
+        if (! $this->canAccessHome($user, (int) $expense->home_id) || $expense->belongsToTransfer()) {
+            $this->sendMessage($chatId, '❌ Không thể đổi ví cho giao dịch này.');
+
+            return;
+        }
+
+        $wallets = Wallet::where('home_id', $expense->home_id)
+            ->where('is_archived', false)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        $keyboard = $wallets->chunk(2)->map(fn ($row) => $row->map(fn ($wallet) => [
+            'text' => $wallet->name,
+            'callback_data' => 'set_wallet:'.$expense->id.':'.$wallet->id,
+        ])->values()->all())->values()->all();
+
+        $this->sendMessage($chatId, 'Chọn ví mới:', ['inline_keyboard' => $keyboard]);
+    }
+
+    private function sendExpenseCategoryChoices(int $chatId, Expense $expense, User $user): void
+    {
+        if (! $this->canAccessHome($user, (int) $expense->home_id) || $expense->belongsToTransfer()) {
+            $this->sendMessage($chatId, '❌ Không thể đổi danh mục cho giao dịch này.');
+
+            return;
+        }
+
+        $categories = ExpenseCategory::where('home_id', $expense->home_id)
+            ->where('type', $expense->type)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->take(24)
+            ->get();
+
+        $keyboard = $categories->chunk(2)->map(fn ($row) => $row->map(fn ($category) => [
+            'text' => ($category->icon ?: '🧾').' '.$category->name,
+            'callback_data' => 'set_cat:'.$expense->id.':'.$category->id,
+        ])->values()->all())->values()->all();
+
+        $this->sendMessage($chatId, 'Chọn danh mục mới:', ['inline_keyboard' => $keyboard]);
+    }
+
+    private function sendExpenseTypeChoices(int $chatId, Expense $expense, User $user): void
+    {
+        if (! $this->canAccessHome($user, (int) $expense->home_id) || $expense->belongsToTransfer()) {
+            $this->sendMessage($chatId, '❌ Không thể đổi loại cho giao dịch này.');
+
+            return;
+        }
+
+        $this->sendMessage($chatId, 'Chọn loại giao dịch:', [
+            'inline_keyboard' => [
+                [
+                    ['text' => 'Chi tiêu', 'callback_data' => 'set_type:'.$expense->id.':expense'],
+                    ['text' => 'Thu nhập', 'callback_data' => 'set_type:'.$expense->id.':income'],
+                ],
+            ],
+        ]);
+    }
+
+    private function sendTransferWalletChoices(int $chatId, Transfer $transfer, User $user, string $side): void
+    {
+        if (! $this->canAccessHome($user, (int) $transfer->home_id)) {
+            $this->sendMessage($chatId, '❌ Bạn không có quyền sửa chuyển ví này.');
+
+            return;
+        }
+
+        $wallets = Wallet::where('home_id', $transfer->home_id)
+            ->where('is_archived', false)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        $prefix = $side === 'from' ? 'set_tr_from:' : 'set_tr_to:';
+        $keyboard = $wallets->chunk(2)->map(fn ($row) => $row->map(fn ($wallet) => [
+            'text' => $wallet->name,
+            'callback_data' => $prefix.$transfer->id.':'.$wallet->id,
+        ])->values()->all())->values()->all();
+
+        $this->sendMessage($chatId, $side === 'from' ? 'Chọn ví nguồn mới:' : 'Chọn ví nhận mới:', ['inline_keyboard' => $keyboard]);
+    }
+
+    private function replaceTransferWallet(Transfer $transfer, User $user, ?int $fromWalletId, ?int $toWalletId): Transfer
+    {
+        if (! $this->canAccessHome($user, (int) $transfer->home_id)) {
+            abort(403);
+        }
+
+        $fromWalletId ??= $transfer->from_wallet_id;
+        $toWalletId ??= $transfer->to_wallet_id;
+
+        Wallet::where('home_id', $transfer->home_id)->where('is_archived', false)->findOrFail($fromWalletId);
+        Wallet::where('home_id', $transfer->home_id)->where('is_archived', false)->findOrFail($toWalletId);
+
+        $data = [
+            'home_id' => $transfer->home_id,
+            'from_wallet_id' => $fromWalletId,
+            'to_wallet_id' => $toWalletId,
+            'amount' => (float) $transfer->amount,
+            'fee' => (float) $transfer->fee,
+            'description' => $transfer->description,
+            'occurred_at' => $transfer->occurred_at?->toDateTimeString() ?? now()->toDateTimeString(),
         ];
 
-        $this->sendMessage($chatId, $confirmMsg, $replyMarkup);
+        $transferService = app(TransferService::class);
+        $transferService->reverseTransfer($transfer);
+
+        return $transferService->createTransfer($data, $user);
+    }
+
+    private function fallbackCategoryForTelegram(int $homeId, string $type): ExpenseCategory
+    {
+        return ExpenseCategory::where('home_id', $homeId)
+            ->where('type', $type)
+            ->where(function ($query) {
+                $query->where('name', 'Khác')
+                    ->orWhere('name', 'Thu nhập khác')
+                    ->orWhere('category_group', ExpenseCategory::GROUP_OTHER);
+            })
+            ->first()
+            ?: ExpenseCategory::where('home_id', $homeId)->where('type', $type)->firstOrFail();
+    }
+
+    private function canAccessHome(User $user, int $homeId): bool
+    {
+        return $user->homeMembers()
+            ->where('home_id', $homeId)
+            ->whereIn('role', ['owner', 'manager'])
+            ->exists();
     }
 
     private function handleCallbackQuery(array $callbackQuery, ExpenseService $expenseService): void
@@ -753,7 +1649,168 @@ class TelegramWebhookController extends Controller
             return;
         }
 
-        if (str_starts_with($data, 'undo_expense:')) {
+        if (str_starts_with($data, 'dup_save:')) {
+            $key = Str::after($data, 'dup_save:');
+            $pending = Cache::pull($this->pendingTransactionCacheKey($key));
+            if (! $pending || (int) ($pending['user_id'] ?? 0) !== (int) $user->id) {
+                $this->answerCallbackQuery($queryId, '⚠️ Giao dịch chờ đã hết hạn.');
+
+                return;
+            }
+
+            try {
+                $result = app(QuickEntryService::class)->storeItem($user, $pending['item'], true);
+                $this->answerCallbackQuery($queryId, '✅ Đã lưu giao dịch.');
+                $this->sendStoredQuickItemConfirmation($chatId, $result);
+                $this->editMessageText($chatId, $messageId, $messageText."\n\n✅ *Đã lưu thêm giao dịch này.*");
+            } catch (\Throwable $e) {
+                $this->answerCallbackQuery($queryId, '❌ Lỗi: '.$e->getMessage());
+            }
+        } elseif (str_starts_with($data, 'dup_cancel:')) {
+            Cache::forget($this->pendingTransactionCacheKey(Str::after($data, 'dup_cancel:')));
+            $this->answerCallbackQuery($queryId, 'Đã bỏ qua.');
+            $this->editMessageText($chatId, $messageId, $messageText."\n\n🚫 *Đã bỏ qua giao dịch này.*");
+        } elseif (str_starts_with($data, 'tpl:')) {
+            $templateId = (int) Str::after($data, 'tpl:');
+            Cache::put('telegram_template:'.$chatId, $templateId, now()->addMinutes(10));
+            $this->answerCallbackQuery($queryId, 'Nhập số tiền cho mẫu này.');
+            $this->sendMessage($chatId, 'Nhập số tiền cho mẫu đã chọn. Ví dụ: `35k`, `1.2tr`, `50000`.');
+        } elseif (str_starts_with($data, 'r_save:')) {
+            $key = Str::after($data, 'r_save:');
+            try {
+                $expense = $this->storeReceiptPreview($key, $user);
+                if (! $expense) {
+                    $this->answerCallbackQuery($queryId, '⚠️ Preview hóa đơn đã hết hạn.');
+
+                    return;
+                }
+
+                $this->answerCallbackQuery($queryId, '✅ Đã lưu hóa đơn.');
+                $msg = "✅ *Đã lưu hóa đơn AI*\n\n"
+                    .'*Số tiền*: '.number_format((float) $expense->amount, 0, ',', '.')." đ\n"
+                    .'*Danh mục*: '.$expense->category?->name."\n"
+                    .'*Ví*: '.$expense->wallet?->name."\n"
+                    .'*Mô tả*: '.$this->plain($expense->description);
+                $this->sendMessage($chatId, $msg, $this->expenseActionKeyboard($expense));
+                $this->editMessageText($chatId, $messageId, $messageText."\n\n✅ *Đã lưu hóa đơn này.*");
+            } catch (\Throwable $e) {
+                $this->answerCallbackQuery($queryId, '❌ Lỗi: '.$e->getMessage());
+            }
+        } elseif (str_starts_with($data, 'r_cancel:')) {
+            Cache::forget($this->receiptCacheKey(Str::after($data, 'r_cancel:')));
+            $this->answerCallbackQuery($queryId, 'Đã bỏ qua hóa đơn.');
+            $this->editMessageText($chatId, $messageId, $messageText."\n\n🚫 *Đã bỏ qua hóa đơn này.*");
+        } elseif (str_starts_with($data, 'r_wallet:')) {
+            $this->answerCallbackQuery($queryId, 'Chọn ví...');
+            $this->sendReceiptWalletChoices($chatId, Str::after($data, 'r_wallet:'), $user);
+        } elseif (str_starts_with($data, 'r_cat:')) {
+            $this->answerCallbackQuery($queryId, 'Chọn danh mục...');
+            $this->sendReceiptCategoryChoices($chatId, Str::after($data, 'r_cat:'), $user);
+        } elseif (preg_match('/^r_set_w:([^:]+):(\d+)$/', $data, $matches)) {
+            $this->answerCallbackQuery($queryId, 'Đã đổi ví.');
+            $this->updateReceiptPreviewChoice($chatId, $matches[1], $user, 'wallet_id', (int) $matches[2]);
+        } elseif (preg_match('/^r_set_c:([^:]+):(\d+)$/', $data, $matches)) {
+            $this->answerCallbackQuery($queryId, 'Đã đổi danh mục.');
+            $this->updateReceiptPreviewChoice($chatId, $matches[1], $user, 'category_id', (int) $matches[2]);
+        } elseif (str_starts_with($data, 'change_wallet:')) {
+            $expense = Expense::find((int) Str::after($data, 'change_wallet:'));
+            if (! $expense) {
+                $this->answerCallbackQuery($queryId, '⚠️ Giao dịch không tồn tại.');
+
+                return;
+            }
+            $this->answerCallbackQuery($queryId, 'Chọn ví...');
+            $this->sendExpenseWalletChoices($chatId, $expense, $user);
+        } elseif (str_starts_with($data, 'change_category:')) {
+            $expense = Expense::find((int) Str::after($data, 'change_category:'));
+            if (! $expense) {
+                $this->answerCallbackQuery($queryId, '⚠️ Giao dịch không tồn tại.');
+
+                return;
+            }
+            $this->answerCallbackQuery($queryId, 'Chọn danh mục...');
+            $this->sendExpenseCategoryChoices($chatId, $expense, $user);
+        } elseif (str_starts_with($data, 'change_type:')) {
+            $expense = Expense::find((int) Str::after($data, 'change_type:'));
+            if (! $expense) {
+                $this->answerCallbackQuery($queryId, '⚠️ Giao dịch không tồn tại.');
+
+                return;
+            }
+            $this->answerCallbackQuery($queryId, 'Chọn loại...');
+            $this->sendExpenseTypeChoices($chatId, $expense, $user);
+        } elseif (preg_match('/^set_wallet:(\d+):(\d+)$/', $data, $matches)) {
+            $expense = Expense::find((int) $matches[1]);
+            $wallet = $expense ? Wallet::where('home_id', $expense->home_id)->where('is_archived', false)->find((int) $matches[2]) : null;
+            if (! $expense || ! $wallet || ! $this->canAccessHome($user, (int) $expense->home_id) || $expense->belongsToTransfer()) {
+                $this->answerCallbackQuery($queryId, '❌ Không thể đổi ví.');
+
+                return;
+            }
+            $expenseService->updateExpense($expense, ['wallet_id' => $wallet->id]);
+            $this->answerCallbackQuery($queryId, '✅ Đã đổi ví.');
+            $this->sendMessage($chatId, '✅ Đã đổi ví giao dịch sang *'.$wallet->name.'*.', $this->expenseActionKeyboard($expense->fresh()));
+        } elseif (preg_match('/^set_cat:(\d+):(\d+)$/', $data, $matches)) {
+            $expense = Expense::find((int) $matches[1]);
+            $category = $expense ? ExpenseCategory::where('home_id', $expense->home_id)->where('type', $expense->type)->find((int) $matches[2]) : null;
+            if (! $expense || ! $category || ! $this->canAccessHome($user, (int) $expense->home_id) || $expense->belongsToTransfer()) {
+                $this->answerCallbackQuery($queryId, '❌ Không thể đổi danh mục.');
+
+                return;
+            }
+            $expenseService->updateExpense($expense, ['category_id' => $category->id]);
+            $this->answerCallbackQuery($queryId, '✅ Đã đổi danh mục.');
+            $this->sendMessage($chatId, '✅ Đã đổi danh mục giao dịch sang *'.$category->name.'*.', $this->expenseActionKeyboard($expense->fresh()));
+        } elseif (preg_match('/^set_type:(\d+):(expense|income)$/', $data, $matches)) {
+            $expense = Expense::find((int) $matches[1]);
+            if (! $expense || ! $this->canAccessHome($user, (int) $expense->home_id) || $expense->belongsToTransfer()) {
+                $this->answerCallbackQuery($queryId, '❌ Không thể đổi loại.');
+
+                return;
+            }
+            $category = $this->fallbackCategoryForTelegram((int) $expense->home_id, $matches[2]);
+            $expenseService->updateExpense($expense, ['type' => $matches[2], 'category_id' => $category->id]);
+            $this->answerCallbackQuery($queryId, '✅ Đã đổi loại.');
+            $this->sendMessage($chatId, '✅ Đã đổi loại giao dịch sang *'.($matches[2] === 'income' ? 'Thu nhập' : 'Chi tiêu').'*.', $this->expenseActionKeyboard($expense->fresh()));
+        } elseif (str_starts_with($data, 'change_tr_from:')) {
+            $transfer = Transfer::find((int) Str::after($data, 'change_tr_from:'));
+            if (! $transfer) {
+                $this->answerCallbackQuery($queryId, '⚠️ Chuyển ví không tồn tại.');
+
+                return;
+            }
+            $this->answerCallbackQuery($queryId, 'Chọn ví nguồn...');
+            $this->sendTransferWalletChoices($chatId, $transfer, $user, 'from');
+        } elseif (str_starts_with($data, 'change_tr_to:')) {
+            $transfer = Transfer::find((int) Str::after($data, 'change_tr_to:'));
+            if (! $transfer) {
+                $this->answerCallbackQuery($queryId, '⚠️ Chuyển ví không tồn tại.');
+
+                return;
+            }
+            $this->answerCallbackQuery($queryId, 'Chọn ví nhận...');
+            $this->sendTransferWalletChoices($chatId, $transfer, $user, 'to');
+        } elseif (preg_match('/^set_tr_from:(\d+):(\d+)$/', $data, $matches)) {
+            try {
+                $transfer = Transfer::findOrFail((int) $matches[1]);
+                $newTransfer = $this->replaceTransferWallet($transfer, $user, (int) $matches[2], null);
+                $this->answerCallbackQuery($queryId, '✅ Đã đổi ví nguồn.');
+                $this->sendStoredQuickItemConfirmation($chatId, ['mode' => 'transfer', 'id' => $newTransfer->id]);
+                $this->editMessageText($chatId, $messageId, $messageText."\n\n🔁 *Đã thay bằng chuyển ví #{$newTransfer->id}.*");
+            } catch (\Throwable $e) {
+                $this->answerCallbackQuery($queryId, '❌ Lỗi: '.$e->getMessage());
+            }
+        } elseif (preg_match('/^set_tr_to:(\d+):(\d+)$/', $data, $matches)) {
+            try {
+                $transfer = Transfer::findOrFail((int) $matches[1]);
+                $newTransfer = $this->replaceTransferWallet($transfer, $user, null, (int) $matches[2]);
+                $this->answerCallbackQuery($queryId, '✅ Đã đổi ví nhận.');
+                $this->sendStoredQuickItemConfirmation($chatId, ['mode' => 'transfer', 'id' => $newTransfer->id]);
+                $this->editMessageText($chatId, $messageId, $messageText."\n\n🔁 *Đã thay bằng chuyển ví #{$newTransfer->id}.*");
+            } catch (\Throwable $e) {
+                $this->answerCallbackQuery($queryId, '❌ Lỗi: '.$e->getMessage());
+            }
+        } elseif (str_starts_with($data, 'undo_expense:')) {
             $expenseId = (int) substr($data, 13);
             $expense = Expense::find($expenseId);
 
@@ -807,6 +1864,15 @@ class TelegramWebhookController extends Controller
         } elseif ($data === 'view_wallets') {
             $this->answerCallbackQuery($queryId, 'Đang tải danh sách ví...');
             $this->handleWalletsCommand($chatId);
+        } elseif ($data === 'cmd_today') {
+            $this->answerCallbackQuery($queryId, 'Đang tải tóm tắt hôm nay...');
+            $this->handleSummaryCommand($chatId, 'day');
+        } elseif ($data === 'cmd_recent') {
+            $this->answerCallbackQuery($queryId, 'Đang tải giao dịch gần đây...');
+            $this->handleRecentCommand($chatId, 5);
+        } elseif ($data === 'cmd_templates') {
+            $this->answerCallbackQuery($queryId, 'Đang tải mẫu nhập...');
+            $this->handleTemplatesCommand($chatId);
         } else {
             $this->answerCallbackQuery($queryId, '⚠️ Lệnh không xác định.');
         }

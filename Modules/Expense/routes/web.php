@@ -5,6 +5,7 @@ use Modules\Expense\Http\Controllers\BudgetController;
 use Modules\Expense\Http\Controllers\ExpenseCategoryController;
 use Modules\Expense\Http\Controllers\ExpenseController;
 use Modules\Expense\Http\Controllers\ExpenseReportController;
+use Modules\Expense\Http\Controllers\QuickEntryController;
 use Modules\Expense\Http\Controllers\TransferController;
 
 Route::middleware(['web', 'auth', 'verified'])->group(function () {
@@ -19,6 +20,12 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
 
     // Expenses
     Route::get('expenses', [ExpenseController::class, 'index'])->name('expenses.index');
+    Route::post('expenses/quick/preview', [QuickEntryController::class, 'preview'])->name('expenses.quick.preview');
+    Route::post('expenses/quick/store', [QuickEntryController::class, 'store'])->name('expenses.quick.store');
+    Route::get('expenses/quick/templates', [QuickEntryController::class, 'templates'])->name('expenses.quick.templates');
+    Route::get('expenses/quick/recurring', [QuickEntryController::class, 'recurring'])->name('expenses.quick.recurring');
+    Route::post('expenses/quick/recurring', [QuickEntryController::class, 'storeRecurring'])->name('expenses.quick.recurring.store');
+    Route::delete('expenses/quick/recurring/{recurring}', [QuickEntryController::class, 'destroyRecurring'])->name('expenses.quick.recurring.destroy');
     Route::get('expenses/create', [ExpenseController::class, 'create'])->name('expenses.create');
     Route::post('expenses', [ExpenseController::class, 'store'])->name('expenses.store');
     Route::get('expenses/{expense}', [ExpenseController::class, 'show'])->name('expenses.show');

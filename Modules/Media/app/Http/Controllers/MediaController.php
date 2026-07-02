@@ -72,7 +72,6 @@ class MediaController extends Controller
         if (! $request->hasValidSignature()) {
             logger()->warning('Media serve: invalid signature', [
                 'url' => $request->fullUrl(),
-                'expected_key' => config('app.key'),
             ]);
             abort(403, __('messages.invalid_signature'));
         }

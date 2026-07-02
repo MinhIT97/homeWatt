@@ -36,6 +36,7 @@ class TelegramWeeklySummaryCommand extends Command
 
             // 1. Tính tổng Thu/Chi trong tuần
             $weeklyTransactions = Expense::where('user_id', $user->id)
+                ->whereNull('transfer_id')
                 ->whereBetween('occurred_at', [$startOfWeek, $endOfWeek])
                 ->get();
 

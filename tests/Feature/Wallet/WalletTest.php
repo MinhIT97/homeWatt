@@ -5,6 +5,7 @@ namespace Tests\Feature\Wallet;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Expense\Models\Expense;
+use Modules\Expense\Models\Transfer;
 use Modules\Home\Models\Home;
 use Modules\Home\Models\HomeMember;
 use Modules\Wallet\Models\Wallet;
@@ -286,5 +287,49 @@ class WalletTest extends TestCase
         $response->assertOk();
         $response->assertViewHas('totalSpent', 0.0);
         $response->assertViewHas('totalIncome', 120000.0);
+    }
+
+    public function test_wallet_details_show_transfers_separately_from_income_totals(): void
+    {
+        $user = User::factory()->create();
+        $home = $this->setupHome($user);
+
+        $fromWallet = Wallet::create([
+            'home_id' => $home->id,
+            'name' => 'Cash Wallet',
+            'type' => 'cash',
+            'opening_balance' => 1000000,
+            'balance' => 1000000,
+            'currency' => 'VND',
+        ]);
+
+        $toWallet = Wallet::create([
+            'home_id' => $home->id,
+            'name' => 'Bank Wallet',
+            'type' => 'bank',
+            'opening_balance' => 0,
+            'balance' => 0,
+            'currency' => 'VND',
+        ]);
+
+        Transfer::create([
+            'home_id' => $home->id,
+            'from_wallet_id' => $fromWallet->id,
+            'to_wallet_id' => $toWallet->id,
+            'user_id' => $user->id,
+            'amount' => 75000,
+            'fee' => 0,
+            'currency' => 'VND',
+            'description' => 'Chuyển ví',
+            'occurred_at' => now(),
+        ]);
+
+        $response = $this->actingAs($user)->get(route('wallets.show', [$toWallet, 'period' => 'all']));
+
+        $response->assertOk();
+        $response->assertViewHas('totalIncome', 0.0);
+        $response->assertViewHas('totalTransferIn', 75000.0);
+        $response->assertSee('Nhận chuyển ví từ Cash Wallet');
+        $response->assertSee('Chuyển ví');
     }
 }

@@ -95,6 +95,8 @@
                     }
                 @endphp
 
+                @include('expense::partials.quick-entry', ['quickHomes' => $homes, 'quickSelectedHomeId' => $selectedHomeId])
+
                 <div x-data="{
                     activeDevices: {{ $activeDev }},
                     totalDevices: {{ $totalDev }},

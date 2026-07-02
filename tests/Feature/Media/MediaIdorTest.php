@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Storage;
 use Modules\Device\Models\Device;
 use Modules\Home\Models\Home;
 use Modules\Home\Models\HomeMember;
+use Modules\Media\Models\Media;
 use Modules\Room\Models\Room;
 use Tests\TestCase;
 
@@ -78,5 +79,31 @@ class MediaIdorTest extends TestCase
         ]);
 
         $response->assertSessionHasErrors('owner_type');
+    }
+
+    public function test_room_media_can_be_served_by_home_member_only(): void
+    {
+        Storage::fake('private');
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        ['room' => $room] = $this->setupHomeWithDevice($owner);
+
+        $response = $this->actingAs($owner)->post(route('media.store'), [
+            'file' => UploadedFile::fake()->image('room.jpg'),
+            'owner_type' => 'room',
+            'owner_id' => $room->id,
+        ]);
+
+        $response->assertRedirect();
+        $media = Media::first();
+        $this->assertNotNull($media);
+
+        $this->actingAs($owner)
+            ->get($media->url())
+            ->assertOk();
+
+        $this->actingAs($other)
+            ->get($media->url())
+            ->assertForbidden();
     }
 }

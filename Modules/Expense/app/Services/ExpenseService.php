@@ -185,6 +185,7 @@ class ExpenseService
 
         $monthlyExpenses = Expense::where('home_id', $homeId)
             ->where('type', 'expense')
+            ->whereNull('transfer_id')
             ->whereBetween('occurred_at', [$startOfMonth, $endOfMonth])
             ->get();
 

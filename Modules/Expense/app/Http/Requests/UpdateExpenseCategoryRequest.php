@@ -3,6 +3,7 @@
 namespace Modules\Expense\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Modules\Expense\Models\ExpenseCategory;
 
 class UpdateExpenseCategoryRequest extends FormRequest
@@ -29,9 +30,18 @@ class UpdateExpenseCategoryRequest extends FormRequest
 
     public function rules(): array
     {
+        $category = $this->route('category');
+        $homeId = $category instanceof ExpenseCategory ? $category->home_id : null;
+        $categoryId = $category instanceof ExpenseCategory ? $category->id : null;
+
         return [
             'name' => ['sometimes', 'required', 'string', 'max:100'],
-            'parent_id' => ['sometimes', 'nullable', 'exists:expense_categories,id'],
+            'parent_id' => [
+                'sometimes',
+                'nullable',
+                'not_in:'.$categoryId,
+                Rule::exists('expense_categories', 'id')->where('home_id', $homeId),
+            ],
             'type' => ['sometimes', 'required', 'string', 'in:'.implode(',', ExpenseCategory::TYPES)],
             'icon' => ['sometimes', 'nullable', 'string', 'max:50'],
             'color' => ['sometimes', 'nullable', 'string', 'max:7', 'regex:/^#[0-9A-Fa-f]{6}$/'],

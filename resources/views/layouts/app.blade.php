@@ -89,14 +89,25 @@
                 </a>
 
                 <!-- Plus (+) / Ghi chép -->
-                <a href="{{ route('expenses.create') }}" class="flex flex-col items-center justify-center -translate-y-4 z-50">
-                    <div class="rounded-full bg-gradient-to-tr from-blue-500 to-cyan-400 flex items-center justify-center text-white shadow-md shadow-blue-500/20 border-4 border-white active:scale-95 transition duration-150" style="width: 48px; height: 48px;">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4"/>
-                        </svg>
-                    </div>
-                    <span class="text-[9px] text-blue-600 font-bold tracking-tight mt-0.5">Ghi chép</span>
-                </a>
+                @if(request()->routeIs('dashboard') || request()->routeIs('expenses.index'))
+                    <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-quick-entry'))" class="flex flex-col items-center justify-center -translate-y-4 z-50">
+                        <div class="rounded-full bg-gradient-to-tr from-blue-500 to-cyan-400 flex items-center justify-center text-white shadow-md shadow-blue-500/20 border-4 border-white active:scale-95 transition duration-150" style="width: 48px; height: 48px;">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4"/>
+                            </svg>
+                        </div>
+                        <span class="text-[9px] text-blue-600 font-bold tracking-tight mt-0.5">Ghi chép</span>
+                    </button>
+                @else
+                    <a href="{{ route('expenses.create') }}" class="flex flex-col items-center justify-center -translate-y-4 z-50">
+                        <div class="rounded-full bg-gradient-to-tr from-blue-500 to-cyan-400 flex items-center justify-center text-white shadow-md shadow-blue-500/20 border-4 border-white active:scale-95 transition duration-150" style="width: 48px; height: 48px;">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4"/>
+                            </svg>
+                        </div>
+                        <span class="text-[9px] text-blue-600 font-bold tracking-tight mt-0.5">Ghi chép</span>
+                    </a>
+                @endif
 
                 <!-- Reports / Báo cáo -->
                 <a href="{{ route('reports.monthly') }}" class="relative flex flex-col items-center justify-center w-14 py-1 transition duration-150 {{ request()->routeIs('reports.*') || request()->routeIs('reports.monthly') ? 'text-blue-600 font-bold' : 'text-slate-400 hover:text-slate-650' }}">

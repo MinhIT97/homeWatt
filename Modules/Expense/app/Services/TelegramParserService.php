@@ -24,12 +24,21 @@ class TelegramParserService
         $categoryGroup = null;
         $categoryName = 'Khác'; // default
         $cleanText = $lowercaseText;
+        $counterparty = null;
+
+        $flexibleLending = $this->matchFlexibleLending($text);
 
         // Pattern matching for Lending / Borrowing/Transfer first since they are multi-word
         if ($this->hasPrefix($lowercaseText, ['chuyen khoan', 'chuyển khoản', 'chuyen tien', 'chuyển tiền', 'chuyen', 'chuyển', 'ck', 'transfer'])) {
             $type = 'transfer';
             $categoryName = 'Chuyển tiền';
             $cleanText = $this->removePrefix($lowercaseText, ['chuyen khoan', 'chuyển khoản', 'chuyen tien', 'chuyển tiền', 'chuyen', 'chuyển', 'ck', 'transfer']);
+        } elseif ($flexibleLending) {
+            $type = 'expense';
+            $categoryGroup = ExpenseCategory::GROUP_LENDING;
+            $categoryName = 'Cho vay';
+            $counterparty = $flexibleLending['counterparty'];
+            $cleanText = mb_strtolower(trim($counterparty.' '.$flexibleLending['remainder']), 'UTF-8');
         } elseif ($this->hasPrefix($lowercaseText, ['cho vay', 'cho muon', 'cho mượn'])) {
             $type = 'expense';
             $categoryGroup = ExpenseCategory::GROUP_LENDING;
@@ -104,6 +113,10 @@ class TelegramParserService
             $originalDesc = trim(str_replace($origAmountMatches[0], '', $originalDesc));
         }
 
+        if ($counterparty) {
+            $originalDesc = $counterparty;
+        }
+
         // For transfers, strip prepositions and wallet candidates to make description clean
         if ($type === 'transfer') {
             $wallets = Wallet::where('home_id', $homeId)
@@ -167,10 +180,7 @@ class TelegramParserService
             }
         }
 
-        // Clean up wallet placeholders and prepositions
-        $originalDesc = preg_replace('/\b(?:từ|tu|sang|đến|den|qua|vào|vao|bằng|bang|tại|tai)\s+\{wallet_\d+\}/iu', '', $originalDesc);
-        $originalDesc = preg_replace('/(?:->)\s*\{wallet_\d+\}/iu', '', $originalDesc);
-        $originalDesc = preg_replace('/\{wallet_\d+\}/iu', '', $originalDesc);
+        $originalDesc = $this->cleanWalletPlaceholders($originalDesc);
 
         $originalDesc = trim($originalDesc, ' -:,=');
 
@@ -186,6 +196,7 @@ class TelegramParserService
                 'category_id' => null,
                 'category_name' => $categoryName,
                 'description' => mb_convert_case($originalDesc, MB_CASE_TITLE, 'UTF-8'),
+                'category_group' => ExpenseCategory::GROUP_TRANSFER,
             ];
         }
 
@@ -218,7 +229,37 @@ class TelegramParserService
             'category_id' => $category?->id,
             'category_name' => $category?->name ?? $categoryName,
             'description' => mb_convert_case($originalDesc, MB_CASE_TITLE, 'UTF-8'),
+            'category_group' => $category?->category_group ?? $categoryGroup,
+            'counterparty' => $counterparty ? mb_convert_case($counterparty, MB_CASE_TITLE, 'UTF-8') : null,
         ];
+    }
+
+    private function matchFlexibleLending(string $text): ?array
+    {
+        if (! preg_match('/^cho\s+(.+?)\s+(?:vay|mượn|muon)\b(.*)$/iu', trim($text), $matches)) {
+            return null;
+        }
+
+        $counterparty = trim($matches[1], ' -:,=');
+
+        if ($counterparty === '' || preg_match('/^(?:vay|mượn|muon)$/iu', $counterparty)) {
+            return null;
+        }
+
+        return [
+            'counterparty' => $counterparty,
+            'remainder' => trim($matches[2]),
+        ];
+    }
+
+    private function cleanWalletPlaceholders(string $description): string
+    {
+        $description = preg_replace('/\b(?:từ|tu|sang|đến|den|qua|vào|vao|bằng|bang|tại|tai)\s+(?:tài khoản|taikhoan|tk|ví|vi)?\s*\{wallet_\d+\}/iu', '', $description);
+        $description = preg_replace('/\b(?:tài khoản|taikhoan|tk|ví|vi)\s+\{wallet_\d+\}/iu', '', $description);
+        $description = preg_replace('/(?:->)\s*\{wallet_\d+\}/iu', '', $description);
+        $description = preg_replace('/\{wallet_\d+\}/iu', '', $description);
+
+        return preg_replace('/\s{2,}/u', ' ', $description);
     }
 
     private function hasPrefix(string $text, array $prefixes): bool

@@ -141,18 +141,28 @@ class EnergyController extends Controller
 
     public function tieredReport(Request $request): View
     {
+        $validated = $request->validate([
+            'home_id' => ['nullable', 'integer'],
+            'month' => ['nullable', 'date_format:Y-m'],
+        ]);
+
         $user = $request->user();
 
         $homes = Home::whereHas('members', fn ($q) => $q->where('user_id', $user->id))->get();
-        $selectedHomeId = $request->get('home_id', $homes->first()?->id);
-        $selectedMonth = $request->get('month', now()->format('Y-m'));
+        $selectedHomeId = $validated['home_id'] ?? $homes->first()?->id;
+        $selectedMonth = $validated['month'] ?? now()->format('Y-m');
 
-        $home = Home::findOrFail($selectedHomeId);
+        $home = $selectedHomeId ? $homes->firstWhere('id', (int) $selectedHomeId) : null;
+        if ($selectedHomeId && ! $home) {
+            abort(403);
+        }
 
         $startOfMonth = Carbon::parse($selectedMonth.'-01')->startOfMonth();
         $endOfMonth = Carbon::parse($selectedMonth.'-01')->endOfMonth();
 
-        $devices = Device::whereHas('room', fn ($q) => $q->where('home_id', $selectedHomeId))->get();
+        $devices = $home
+            ? Device::whereHas('room', fn ($q) => $q->where('home_id', $home->id))->get()
+            : collect();
         $deviceIds = $devices->pluck('id');
 
         $totalKwh = 0.0;

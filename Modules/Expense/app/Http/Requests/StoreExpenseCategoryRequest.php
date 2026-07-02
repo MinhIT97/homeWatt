@@ -3,6 +3,7 @@
 namespace Modules\Expense\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Modules\Expense\Models\ExpenseCategory;
 use Modules\Home\Models\Home;
 
@@ -28,7 +29,10 @@ class StoreExpenseCategoryRequest extends FormRequest
     {
         return [
             'home_id' => ['required', 'exists:homes,id'],
-            'parent_id' => ['nullable', 'exists:expense_categories,id'],
+            'parent_id' => [
+                'nullable',
+                Rule::exists('expense_categories', 'id')->where('home_id', $this->input('home_id')),
+            ],
             'name' => ['required', 'string', 'max:100'],
             'type' => ['required', 'string', 'in:'.implode(',', ExpenseCategory::TYPES)],
             'icon' => ['nullable', 'string', 'max:50'],

@@ -146,21 +146,21 @@ class WalletController extends Controller
 
         $transfersOut = $transfersOutQuery->latest('occurred_at')->get()
             ->map(fn ($item) => [
-                'type' => 'expense',
+                'type' => 'transfer_out',
                 'amount' => (float) $item->amount,
-                'description' => 'Chuyển đến '.($item->toWallet?->name ?? 'Ví khác'),
+                'description' => 'Chuyển sang '.($item->toWallet?->name ?? 'Ví khác'),
                 'icon' => '📤',
-                'category_name' => 'Chuyển khoản',
+                'category_name' => 'Chuyển ví',
                 'occurred_at' => $item->occurred_at,
             ]);
 
         $transfersIn = $transfersInQuery->latest('occurred_at')->get()
             ->map(fn ($item) => [
-                'type' => 'income',
+                'type' => 'transfer_in',
                 'amount' => (float) $item->amount,
-                'description' => 'Nhận từ '.($item->fromWallet?->name ?? 'Ví khác'),
+                'description' => 'Nhận chuyển ví từ '.($item->fromWallet?->name ?? 'Ví khác'),
                 'icon' => '📥',
-                'category_name' => 'Chuyển khoản',
+                'category_name' => 'Chuyển ví',
                 'occurred_at' => $item->occurred_at,
             ]);
 
@@ -172,8 +172,10 @@ class WalletController extends Controller
         }
 
         // Sum statistics for the filtered period
-        $totalSpent = (float) $recentExpenses->where('type', 'expense')->sum('amount');
-        $totalIncome = (float) $recentExpenses->where('type', 'income')->sum('amount');
+        $totalSpent = (float) $expenses->where('type', 'expense')->sum('amount');
+        $totalIncome = (float) $expenses->where('type', 'income')->sum('amount');
+        $totalTransferOut = (float) $transfersOut->sum('amount');
+        $totalTransferIn = (float) $transfersIn->sum('amount');
 
         // Group by date Y-m-d
         $groupedExpenses = $recentExpenses->groupBy(fn ($item) => $item['occurred_at']->format('Y-m-d'));
@@ -184,6 +186,8 @@ class WalletController extends Controller
             'groupedExpenses',
             'totalSpent',
             'totalIncome',
+            'totalTransferOut',
+            'totalTransferIn',
             'period',
             'dateVal',
             'monthVal',

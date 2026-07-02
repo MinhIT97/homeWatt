@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Modules\Expense\Models\Expense;
 use Modules\Expense\Models\ExpenseBudget;
@@ -16,11 +17,16 @@ class BudgetController extends Controller
 {
     public function index(Request $request): View
     {
+        $validated = $request->validate([
+            'home_id' => ['nullable', 'integer'],
+            'month' => ['nullable', 'date_format:Y-m'],
+        ]);
+
         $user = $request->user();
         $homes = Home::whereHas('members', fn ($q) => $q->where('user_id', $user->id))->get();
 
-        $selectedHomeId = $request->get('home_id', $homes->first()?->id);
-        $selectedMonth = $request->get('month', now()->format('Y-m'));
+        $selectedHomeId = $validated['home_id'] ?? $homes->first()?->id;
+        $selectedMonth = $validated['month'] ?? now()->format('Y-m');
 
         $home = Home::findOrFail($selectedHomeId);
         $member = $home->members()->where('user_id', $user->id)->first();
@@ -28,8 +34,12 @@ class BudgetController extends Controller
             abort(403);
         }
 
-        // Get all active expense categories
-        $categories = ExpenseCategory::all();
+        // Get active expense categories for the selected home only.
+        $categories = ExpenseCategory::where('home_id', $selectedHomeId)
+            ->where('type', 'expense')
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
 
         // Get existing budgets for this home and month
         $budgets = ExpenseBudget::where('home_id', $selectedHomeId)
@@ -42,6 +52,7 @@ class BudgetController extends Controller
 
         $monthlyExpenses = Expense::where('home_id', $selectedHomeId)
             ->where('type', 'expense')
+            ->whereNull('transfer_id')
             ->whereBetween('occurred_at', [$startOfMonth, $endOfMonth])
             ->get();
 
@@ -92,7 +103,12 @@ class BudgetController extends Controller
     {
         $validated = $request->validate([
             'home_id' => ['required', 'exists:homes,id'],
-            'category_id' => ['nullable', 'exists:expense_categories,id'],
+            'category_id' => [
+                'nullable',
+                Rule::exists('expense_categories', 'id')
+                    ->where('home_id', $request->input('home_id'))
+                    ->where('type', 'expense'),
+            ],
             'amount' => ['required', 'numeric', 'min:0'],
             'month' => ['required', 'string', 'regex:/^\d{4}-\d{2}$/'],
         ]);

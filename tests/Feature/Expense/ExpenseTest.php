@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Expense\Models\Expense;
 use Modules\Expense\Models\ExpenseCategory;
+use Modules\Expense\Models\Transfer;
 use Modules\Home\Models\Home;
 use Modules\Home\Models\HomeMember;
 use Modules\Wallet\Models\Wallet;
@@ -111,6 +112,31 @@ class ExpenseTest extends TestCase
         $this->assertEquals(600000.0, (float) $wallet->balance);
     }
 
+    public function test_expense_category_type_must_match_transaction_type(): void
+    {
+        $user = User::factory()->create();
+        ['home' => $home, 'wallet' => $wallet, 'category' => $expenseCategory] = $this->setupHomeWithWallet($user);
+
+        $response = $this->actingAs($user)->post(route('expenses.store'), [
+            'home_id' => $home->id,
+            'wallet_id' => $wallet->id,
+            'category_id' => $expenseCategory->id,
+            'type' => 'income',
+            'amount' => 500000,
+            'currency' => 'VND',
+            'occurred_at' => now()->format('Y-m-d H:i:s'),
+        ]);
+
+        $response->assertSessionHasErrors('category_id');
+        $this->assertDatabaseMissing('expenses', [
+            'home_id' => $home->id,
+            'wallet_id' => $wallet->id,
+            'category_id' => $expenseCategory->id,
+            'type' => 'income',
+            'amount' => '500000.00',
+        ]);
+    }
+
     public function test_user_cannot_create_expense_in_other_home(): void
     {
         $ownerA = User::factory()->create();
@@ -128,6 +154,62 @@ class ExpenseTest extends TestCase
         ]);
 
         $response->assertForbidden();
+    }
+
+    public function test_user_cannot_move_expense_to_wallet_or_category_from_other_home(): void
+    {
+        $ownerA = User::factory()->create();
+        $ownerB = User::factory()->create();
+
+        ['home' => $homeA, 'wallet' => $walletA, 'category' => $catA] = $this->setupHomeWithWallet($ownerA);
+        ['wallet' => $walletB, 'category' => $catB] = $this->setupHomeWithWallet($ownerB);
+
+        $expense = Expense::create([
+            'home_id' => $homeA->id,
+            'wallet_id' => $walletA->id,
+            'category_id' => $catA->id,
+            'user_id' => $ownerA->id,
+            'type' => 'expense',
+            'amount' => 100000,
+            'currency' => 'VND',
+            'occurred_at' => now(),
+        ]);
+
+        $response = $this->actingAs($ownerA)->patch(route('expenses.update', $expense), [
+            'wallet_id' => $walletB->id,
+            'category_id' => $catB->id,
+        ]);
+
+        $response->assertSessionHasErrors(['wallet_id', 'category_id']);
+        $expense->refresh();
+        $this->assertSame($walletA->id, $expense->wallet_id);
+        $this->assertSame($catA->id, $expense->category_id);
+    }
+
+    public function test_user_cannot_update_expense_to_mismatched_type_and_category(): void
+    {
+        $user = User::factory()->create();
+        ['home' => $home, 'wallet' => $wallet, 'category' => $expenseCategory] = $this->setupHomeWithWallet($user);
+
+        $expense = Expense::create([
+            'home_id' => $home->id,
+            'wallet_id' => $wallet->id,
+            'category_id' => $expenseCategory->id,
+            'user_id' => $user->id,
+            'type' => 'expense',
+            'amount' => 100000,
+            'currency' => 'VND',
+            'occurred_at' => now(),
+        ]);
+
+        $response = $this->actingAs($user)->patch(route('expenses.update', $expense), [
+            'type' => 'income',
+        ]);
+
+        $response->assertSessionHasErrors('category_id');
+        $expense->refresh();
+        $this->assertSame('expense', $expense->type);
+        $this->assertSame($expenseCategory->id, $expense->category_id);
     }
 
     public function test_negative_amount_rejected(): void
@@ -244,5 +326,68 @@ class ExpenseTest extends TestCase
         $response->assertOk();
         $response->assertViewHas('totalSpent', 0.0);
         $response->assertViewHas('totalIncome', 120000.0);
+    }
+
+    public function test_expenses_index_excludes_transfer_legs_from_totals_and_list(): void
+    {
+        $user = User::factory()->create();
+        ['home' => $home, 'wallet' => $wallet, 'category' => $cat] = $this->setupHomeWithWallet($user);
+
+        $toWallet = Wallet::create([
+            'home_id' => $home->id,
+            'name' => 'Bank Wallet',
+            'type' => 'bank',
+            'opening_balance' => 0,
+            'balance' => 0,
+            'currency' => 'VND',
+        ]);
+
+        Expense::factory()->create([
+            'home_id' => $home->id,
+            'wallet_id' => $wallet->id,
+            'category_id' => $cat->id,
+            'type' => 'income',
+            'amount' => 120000,
+            'occurred_at' => now(),
+        ]);
+
+        $transfer = Transfer::create([
+            'home_id' => $home->id,
+            'from_wallet_id' => $wallet->id,
+            'to_wallet_id' => $toWallet->id,
+            'user_id' => $user->id,
+            'amount' => 50000,
+            'fee' => 0,
+            'currency' => 'VND',
+            'description' => 'Chuyển ví',
+            'occurred_at' => now(),
+        ]);
+
+        Expense::factory()->create([
+            'home_id' => $home->id,
+            'wallet_id' => $wallet->id,
+            'category_id' => $cat->id,
+            'type' => 'expense',
+            'amount' => 50000,
+            'occurred_at' => now(),
+            'transfer_id' => $transfer->id,
+        ]);
+
+        Expense::factory()->create([
+            'home_id' => $home->id,
+            'wallet_id' => $toWallet->id,
+            'category_id' => $cat->id,
+            'type' => 'income',
+            'amount' => 50000,
+            'occurred_at' => now(),
+            'transfer_id' => $transfer->id,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('expenses.index', ['period' => 'all']));
+
+        $response->assertOk();
+        $response->assertViewHas('totalIncome', 120000.0);
+        $response->assertViewHas('totalSpent', 0.0);
+        $response->assertViewHas('expenses', fn ($expenses) => $expenses->total() === 1);
     }
 }

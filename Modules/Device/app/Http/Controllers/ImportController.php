@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
 use Modules\Device\Imports\DevicesImport;
+use Modules\Room\Models\Room;
 
 class ImportController extends Controller
 {
@@ -23,8 +24,11 @@ class ImportController extends Controller
             'room_id' => ['required', 'exists:rooms,id'],
         ]);
 
+        $room = Room::findOrFail($request->integer('room_id'));
+        $this->authorize('update', $room);
+
         Excel::import(
-            new DevicesImport($request->room_id),
+            new DevicesImport($room->id),
             $request->file('file')
         );
 
