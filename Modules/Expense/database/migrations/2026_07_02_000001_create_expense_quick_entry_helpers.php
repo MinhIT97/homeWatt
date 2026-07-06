@@ -20,7 +20,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['user_id', 'home_id', 'keyword', 'wallet_id', 'category_id'], 'quick_habit_unique_pair');
-            $table->index(['user_id', 'home_id', 'keyword', 'usage_count']);
+            $table->index(['user_id', 'home_id', 'keyword', 'usage_count'], 'quick_habit_lookup_index');
         });
 
         Schema::create('expense_transaction_templates', function (Blueprint $table) {
