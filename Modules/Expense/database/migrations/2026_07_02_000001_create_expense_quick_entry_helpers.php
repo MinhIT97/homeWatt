@@ -41,7 +41,7 @@ return new class extends Migration
             $table->unsignedInteger('sort_order')->default(0);
             $table->timestamps();
 
-            $table->index(['home_id', 'user_id', 'sort_order']);
+            $table->index(['home_id', 'user_id', 'sort_order'], 'txn_templates_home_user_sort_idx');
         });
 
         Schema::create('expense_recurring_transactions', function (Blueprint $table) {
@@ -62,7 +62,7 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->timestamps();
 
-            $table->index(['home_id', 'is_active', 'next_due_date']);
+            $table->index(['home_id', 'is_active', 'next_due_date'], 'recurring_txn_home_active_due_idx');
         });
     }
 
