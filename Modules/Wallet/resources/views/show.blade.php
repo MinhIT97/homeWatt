@@ -202,6 +202,11 @@
                             $carbonDate = \Carbon\Carbon::parse($date);
                             $englishDay = $carbonDate->format('l');
                             $vnDay = $vietnameseDays[$englishDay] ?? $englishDay;
+
+                            // Calculate daily totals
+                            $dailyIncome = $transactions->where('type', 'income')->sum('amount');
+                            $dailyExpense = $transactions->where('type', 'expense')->sum('amount');
+                            $dailyNet = $dailyIncome - $dailyExpense;
                         @endphp
                         <div class="relative mb-8 last:mb-0">
                             <!-- Timeline node icon -->
@@ -209,8 +214,8 @@
                                 <span class="text-xs font-bold text-slate-500">{{ $carbonDate->format('d') }}</span>
                             </div>
 
-                            <!-- Date Header -->
-                            <div class="mb-4">
+                            <!-- Date Header with daily totals -->
+                            <div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                                 <h4 class="text-sm font-bold text-slate-800 font-outfit">
                                     @if($date === $today)
                                         Hôm nay - {{ $carbonDate->format('d/m/Y') }}
@@ -220,6 +225,17 @@
                                         {{ $vnDay }}, {{ $carbonDate->format('d/m/Y') }}
                                     @endif
                                 </h4>
+                                <div class="flex items-center gap-3 text-xs font-semibold">
+                                    @if($dailyIncome > 0)
+                                        <span class="text-green-600">+{{ number_format($dailyIncome, 0, ',', '.') }}</span>
+                                    @endif
+                                    @if($dailyExpense > 0)
+                                        <span class="text-red-600">-{{ number_format($dailyExpense, 0, ',', '.') }}</span>
+                                    @endif
+                                    <span class="px-2 py-0.5 rounded-lg text-[11px] font-extrabold {{ $dailyNet >= 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700' }}">
+                                        {{ $dailyNet >= 0 ? '+' : '' }}{{ number_format($dailyNet, 0, ',', '.') }} đ
+                                    </span>
+                                </div>
                             </div>
 
                             <!-- Transactions list -->
@@ -232,16 +248,23 @@
                                             ? 'text-blue-600'
                                             : ($expense['type'] === 'income' ? 'text-green-600' : 'text-red-600');
                                     @endphp
-                                    <div class="flex items-center justify-between p-4 bg-white/60 hover:bg-white rounded-xl border border-slate-200/60 shadow-sm transition hover:shadow-md">
-                                        <div class="flex items-center gap-3">
-                                            <span class="text-xl w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center shadow-sm">{{ $expense['icon'] }}</span>
-                                            <div>
-                                                <div class="font-semibold text-slate-800 text-sm">{{ $expense['description'] }}</div>
+                                    <div class="flex items-center justify-between p-4 bg-white/60 hover:bg-white rounded-xl border border-slate-200/60 shadow-sm transition hover:shadow-md group">
+                                        <div class="flex items-center gap-3 min-w-0">
+                                            <span class="text-xl w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center shadow-sm shrink-0">{{ $expense['icon'] }}</span>
+                                            <div class="min-w-0">
+                                                <div class="font-semibold text-slate-800 text-sm truncate">{{ $expense['description'] }}</div>
                                                 <div class="text-[11px] text-slate-500">{{ $expense['occurred_at']?->format('H:i') }} · {{ $expense['category_name'] }}</div>
                                             </div>
                                         </div>
-                                        <div class="font-bold text-sm {{ $amountClass }}">
-                                            {{ $isPositive ? '+' : '-' }}{{ number_format($expense['amount'], 0, ',', '.') }} {{ $wallet->currency }}
+                                        <div class="flex items-center gap-3 shrink-0">
+                                            <div class="font-bold text-sm {{ $amountClass }}">
+                                                {{ $isPositive ? '+' : '-' }}{{ number_format($expense['amount'], 0, ',', '.') }} {{ $wallet->currency }}
+                                            </div>
+                                            @if(!$isTransfer && isset($expense['id']))
+                                                <a href="{{ route('expenses.edit', $expense['id']) }}" class="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-primary-600" title="Chỉnh sửa">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                                </a>
+                                            @endif
                                         </div>
                                     </div>
                                 @endforeach

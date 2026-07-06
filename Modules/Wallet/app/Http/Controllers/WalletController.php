@@ -136,6 +136,7 @@ class WalletController extends Controller
 
         $expenses = $expenseQuery->latest('occurred_at')->get()
             ->map(fn ($item) => [
+                'id' => $item->id,
                 'type' => $item->type,
                 'amount' => (float) $item->amount,
                 'description' => $item->description ?: $item->category?->name,

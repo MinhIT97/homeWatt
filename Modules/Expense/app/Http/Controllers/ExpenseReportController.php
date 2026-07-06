@@ -73,32 +73,33 @@ class ExpenseReportController extends Controller
         // Get debt categories
         $debtCategories = DB::table('expense_categories')
             ->where('home_id', $homeId)
+            ->whereNull('deleted_at')
             ->whereIn('category_group', ExpenseCategory::DEBT_GROUPS)
             ->get();
         $debtCategoryIds = $debtCategories->pluck('id')->toArray();
 
-        // Calculate specific debt types
-        $lentCategoryId = $debtCategories->firstWhere('category_group', ExpenseCategory::GROUP_LENDING)?->id;
-        $totalLent = $lentCategoryId ? (float) Expense::where('home_id', $homeId)
-            ->where('category_id', $lentCategoryId)
+        // Calculate specific debt types — use ALL category IDs per group (parent + children)
+        $lentCategoryIds = $debtCategories->where('category_group', ExpenseCategory::GROUP_LENDING)->pluck('id')->toArray();
+        $totalLent = ! empty($lentCategoryIds) ? (float) Expense::where('home_id', $homeId)
+            ->whereIn('category_id', $lentCategoryIds)
             ->whereBetween('occurred_at', [$start, $end])
             ->sum('amount') : 0.0;
 
-        $collectedCategoryId = $debtCategories->firstWhere('category_group', ExpenseCategory::GROUP_DEBT_COLLECTION)?->id;
-        $totalCollected = $collectedCategoryId ? (float) Expense::where('home_id', $homeId)
-            ->where('category_id', $collectedCategoryId)
+        $collectedCategoryIds = $debtCategories->where('category_group', ExpenseCategory::GROUP_DEBT_COLLECTION)->pluck('id')->toArray();
+        $totalCollected = ! empty($collectedCategoryIds) ? (float) Expense::where('home_id', $homeId)
+            ->whereIn('category_id', $collectedCategoryIds)
             ->whereBetween('occurred_at', [$start, $end])
             ->sum('amount') : 0.0;
 
-        $borrowedCategoryId = $debtCategories->firstWhere('category_group', ExpenseCategory::GROUP_BORROWING)?->id;
-        $totalBorrowed = $borrowedCategoryId ? (float) Expense::where('home_id', $homeId)
-            ->where('category_id', $borrowedCategoryId)
+        $borrowedCategoryIds = $debtCategories->where('category_group', ExpenseCategory::GROUP_BORROWING)->pluck('id')->toArray();
+        $totalBorrowed = ! empty($borrowedCategoryIds) ? (float) Expense::where('home_id', $homeId)
+            ->whereIn('category_id', $borrowedCategoryIds)
             ->whereBetween('occurred_at', [$start, $end])
             ->sum('amount') : 0.0;
 
-        $repaidCategoryId = $debtCategories->firstWhere('category_group', ExpenseCategory::GROUP_DEBT_REPAYMENT)?->id;
-        $totalRepaid = $repaidCategoryId ? (float) Expense::where('home_id', $homeId)
-            ->where('category_id', $repaidCategoryId)
+        $repaidCategoryIds = $debtCategories->where('category_group', ExpenseCategory::GROUP_DEBT_REPAYMENT)->pluck('id')->toArray();
+        $totalRepaid = ! empty($repaidCategoryIds) ? (float) Expense::where('home_id', $homeId)
+            ->whereIn('category_id', $repaidCategoryIds)
             ->whereBetween('occurred_at', [$start, $end])
             ->sum('amount') : 0.0;
 

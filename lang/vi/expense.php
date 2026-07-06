@@ -21,6 +21,7 @@ return [
     'select_wallet' => 'Chọn ví...',
     'select_category' => 'Chọn danh mục...',
     'create_button' => 'Tạo giao dịch',
+    'update_button' => 'Cập nhật',
     'created' => 'Đã tạo giao dịch.',
     'updated' => 'Đã cập nhật giao dịch.',
     'deleted' => 'Đã xóa giao dịch.',

@@ -21,6 +21,7 @@ return [
     'select_wallet' => 'Select wallet...',
     'select_category' => 'Select category...',
     'create_button' => 'Create Expense',
+    'update_button' => 'Update',
     'created' => 'Expense created.',
     'updated' => 'Expense updated.',
     'deleted' => 'Expense deleted.',
