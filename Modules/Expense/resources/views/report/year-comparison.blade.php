@@ -1,4 +1,4 @@
-<x-expense::report.layout :home="$home" :homes="$homes">
+<x-expense.report.layout :home="$home" :homes="$homes">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     @if(!$home)
@@ -78,4 +78,4 @@
         });
         </script>
     @endif
-</x-expense::report.layout>
+</x-expense.report.layout>

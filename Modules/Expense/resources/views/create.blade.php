@@ -33,6 +33,8 @@
         searchQuery: '',
         amountRaw: '{{ old('amount') }}',
         amountDisplay: '',
+        enableSplit: false,
+        splitMembers: [],
 
         init() {
             const debtNames = ['Cho vay', 'Trả nợ', 'Đi vay', 'Thu nợ'];
@@ -49,6 +51,33 @@
             if (this.amountRaw) {
                 this.amountDisplay = this.formatNumber(this.amountRaw);
             }
+            // Watch enableSplit toggle and auto-distribute
+            this.$watch('enableSplit', value => {
+                if (value && this.amountRaw > 0) {
+                    this.redistributeSplit();
+                }
+            });
+        },
+        addSplitMember() {
+            this.splitMembers.push({
+                user_id: '',
+                amount: 0,
+            });
+        },
+        removeSplitMember(index) {
+            this.splitMembers.splice(index, 1);
+        },
+        redistributeSplit() {
+            if (this.splitMembers.length === 0) return;
+            const perPerson = Math.floor(parseInt(this.amountRaw || 0) / this.splitMembers.length);
+            let remainder = parseInt(this.amountRaw || 0) - (perPerson * this.splitMembers.length);
+            this.splitMembers.forEach((m, i) => {
+                m.amount = perPerson + (remainder > 0 ? 1 : 0);
+                if (remainder > 0) remainder--;
+            });
+        },
+        totalSplitAmount() {
+            return this.splitMembers.reduce((sum, m) => sum + (parseInt(m.amount) || 0), 0);
         },
 
         formatNumber(val) {
@@ -152,8 +181,61 @@
                         <x-text-input id="description" name="description" type="text" class="mt-1 block w-full" :value="old('description')" />
                     </div>
 
-                    <div class="flex items-center justify-end gap-4 pt-6 border-t border-slate-100">
-                        <a href="{{ route('expenses.index') }}" class="text-sm text-slate-500 hover:text-slate-800 font-semibold">{{ __('common.cancel') }}</a>
+                    {{-- Bill Splitting Section --}}
+                    @if($members->isNotEmpty())
+                    <div class="border border-slate-200 dark:border-slate-700 rounded-xl p-5 space-y-4 bg-slate-50/50 dark:bg-slate-800/30">
+                        <label class="flex items-center gap-3 cursor-pointer select-none">
+                            <input type="checkbox" x-model="enableSplit" class="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500">
+                            <span class="text-sm font-bold text-slate-700 dark:text-slate-300">Chia sẻ chi phí</span>
+                        </label>
+
+                        <div x-show="enableSplit" x-transition class="space-y-3">
+                            <p class="text-xs text-slate-500 dark:text-slate-400">
+                                Chia khoản chi này cho các thành viên trong nhà. Mỗi người sẽ có một khoản nợ riêng.
+                            </p>
+
+                            <template x-for="(member, index) in splitMembers" :key="index">
+                                <div class="flex items-center gap-3">
+                                    <select :name="'splits[' + index + '][user_id]'" x-model="member.user_id"
+                                        class="flex-1 bg-white/80 dark:bg-slate-700/80 border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm text-slate-800 dark:text-slate-200 py-2 px-3 text-sm"
+                                        required>
+                                        <option value="">-- Chọn thành viên --</option>
+                                        @foreach($members as $m)
+                                            <option value="{{ $m->user_id }}">{{ $m->user->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    <input type="hidden" :name="'splits[' + index + '][amount]'" :value="member.amount">
+                                    <div class="w-36 text-right text-sm font-semibold text-slate-700 dark:text-slate-300" x-text="member.amount ? new Intl.NumberFormat('vi-VN').format(member.amount) + ' đ' : '0 đ'"></div>
+                                    <button type="button" @click="removeSplitMember(index)"
+                                        class="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </template>
+
+                            <div class="flex items-center justify-between pt-2">
+                                <button type="button" @click="addSplitMember(); $nextTick(() => redistributeSplit());"
+                                    class="text-xs font-bold text-primary-600 hover:text-primary-700 flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                    </svg>
+                                    Thêm thành viên
+                                </button>
+                                <div class="text-xs text-slate-500 dark:text-slate-400">
+                                    Tổng chia: <span class="font-bold text-slate-700 dark:text-slate-300" x-text="new Intl.NumberFormat('vi-VN').format(totalSplitAmount()) + ' đ'"></span>
+                                    <span x-show="totalSplitAmount() > 0 && parseInt(amountRaw) > 0 && totalSplitAmount() !== parseInt(amountRaw)" class="text-red-500 font-bold ml-1">
+                                        (chênh <span x-text="new Intl.NumberFormat('vi-VN').format(Math.abs(parseInt(amountRaw) - totalSplitAmount()))"></span> đ)
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
+                    <div class="flex items-center justify-end gap-4 pt-6 border-t border-slate-100 dark:border-slate-700">
+                        <a href="{{ route('expenses.index') }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-semibold">{{ __('common.cancel') }}</a>
                         <x-primary-button>{{ __('expense.create_button') }}</x-primary-button>
                     </div>
                 </form>

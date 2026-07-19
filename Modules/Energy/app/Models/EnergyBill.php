@@ -33,6 +33,9 @@ class EnergyBill extends Model
         'source',
         'raw_payload',
         'scanned_at',
+        'due_date',
+        'reminder_sent_at',
+        'is_paid',
     ];
 
     protected $casts = [
@@ -44,6 +47,9 @@ class EnergyBill extends Model
         'amount' => 'decimal:2',
         'raw_payload' => 'array',
         'scanned_at' => 'datetime',
+        'due_date' => 'date',
+        'reminder_sent_at' => 'datetime',
+        'is_paid' => 'boolean',
     ];
 
     public function home(): BelongsTo

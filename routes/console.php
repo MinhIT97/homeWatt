@@ -15,3 +15,4 @@ Schedule::command('telegram:send-alerts')->dailyAt('09:00');
 Schedule::command('telegram:weekly-summary')->weeklyOn(7, '20:00'); // Tối Chủ Nhật hàng tuần lúc 20:00
 Schedule::command('expenses:generate-recurring')->dailyAt('06:10');
 Schedule::command('goals:snapshot')->dailyAt('23:00');
+Schedule::command('reminders:send-bills')->dailyAt('08:00');

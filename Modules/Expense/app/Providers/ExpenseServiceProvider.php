@@ -2,6 +2,7 @@
 
 namespace Modules\Expense\Providers;
 
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Gate;
 use Modules\Expense\Models\Expense;
 use Modules\Expense\Models\ExpenseCategory;
@@ -25,6 +26,11 @@ class ExpenseServiceProvider extends ModuleServiceProvider
     public function boot(): void
     {
         parent::boot();
+
+        Blade::anonymousComponentPath(
+            module_path('Expense', 'resources/views/report'),
+            'expense.report'
+        );
 
         Gate::policy(Expense::class, ExpensePolicy::class);
         Gate::policy(ExpenseCategory::class, ExpenseCategoryPolicy::class);

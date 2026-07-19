@@ -7,6 +7,7 @@ use Modules\Expense\Http\Controllers\ExpenseController;
 use Modules\Expense\Http\Controllers\ExpenseReportController;
 use Modules\Expense\Http\Controllers\QuickEntryController;
 use Modules\Expense\Http\Controllers\ReceiptController;
+use Modules\Expense\Http\Controllers\DebtController;
 use Modules\Expense\Http\Controllers\TransferController;
 
 Route::middleware(['web', 'auth', 'verified'])->group(function () {
@@ -68,4 +69,8 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
 
     // Receipt Gallery
     Route::get('receipts', [ReceiptController::class, 'index'])->name('receipts.index');
+
+    // Shared Expenses / Debts
+    Route::get('debts', [DebtController::class, 'index'])->name('debts.index');
+    Route::post('debts/{split}/settle', [DebtController::class, 'settle'])->name('debts.settle');
 });

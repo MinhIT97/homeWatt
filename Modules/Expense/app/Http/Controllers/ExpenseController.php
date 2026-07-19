@@ -15,12 +15,16 @@ use Modules\Expense\Imports\BankStatementImport;
 use Modules\Expense\Models\Expense;
 use Modules\Expense\Models\ExpenseCategory;
 use Modules\Expense\Services\ExpenseService;
+use Modules\Expense\Services\ExpenseSplitService;
 use Modules\Home\Models\Home;
 use Modules\Wallet\Models\Wallet;
 
 class ExpenseController extends Controller
 {
-    public function __construct(private readonly ExpenseService $expenseService) {}
+    public function __construct(
+        private readonly ExpenseService $expenseService,
+        private readonly ExpenseSplitService $splitService,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -129,6 +133,10 @@ class ExpenseController extends Controller
             ? Wallet::where('home_id', $selectedHomeId)->where('is_archived', false)->get()
             : collect();
 
+        $members = $selectedHomeId
+            ? \Modules\Home\Models\Home::with(['members.user'])->find($selectedHomeId)?->members ?? collect()
+            : collect();
+
         $expenseCats = $categories->where('type', 'expense')->whereNotIn('category_group', ExpenseCategory::DEBT_GROUPS);
         $incomeCats = $categories->where('type', 'income')->whereNotIn('category_group', ExpenseCategory::DEBT_GROUPS);
         $debtCats = $categories->whereIn('category_group', ExpenseCategory::DEBT_GROUPS);
@@ -144,7 +152,7 @@ class ExpenseController extends Controller
         $hasReceipts = $request->hasFile('receipts');
 
         return view('expense::create', compact(
-            'homes', 'selectedHomeId', 'categories', 'wallets', 'expenseCats', 'incomeCats', 'debtCats',
+            'homes', 'selectedHomeId', 'categories', 'wallets', 'members', 'expenseCats', 'incomeCats', 'debtCats',
             'sharedDescription', 'sharedNotes', 'isShared', 'isPwa', 'hasReceipts', 'sharedFiles'
         ));
     }
@@ -152,6 +160,15 @@ class ExpenseController extends Controller
     public function store(StoreExpenseRequest $request): RedirectResponse
     {
         $expense = $this->expenseService->createExpense($request->validated(), $request->user());
+
+        // Handle bill splitting if splits were submitted
+        $splits = $request->input('splits', []);
+        if (! empty($splits)) {
+            $validSplits = array_filter($splits, fn ($s) => ! empty($s['user_id']) && (float) ($s['amount'] ?? 0) > 0);
+            if (! empty($validSplits)) {
+                $this->splitService->split($expense, $validSplits, $request->user());
+            }
+        }
 
         return redirect()->route('expenses.show', $expense)
             ->with('success', __('expense.created'));

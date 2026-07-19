@@ -78,6 +78,32 @@ class DefaultNotificationTemplatesSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+            [
+                'code' => 'bill_reminder',
+                'name' => 'Bill Due Reminder',
+                'channels' => json_encode(['telegram', 'in_app']),
+                'mail_subject' => null,
+                'mail_body' => null,
+                'telegram_body' => "🔔 Nhắc thanh toán hóa đơn\n\nNhà: {{home_name}}\nNhà cung cấp: {{provider}}\nKỳ: {{billing_period}}\nSố tiền: {{amount}}\nHạn thanh toán: {{due_date}}\n\nVui lòng thanh toán trước hạn để tránh bị gián đoạn dịch vụ.",
+                'push_title' => '🔔 Nhắc thanh toán hóa đơn',
+                'push_body' => 'Hóa đơn {{provider}} cho {{home_name}} đến hạn thanh toán vào {{due_date}}. Số tiền: {{amount}}.',
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'code' => 'bill_overdue',
+                'name' => 'Bill Overdue Alert',
+                'channels' => json_encode(['telegram', 'in_app', 'push']),
+                'mail_subject' => null,
+                'mail_body' => null,
+                'telegram_body' => "🚨 Hóa đơn quá hạn\n\nNhà: {{home_name}}\nNhà cung cấp: {{provider}}\nKỳ: {{billing_period}}\nSố tiền: {{amount}}\nHạn thanh toán: {{due_date}}\nQuá hạn: {{days_overdue}} ngày\n\nVui lòng thanh toán ngay để tránh phí phạt và gián đoạn dịch vụ.",
+                'push_title' => '🚨 Hóa đơn quá hạn',
+                'push_body' => 'Hóa đơn {{provider}} cho {{home_name}} đã quá hạn {{days_overdue}} ngày. Số tiền: {{amount}}.',
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
         ];
 
         foreach ($templates as $template) {
