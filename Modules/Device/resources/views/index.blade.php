@@ -38,7 +38,7 @@
                                 </div>
                                 <div class="flex justify-between items-center text-xs text-slate-500 mt-3">
                                     <span class="font-medium text-slate-600">
-                                        {{ $device->deviceType?->display_name }} • {{ $device->room->name }}
+                                        {{ $device->deviceType?->display_name }} • {{ $device->room?->name }}
                                     </span>
                                     <span class="font-semibold text-accent-650">
                                         {{ $device->specification?->rated_power ? $device->specification->rated_power.' W' : '—' }}
@@ -83,7 +83,7 @@
                                             @endif</p>
                                         </td>
                                         <td class="px-6 py-4 text-sm text-slate-600 font-medium">{{ $device->deviceType?->display_name }}</td>
-                                        <td class="px-6 py-4 text-sm text-slate-600 font-medium">{{ $device->room->name }}</td>
+                                        <td class="px-6 py-4 text-sm text-slate-600 font-medium">{{ $device->room?->name }}</td>
                                         <td class="px-6 py-4 text-sm text-slate-650 font-semibold text-accent-600">
                                             {{ $device->specification?->rated_power ? $device->specification->rated_power.' W' : '—' }}
                                         </td>

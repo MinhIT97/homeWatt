@@ -38,9 +38,9 @@ class EnergyBill extends Model
     protected $casts = [
         'period_start' => 'date',
         'period_end' => 'date',
-        'old_index' => 'float',
-        'new_index' => 'float',
-        'kwh' => 'float',
+        'old_index' => 'decimal:2',
+        'new_index' => 'decimal:2',
+        'kwh' => 'decimal:4',
         'amount' => 'decimal:2',
         'raw_payload' => 'array',
         'scanned_at' => 'datetime',

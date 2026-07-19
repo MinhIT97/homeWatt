@@ -34,8 +34,8 @@
         </div>
     @else
         @php
-            $code = session('telegram-code-generated') ?? $user->telegram_verification_code;
-            $botUsername = env('TELEGRAM_BOT_USERNAME', 'homewatt_bot');
+            $code = $user->telegram_verification_code;
+            $botUsername = config('services.telegram.bot_username', 'homewatt_bot');
         @endphp
 
         @if ($code)

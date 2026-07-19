@@ -60,12 +60,12 @@ class ProfileController extends Controller
 
     public function generateTelegramCode(Request $request): RedirectResponse
     {
-        $code = (string) rand(100000, 999999);
+        $code = (string) random_int(100000, 999999);
         $request->user()->forceFill([
             'telegram_verification_code' => $code,
         ])->save();
 
-        return Redirect::route('profile.edit')->with('telegram-code-generated', $code);
+        return Redirect::route('profile.edit')->with('status', 'telegram-code-generated');
     }
 
     public function unlinkTelegram(Request $request): RedirectResponse

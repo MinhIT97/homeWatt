@@ -29,7 +29,7 @@ class DeviceRepair extends Model
             $device = $repair->device;
             if ($device && $repair->repaired_at) {
                 if (! $device->last_maintained_at || $repair->repaired_at->gt($device->last_maintained_at)) {
-                    $device->update(['last_maintained_at' => $repair->repaired_at]);
+                    $device->forceFill(['last_maintained_at' => $repair->repaired_at])->saveQuietly();
                 }
             }
         });

@@ -3,7 +3,7 @@
         <div class="flex justify-between items-center">
             <div>
                 <h2 class="font-extrabold text-2xl text-slate-900 font-outfit leading-tight">{{ $device->name }}</h2>
-                <p class="text-xs text-slate-500 mt-0.5">{{ $device->room->home->name }} / {{ $device->room->name }}</p>
+                <p class="text-xs text-slate-500 mt-0.5">{{ $device->room?->home?->name }} / {{ $device->room?->name }}</p>
             </div>
             <div class="flex gap-2">
                 <a href="{{ route('devices.edit', $device) }}" class="inline-flex items-center px-4 py-2 bg-white/80 border border-slate-300 hover:border-slate-400 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition">{{ __('common.edit') }}</a>

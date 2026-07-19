@@ -20,10 +20,10 @@ class TariffTier extends Model
     ];
 
     protected $casts = [
-        'limit_kwh' => 'float',
-        'rate' => 'float',
-        'tax_percent' => 'float',
-        'surcharge' => 'float',
+        'limit_kwh' => 'decimal:2',
+        'rate' => 'decimal:4',
+        'tax_percent' => 'decimal:2',
+        'surcharge' => 'decimal:2',
     ];
 
     public function plan(): BelongsTo

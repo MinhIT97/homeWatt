@@ -32,8 +32,10 @@ class TrustProxies
 
         if (is_string($proxies) && $proxies !== '') {
             $this->proxies = array_map('trim', explode(',', $proxies));
-        } else {
+        } elseif (app()->environment('local')) {
             $this->proxies = '*'; // Trust all in local dev only
+        } else {
+            $this->proxies = []; // Trust no proxies by default
         }
 
         Request::setTrustedProxies($this->proxies, $this->headers);

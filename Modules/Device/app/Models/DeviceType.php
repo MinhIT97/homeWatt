@@ -3,6 +3,7 @@
 namespace Modules\Device\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DeviceType extends Model
 {
@@ -14,7 +15,7 @@ class DeviceType extends Model
         'default_duty_cycle',
     ];
 
-    public function devices()
+    public function devices(): HasMany
     {
         return $this->hasMany(Device::class);
     }

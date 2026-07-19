@@ -27,11 +27,11 @@ class EnergyEstimate extends Model
     protected $casts = [
         'period_start' => 'date',
         'period_end' => 'date',
-        'estimated_kwh' => 'float',
-        'estimated_cost' => 'float',
-        'confidence' => 'float',
-        'lower_range_kwh' => 'float',
-        'upper_range_kwh' => 'float',
+        'estimated_kwh' => 'decimal:4',
+        'estimated_cost' => 'decimal:2',
+        'confidence' => 'decimal:2',
+        'lower_range_kwh' => 'decimal:4',
+        'upper_range_kwh' => 'decimal:4',
         'input_snapshot' => 'array',
     ];
 

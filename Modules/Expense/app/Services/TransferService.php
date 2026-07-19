@@ -175,27 +175,41 @@ class TransferService
     {
         $name = $type === Expense::TYPE_INCOME ? 'Chuyển tiền vào' : 'Chuyển tiền ra';
 
-        return ExpenseCategory::firstOrCreate(
-            ['home_id' => $homeId, 'name' => $name, 'type' => $type],
-            [
-                'category_group' => ExpenseCategory::GROUP_TRANSFER,
-                'icon' => $type === Expense::TYPE_INCOME ? '⬇️' : '⬆️',
-                'color' => '#6b7280',
-                'is_system' => true,
-            ]
-        );
+        try {
+            return ExpenseCategory::firstOrCreate(
+                ['home_id' => $homeId, 'name' => $name, 'type' => $type],
+                [
+                    'category_group' => ExpenseCategory::GROUP_TRANSFER,
+                    'icon' => $type === Expense::TYPE_INCOME ? '⬇️' : '⬆️',
+                    'color' => '#6b7280',
+                    'is_system' => true,
+                ]
+            );
+        } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+            return ExpenseCategory::where('home_id', $homeId)
+                ->where('name', $name)
+                ->where('type', $type)
+                ->firstOrFail();
+        }
     }
 
     protected function getOrCreateFeeCategory(int $homeId): ExpenseCategory
     {
-        return ExpenseCategory::firstOrCreate(
-            ['home_id' => $homeId, 'name' => 'Phí chuyển khoản', 'type' => Expense::TYPE_EXPENSE],
-            [
-                'category_group' => ExpenseCategory::GROUP_TRANSFER,
-                'icon' => '💸',
-                'color' => '#ef4444',
-                'is_system' => true,
-            ]
-        );
+        try {
+            return ExpenseCategory::firstOrCreate(
+                ['home_id' => $homeId, 'name' => 'Phí chuyển khoản', 'type' => Expense::TYPE_EXPENSE],
+                [
+                    'category_group' => ExpenseCategory::GROUP_TRANSFER,
+                    'icon' => '💸',
+                    'color' => '#ef4444',
+                    'is_system' => true,
+                ]
+            );
+        } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+            return ExpenseCategory::where('home_id', $homeId)
+                ->where('name', 'Phí chuyển khoản')
+                ->where('type', Expense::TYPE_EXPENSE)
+                ->firstOrFail();
+        }
     }
 }

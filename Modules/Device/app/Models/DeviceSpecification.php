@@ -22,6 +22,12 @@ class DeviceSpecification extends Model
     ];
 
     protected $casts = [
+        'voltage' => 'decimal:2',
+        'current' => 'decimal:2',
+        'rated_power' => 'decimal:2',
+        'max_power' => 'decimal:2',
+        'standby_power' => 'decimal:2',
+        'capacity' => 'decimal:2',
         'metadata' => 'array',
     ];
 

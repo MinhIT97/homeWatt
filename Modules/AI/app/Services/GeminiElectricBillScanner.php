@@ -36,7 +36,8 @@ class GeminiElectricBillScanner
             foreach ($this->apiKeys as $apiKey) {
                 try {
                     $response = Http::timeout(45)
-                        ->post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}", [
+                        ->withHeader('x-goog-api-key', $apiKey)
+                        ->post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent", [
                             'contents' => [
                                 [
                                     'parts' => [

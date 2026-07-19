@@ -26,8 +26,8 @@ class EnergyReading extends Model
 
     protected $casts = [
         'recorded_at' => 'datetime',
-        'watts' => 'float',
-        'kwh' => 'float',
+        'watts' => 'decimal:2',
+        'kwh' => 'decimal:4',
     ];
 
     public function device(): BelongsTo

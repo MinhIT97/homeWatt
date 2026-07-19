@@ -47,6 +47,8 @@ class ExpenseCategoryController extends Controller
 
     public function store(StoreExpenseCategoryRequest $request): RedirectResponse
     {
+        $this->authorize('create', [ExpenseCategory::class, \Modules\Home\Models\Home::findOrFail($request->validated('home_id'))]);
+
         $category = ExpenseCategory::create([
             ...$request->validated(),
             'is_system' => false,
