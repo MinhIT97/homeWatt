@@ -4,15 +4,50 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+    :root {
+        --bg-primary: #ffffff;
+        --bg-secondary: #f8fafc;
+        --bg-tertiary: #f1f5f9;
+        --text-primary: #0f172a;
+        --text-secondary: #475569;
+        --text-tertiary: #64748b;
+        --border-primary: #e2e8f0;
+        --border-secondary: #f1f5f9;
+    }
+
+    .dark {
+        --bg-primary: #0f172a;
+        --bg-secondary: #1e293b;
+        --bg-tertiary: #334155;
+        --text-primary: #f1f5f9;
+        --text-secondary: #cbd5e1;
+        --text-tertiary: #94a3b8;
+        --border-primary: #334155;
+        --border-secondary: #1e293b;
+    }
+
+    /* Prevent FOUC on page load */
+    html.dark {
+        color-scheme: dark;
+    }
+}
+
 @layer utilities {
     /* Premium Gradients */
     .bg-grid-pattern {
         background-size: 40px 40px;
-        background-image: 
+        background-image:
             linear-gradient(to right, rgba(99, 102, 241, 0.05) 1px, transparent 1px),
             linear-gradient(to bottom, rgba(99, 102, 241, 0.05) 1px, transparent 1px);
     }
-    
+
+    .dark .bg-grid-pattern {
+        background-image:
+            linear-gradient(to right, rgba(99, 102, 241, 0.08) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(99, 102, 241, 0.08) 1px, transparent 1px);
+    }
+
     .bg-radial-gradient {
         background: radial-gradient(circle at 50% 50%, var(--tw-gradient-from) 0%, var(--tw-gradient-to) 100%);
     }
@@ -23,6 +58,11 @@
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
         border: 1px solid rgba(255, 255, 255, 0.4);
+    }
+
+    .dark .glass-panel {
+        background: rgba(15, 23, 42, 0.75);
+        border: 1px solid rgba(255, 255, 255, 0.08);
     }
 
     .dark-glass-panel {
@@ -74,7 +114,7 @@
     .animate-float {
         animation: float 6s ease-in-out infinite;
     }
-    
+
     .animate-float-delayed {
         animation: float 6s ease-in-out infinite;
         animation-delay: 3s;
@@ -107,5 +147,15 @@
     }
     ::-webkit-scrollbar-thumb:hover {
         background: rgba(148, 163, 184, 1);
+    }
+
+    .dark ::-webkit-scrollbar-track {
+        background: rgba(30, 41, 59, 1);
+    }
+    .dark ::-webkit-scrollbar-thumb {
+        background: rgba(71, 85, 105, 1);
+    }
+    .dark ::-webkit-scrollbar-thumb:hover {
+        background: rgba(100, 116, 139, 1);
     }
 }

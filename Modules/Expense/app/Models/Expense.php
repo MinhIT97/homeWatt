@@ -32,6 +32,7 @@ class Expense extends Model
         'occurred_at',
         'reference',
         'transfer_id',
+        'media_id',
     ];
 
     protected $casts = [
@@ -73,6 +74,11 @@ class Expense extends Model
     public function energyBill(): HasOne
     {
         return $this->hasOne(EnergyBill::class);
+    }
+
+    public function media(): BelongsTo
+    {
+        return $this->belongsTo(\Modules\Media\Models\Media::class, 'media_id');
     }
 
     public function signedAmount(): float

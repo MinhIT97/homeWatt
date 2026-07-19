@@ -7,11 +7,13 @@ use App\Support\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Modules\Home\Http\Requests\InviteMemberRequest;
 use Modules\Home\Http\Requests\StoreHomeRequest;
 use Modules\Home\Http\Requests\UpdateHomeRequest;
 use Modules\Home\Models\Home;
+use Modules\Home\Models\HomeInvitation;
 use Modules\Home\Models\HomeMember;
 use Modules\Home\Services\MemberService;
 use Modules\Home\Services\PriceCalculator;
@@ -150,5 +152,64 @@ class HomeController extends Controller
         ]);
 
         return back()->with('success', __('home.member_removed'));
+    }
+
+    public function inviteForm(Request $request, Home $home): View
+    {
+        $this->authorize('manageMembers', $home);
+
+        $invitations = HomeInvitation::where('home_id', $home->id)
+            ->where('invited_by', $request->user()->id)
+            ->latest()
+            ->get();
+
+        return view('home::invite-form', compact('home', 'invitations'));
+    }
+
+    public function createInvitation(Request $request, Home $home): RedirectResponse
+    {
+        $this->authorize('manageMembers', $home);
+
+        $validated = $request->validate([
+            'role' => 'required|in:manager,member,viewer',
+            'max_uses' => 'nullable|integer|min:1|max:100',
+            'expires_in_days' => 'nullable|integer|min:1|max:90',
+        ]);
+
+        $invitation = HomeInvitation::create([
+            'home_id' => $home->id,
+            'invited_by' => $request->user()->id,
+            'token' => Str::random(64),
+            'role' => $validated['role'],
+            'max_uses' => (int) ($validated['max_uses'] ?? 1),
+            'expires_at' => now()->addDays((int) ($validated['expires_in_days'] ?? 7)),
+        ]);
+
+        $link = route('invite.show', $invitation->token);
+
+        AuditLogger::log('home.invitation_created', [
+            'home_id' => $home->id,
+            'invitation_id' => $invitation->id,
+            'role' => $invitation->role,
+        ]);
+
+        return back()->with('success', 'Lời mời đã được tạo.')
+            ->with('invite_link', $link);
+    }
+
+    public function revokeInvitation(Request $request, HomeInvitation $invitation): RedirectResponse
+    {
+        $home = $invitation->home;
+        $this->authorize('manageMembers', $home);
+
+        $invitationId = $invitation->id;
+        $invitation->delete();
+
+        AuditLogger::log('home.invitation_revoked', [
+            'home_id' => $home->id,
+            'invitation_id' => $invitationId,
+        ]);
+
+        return back()->with('success', 'Lời mời đã bị thu hồi.');
     }
 }

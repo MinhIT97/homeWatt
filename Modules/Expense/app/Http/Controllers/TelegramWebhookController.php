@@ -11,9 +11,11 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Modules\AI\Services\GeminiBillScanner;
 use Modules\AI\Services\GeminiElectricBillScanner;
+use Modules\AI\Services\VoiceTranscriber;
 use Modules\Energy\Services\ElectricBillRecorder;
 use Modules\Expense\Models\Expense;
 use Modules\Expense\Models\ExpenseCategory;
@@ -22,6 +24,7 @@ use Modules\Expense\Services\ExpenseService;
 use Modules\Expense\Services\QuickEntryService;
 use Modules\Expense\Services\TelegramParserService;
 use Modules\Expense\Services\TransferService;
+use Modules\Media\Models\Media;
 use Modules\Wallet\Models\Wallet;
 
 class TelegramWebhookController extends Controller
@@ -51,6 +54,7 @@ class TelegramWebhookController extends Controller
         $chatId = $request->input('message.chat.id');
         $text = trim($request->input('message.text', ''));
         $photo = $request->input('message.photo');
+        $voice = $request->input('message.voice');
 
         if (empty($chatId)) {
             return response()->json(['ok' => true]);
@@ -65,6 +69,21 @@ class TelegramWebhookController extends Controller
                     'chat_id' => $chatId,
                 ]);
                 $this->sendMessage($chatId, '⚠️ Đã xảy ra lỗi khi quét hóa đơn.');
+            }
+
+            return response()->json(['ok' => true]);
+        }
+
+        // Handle voice messages
+        if (! empty($voice)) {
+            try {
+                $this->handleVoiceInput($chatId, $voice, $parser, $expenseService);
+            } catch (\Throwable $e) {
+                Log::error('Telegram voice processing failed', [
+                    'error' => $e->getMessage(),
+                    'chat_id' => $chatId,
+                ]);
+                $this->sendMessage($chatId, '⚠️ Không thể xử lý tin nhắn thoại.');
             }
 
             return response()->json(['ok' => true]);
@@ -1234,6 +1253,23 @@ class TelegramWebhookController extends Controller
 
         $base64 = base64_encode($imageResponse->body());
 
+        // Save the photo as a Media record
+        $imageContent = $imageResponse->body();
+        $storedPath = 'media/receipts/' . date('Y/m') . '/' . Str::uuid() . '.jpg';
+        Storage::disk('private')->put($storedPath, $imageContent);
+        $media = Media::create([
+            'owner_type' => Expense::class,
+            'owner_id' => 0, // temporary, will be updated when expense is saved
+            'disk' => 'private',
+            'path' => $storedPath,
+            'mime_type' => 'image/jpeg',
+            'size' => strlen($imageContent),
+            'checksum' => hash('sha256', $imageContent),
+            'status' => 'ready',
+        ]);
+
+        $mediaId = $media->id;
+
         // 1. Try scanning as an electricity bill first
         $electricScanner = app(GeminiElectricBillScanner::class);
         $electricResult = $electricScanner->scan($base64);
@@ -1265,11 +1301,13 @@ class TelegramWebhookController extends Controller
                     .' | Tiêu thụ: '.($electricResult['kwh'] ?? 'N/A').' kWh. '
                     .'Quét tự động qua Telegram.',
                 'occurred_at' => now()->toDateTimeString(),
+                'media_id' => $mediaId,
             ];
 
             $this->sendReceiptPreview($chatId, $user, $payload, [
                 'scan_type' => 'electric',
                 'electric_result' => $electricResult,
+                'media_id' => $mediaId,
             ]);
 
             return;
@@ -1328,12 +1366,72 @@ class TelegramWebhookController extends Controller
             'description' => $result['description'] ?: 'Quét hóa đơn AI',
             'notes' => $result['notes'] ?: 'Quét tự động qua Telegram',
             'occurred_at' => now()->toDateTimeString(),
+            'media_id' => $mediaId,
         ];
 
         $this->sendReceiptPreview($chatId, $user, $payload, [
             'scan_type' => 'receipt',
             'ai_result' => $result,
+            'media_id' => $mediaId,
         ]);
+    }
+
+    /**
+     * Handle voice input from Telegram: download the OGG file,
+     * transcribe with Whisper, and pass text to the normal handling flow.
+     */
+    private function handleVoiceInput(int $chatId, array $voice, TelegramParserService $parser, ExpenseService $expenseService): void
+    {
+        $token = config('services.telegram.bot_token');
+        if (empty($token)) {
+            $this->sendMessage($chatId, '⚠️ Token Telegram Bot chưa được cấu hình.');
+
+            return;
+        }
+
+        // Send a temporary "processing" message
+        $this->sendMessage($chatId, '🎤 Đang xử lý giọng nói...');
+
+        $fileId = $voice['file_id'];
+
+        // Get file path from Telegram
+        $fileResponse = Http::get("https://api.telegram.org/bot{$token}/getFile?file_id={$fileId}");
+        if ($fileResponse->failed()) {
+            $this->sendMessage($chatId, '❌ Không thể tải thông tin tệp ghi âm từ Telegram.');
+
+            return;
+        }
+
+        $filePath = $fileResponse->json('result.file_path');
+        if (empty($filePath)) {
+            $this->sendMessage($chatId, '❌ Không tìm thấy đường dẫn tệp ghi âm.');
+
+            return;
+        }
+
+        // Download the voice file
+        $voiceResponse = Http::get("https://api.telegram.org/file/bot{$token}/{$filePath}");
+        if ($voiceResponse->failed()) {
+            $this->sendMessage($chatId, '❌ Không thể tải dữ liệu ghi âm từ Telegram.');
+
+            return;
+        }
+
+        // Transcribe using Whisper
+        $transcriber = app(VoiceTranscriber::class);
+        $transcribedText = $transcriber->transcribe($voiceResponse->body(), 'vi');
+
+        if (empty($transcribedText)) {
+            $this->sendMessage($chatId, '❌ Không thể nhận diện giọng nói. Vui lòng thử lại hoặc nhập văn bản.');
+
+            return;
+        }
+
+        // Show the transcribed text and process it
+        $this->sendMessage($chatId, "🎤 *Đã nhận diện:* `{$transcribedText}`\n\nĐang xử lý...");
+
+        // Pass to normal text handling flow
+        $this->handleTransactionCommand($chatId, $transcribedText, $parser, $expenseService);
     }
 
     private function sendReceiptPreview(int $chatId, User $user, array $payload, array $meta, ?string $key = null): void
@@ -1415,6 +1513,13 @@ class TelegramWebhookController extends Controller
 
             if (($meta['scan_type'] ?? null) === 'electric') {
                 app(ElectricBillRecorder::class)->recordFromScan($expense, $meta['electric_result'] ?? []);
+            }
+
+            // Update the Media record to point to this expense
+            if (! empty($payload['media_id'])) {
+                Media::where('id', $payload['media_id'])->update([
+                    'owner_id' => $expense->id,
+                ]);
             }
 
             return $expense;
@@ -1820,8 +1925,8 @@ class TelegramWebhookController extends Controller
                 return;
             }
 
-            $isMember = $user->homeMembers()->where('home_id', $expense->home_id)->exists();
-            if (! $isMember) {
+            $canAccess = $this->canAccessHome($user, (int) $expense->home_id);
+            if (! $canAccess) {
                 $this->answerCallbackQuery($queryId, '❌ Bạn không có quyền thực hiện hành động này.');
 
                 return;
@@ -1845,8 +1950,8 @@ class TelegramWebhookController extends Controller
                 return;
             }
 
-            $isMember = $user->homeMembers()->where('home_id', $transfer->home_id)->exists();
-            if (! $isMember) {
+            $canAccess = $this->canAccessHome($user, (int) $transfer->home_id);
+            if (! $canAccess) {
                 $this->answerCallbackQuery($queryId, '❌ Bạn không có quyền thực hiện hành động này.');
 
                 return;

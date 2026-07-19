@@ -5,10 +5,13 @@ namespace Modules\Expense\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Modules\Expense\Http\Requests\StoreExpenseRequest;
 use Modules\Expense\Http\Requests\UpdateExpenseRequest;
+use Modules\Expense\Imports\BankStatementImport;
 use Modules\Expense\Models\Expense;
 use Modules\Expense\Models\ExpenseCategory;
 use Modules\Expense\Services\ExpenseService;
@@ -130,8 +133,19 @@ class ExpenseController extends Controller
         $incomeCats = $categories->where('type', 'income')->whereNotIn('category_group', ExpenseCategory::DEBT_GROUPS);
         $debtCats = $categories->whereIn('category_group', ExpenseCategory::DEBT_GROUPS);
 
+        // Handle PWA share target: pre-fill form with shared content
+        $sharedDescription = $request->get('description', '');
+        $sharedNotes = $request->get('notes', '');
+        $sharedFiles = (int) $request->get('shared_files', 0);
+        $isShared = $request->get('source') === 'share';
+        $isPwa = $request->get('source') === 'pwa';
+
+        // Handle direct file upload from share target (if POST from sw.js redirect didn't apply)
+        $hasReceipts = $request->hasFile('receipts');
+
         return view('expense::create', compact(
-            'homes', 'selectedHomeId', 'categories', 'wallets', 'expenseCats', 'incomeCats', 'debtCats'
+            'homes', 'selectedHomeId', 'categories', 'wallets', 'expenseCats', 'incomeCats', 'debtCats',
+            'sharedDescription', 'sharedNotes', 'isShared', 'isPwa', 'hasReceipts', 'sharedFiles'
         ));
     }
 
@@ -185,5 +199,101 @@ class ExpenseController extends Controller
 
         return redirect()->route('expenses.index')
             ->with('success', __('expense.deleted'));
+    }
+
+    public function importForm(Request $request): View
+    {
+        $userId = $request->user()->id;
+        $homes = Home::whereHas('members', fn ($q) => $q->where('user_id', $userId)
+            ->whereIn('role', ['owner', 'manager']))->get();
+
+        return view('expense::import', compact('homes'));
+    }
+
+    public function importPreview(Request $request): JsonResponse
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:csv,txt|max:10240',
+            'home_id' => 'required|integer|exists:homes,id',
+        ]);
+
+        $user = $request->user();
+        $homeId = (int) $request->input('home_id');
+
+        // Verify user has access to home
+        $home = Home::whereHas('members', fn ($q) => $q->where('user_id', $user->id))->findOrFail($homeId);
+
+        $file = $request->file('file');
+        $tempPath = $file->store('imports', 'local');
+
+        try {
+            $importer = app(BankStatementImport::class);
+            $result = $importer->preview(Storage::path($tempPath), $homeId);
+
+            // Load wallet and category lists for the preview dropdown
+            $wallets = Wallet::where('home_id', $homeId)->where('is_archived', false)->get();
+            $categories = ExpenseCategory::where('home_id', $homeId)->orderBy('type')->orderBy('sort_order')->get();
+
+            return response()->json([
+                'ok' => true,
+                'parser' => $result['parser'],
+                'transactions' => $result['transactions'],
+                'errors' => $result['errors'],
+                'wallets' => $wallets->map(fn ($w) => ['id' => $w->id, 'name' => $w->name]),
+                'categories' => $categories->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'type' => $c->type]),
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'ok' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        } finally {
+            // Clean up temp file
+            if (Storage::exists($tempPath)) {
+                Storage::delete($tempPath);
+            }
+        }
+    }
+
+    public function importStore(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:csv,txt|max:10240',
+            'home_id' => 'required|integer|exists:homes,id',
+            'mappings' => 'nullable|array',
+            'mappings.*.wallet_id' => 'nullable|integer|exists:wallets,id',
+            'mappings.*.category_id' => 'nullable|integer|exists:expense_categories,id',
+            'mappings.*.type' => 'nullable|in:income,expense',
+        ]);
+
+        $user = $request->user();
+        $homeId = (int) $request->input('home_id');
+
+        // Verify user has access to home
+        Home::whereHas('members', fn ($q) => $q->where('user_id', $user->id))->findOrFail($homeId);
+
+        $file = $request->file('file');
+        $tempPath = $file->store('imports', 'local');
+
+        try {
+            $importer = app(BankStatementImport::class);
+            $result = $importer->import(Storage::path($tempPath), $homeId, $user);
+
+            $message = "Đã nhập thành công {$result['success']} giao dịch.";
+            if (! empty($result['errors'])) {
+                $errorCount = count($result['errors']);
+                $message .= " Có {$errorCount} lỗi khi nhập.";
+            }
+
+            return redirect()->route('expenses.index', ['home_id' => $homeId])
+                ->with(empty($result['errors']) ? 'success' : 'warning', $message);
+        } catch (\Throwable $e) {
+            return redirect()->route('expenses.import')
+                ->with('error', 'Lỗi nhập file: '.$e->getMessage());
+        } finally {
+            if (Storage::exists($tempPath)) {
+                Storage::delete($tempPath);
+            }
+        }
     }
 }

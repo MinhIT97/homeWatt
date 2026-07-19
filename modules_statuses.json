@@ -10,5 +10,7 @@
     "Dashboard": true,
     "Admin": true,
     "Wallet": true,
-    "Expense": true
+    "Expense": true,
+    "Notification": true,
+    "Goal": true
 }

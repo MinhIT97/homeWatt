@@ -233,6 +233,78 @@
                         </div>
                     </div>
 
+                    @if($selectedHomeId)
+                        <!-- Comparison Cards Row -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                            @if($expenseComparison)
+                                <x-comparison-card
+                                    label="Chi tiêu tháng này"
+                                    :current="$expenseComparison['current']"
+                                    :previous="$stats['month_expense'] > 0 ? $stats['month_expense'] : 0"
+                                    previousLabel="tháng trước"
+                                    format="money"
+                                    :inverted="true" />
+                                <x-comparison-card
+                                    label="Thu nhập tháng này"
+                                    :current="$stats['month_income']"
+                                    :previous="0"
+                                    previousLabel="tháng trước"
+                                    format="money" />
+                            @endif
+                            @if($energyComparison)
+                                <x-comparison-card
+                                    label="Điện tiêu thụ tháng này"
+                                    :current="$energyComparison['current_kwh']"
+                                    :previous="$energyComparison['previous_kwh']"
+                                    previousLabel="tháng trước"
+                                    format="kwh"
+                                    :inverted="true" />
+                            @endif
+                            <x-stat-card
+                                label="Tổng số dư"
+                                :value="$stats['total_balance']"
+                                icon="💰"
+                                format="money" />
+                        </div>
+
+                        <!-- Active Goals Widget -->
+                        @php
+                            $activeGoals = $selectedHomeId
+                                ? \Modules\Goal\Models\Goal::where('home_id', $selectedHomeId)
+                                    ->where('status', 'active')
+                                    ->whereDate('starts_at', '<=', now())
+                                    ->whereDate('ends_at', '>=', now())
+                                    ->take(3)
+                                    ->get()
+                                : collect();
+                        @endphp
+                        @if($activeGoals->isNotEmpty())
+                            <div class="mb-6">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h3 class="font-extrabold text-slate-800 font-outfit text-base">Mục tiêu đang thực hiện</h3>
+                                    <a href="{{ route('goal.index', ['home_id' => $selectedHomeId]) }}" class="text-xs font-bold text-blue-600 hover:underline">Xem tất cả</a>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    @foreach($activeGoals as $goal)
+                                        @php $pct = $goal->percentage(); @endphp
+                                        <a href="{{ route('goal.show', $goal->id) }}" class="bg-white rounded-2xl border border-slate-200/60 p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition duration-200 block">
+                                            <div class="flex items-center gap-2 mb-2">
+                                                <span class="text-xl">{{ $goal->icon ?: '🎯' }}</span>
+                                                <div class="flex-1 min-w-0">
+                                                    <h5 class="text-sm font-bold text-slate-800 truncate">{{ $goal->name }}</h5>
+                                                </div>
+                                                <span class="text-xs font-bold text-slate-500">{{ $pct }}%</span>
+                                            </div>
+                                            <div class="bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                                <div class="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-500" style="width: {{ min($pct, 100) }}%"></div>
+                                            </div>
+                                        </a>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+                    @endif
+
                     <!-- Charts Row -->
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                         <!-- Consumption Line Chart -->
@@ -537,6 +609,74 @@
                                         </div>
                                     @endforeach
                                 </div>
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- Anomaly Alerts --}}
+                    @if(!empty($anomalies))
+                        <div class="mt-6">
+                            <div class="bg-gradient-to-r from-red-50 to-amber-50 dark:from-red-950/20 dark:to-amber-950/20 rounded-2xl border border-red-200/60 dark:border-red-800/60 shadow-sm p-6">
+                                <div class="flex items-center gap-2 mb-4">
+                                    <span class="text-xl">⚠️</span>
+                                    <h3 class="font-extrabold text-slate-800 dark:text-slate-100 font-outfit text-base">{{ __('Cảnh báo thiết bị') }}</h3>
+                                    <span class="text-xs text-slate-400 dark:text-slate-500">({{ count($anomalies) }} thiết bị)</span>
+                                </div>
+                                <div class="space-y-3">
+                                    @foreach($anomalies as $anomaly)
+                                        <div class="bg-white dark:bg-slate-800 rounded-xl border
+                                            {{ $anomaly['severity'] === 'high' ? 'border-red-300 dark:border-red-700' :
+                                               ($anomaly['severity'] === 'medium' ? 'border-amber-300 dark:border-amber-700' :
+                                                'border-blue-300 dark:border-blue-700') }}
+                                            p-4 flex items-start gap-3">
+                                            <span class="text-xl shrink-0">
+                                                {{ $anomaly['severity'] === 'high' ? '🔴' : ($anomaly['severity'] === 'medium' ? '🟡' : '🔵') }}
+                                            </span>
+                                            <div class="min-w-0">
+                                                <h5 class="text-sm font-bold text-slate-800 dark:text-slate-100">{{ $anomaly['device_name'] }}</h5>
+                                                @if($anomaly['ratio'])
+                                                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                                        Tiêu thụ cao gấp <strong>{{ $anomaly['ratio'] }}x</strong> mức trung bình
+                                                    </p>
+                                                @endif
+                                                <p class="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">{{ $anomaly['recommendation'] }}</p>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- YoY Comparison Cards --}}
+                    @if($expenseComparison || $energyComparison)
+                        <div class="mt-6">
+                            <h3 class="font-extrabold text-slate-800 dark:text-slate-100 font-outfit text-base mb-4">{{ __('So sánh cùng kỳ') }}</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                @if($expenseComparison)
+                                    <x-comparison-card
+                                        label="Chi tiêu tháng này"
+                                        :current="$expenseComparison['current']"
+                                        :previous="$expenseComparison['vs_last_month'] !== null ? $expenseComparison['current'] / (1 + $expenseComparison['vs_last_month'] / 100) : 0"
+                                        previousLabel="tháng trước"
+                                        :inverted="true"
+                                    />
+                                @endif
+                                @if($energyComparison)
+                                    <x-comparison-card
+                                        label="Tiêu thụ điện tháng này"
+                                        :current="$energyComparison['current_kwh']"
+                                        :previous="$energyComparison['previous_kwh']"
+                                        previousLabel="tháng trước"
+                                        format="kwh"
+                                        :inverted="true"
+                                    />
+                                @endif
+                                <x-stat-card
+                                    label="Số dư hiện tại"
+                                    :value="$stats['total_balance']"
+                                    icon="💰"
+                                />
                             </div>
                         </div>
                     @endif

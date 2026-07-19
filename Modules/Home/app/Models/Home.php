@@ -104,4 +104,59 @@ class Home extends Model
     {
         return $this->totalRoomsPrice() + $this->totalDevicesPrice();
     }
+
+    public function expenseComparison(string $period = 'month'): array
+    {
+        $now = now();
+        $currentStart = $period === 'month' ? $now->copy()->startOfMonth() : $now->copy()->startOfDay();
+        $currentEnd = $period === 'day' ? $now->copy()->endOfDay() : $now->copy()->endOfMonth();
+        $lastStart = $currentStart->copy()->subMonth();
+        $lastEnd = $currentEnd->copy()->subMonth();
+        $lastYearStart = $currentStart->copy()->subYear();
+        $lastYearEnd = $currentEnd->copy()->subYear();
+
+        $currentTotal = (float) \Modules\Expense\Models\Expense::where('home_id', $this->id)
+            ->where('type', 'expense')->whereNull('transfer_id')
+            ->whereBetween('occurred_at', [$currentStart, $currentEnd])
+            ->sum('amount');
+
+        $lastMonthTotal = (float) \Modules\Expense\Models\Expense::where('home_id', $this->id)
+            ->where('type', 'expense')->whereNull('transfer_id')
+            ->whereBetween('occurred_at', [$lastStart, $lastEnd])
+            ->sum('amount');
+
+        $lastYearTotal = (float) \Modules\Expense\Models\Expense::where('home_id', $this->id)
+            ->where('type', 'expense')->whereNull('transfer_id')
+            ->whereBetween('occurred_at', [$lastYearStart, $lastYearEnd])
+            ->sum('amount');
+
+        return [
+            'current' => $currentTotal,
+            'vs_last_month' => $lastMonthTotal > 0 ? round((($currentTotal - $lastMonthTotal) / $lastMonthTotal) * 100, 1) : null,
+            'vs_last_year' => $lastYearTotal > 0 ? round((($currentTotal - $lastYearTotal) / $lastYearTotal) * 100, 1) : null,
+        ];
+    }
+
+    public function energyComparison(): array
+    {
+        $now = now();
+        $currentStart = $now->copy()->startOfMonth();
+        $currentEnd = $now->copy()->endOfMonth();
+        $lastStart = $currentStart->copy()->subMonth();
+        $lastEnd = $currentEnd->copy()->subMonth();
+
+        $currentKwh = (float) \Modules\Energy\Models\EnergyReading::whereHas(
+            'device.room', fn ($q) => $q->where('home_id', $this->id)
+        )->whereBetween('recorded_at', [$currentStart, $currentEnd])->sum('kwh');
+
+        $lastKwh = (float) \Modules\Energy\Models\EnergyReading::whereHas(
+            'device.room', fn ($q) => $q->where('home_id', $this->id)
+        )->whereBetween('recorded_at', [$lastStart, $lastEnd])->sum('kwh');
+
+        return [
+            'current_kwh' => $currentKwh,
+            'previous_kwh' => $lastKwh,
+            'change_pct' => $lastKwh > 0 ? round((($currentKwh - $lastKwh) / $lastKwh) * 100, 1) : null,
+        ];
+    }
 }

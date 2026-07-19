@@ -45,6 +45,19 @@
       "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     },
     {
+      "name": "Thêm chi tiêu nhanh",
+      "short_name": "Chi tiêu",
+      "description": "Thêm giao dịch mới",
+      "url": "/expenses/create?source=pwa",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Xem số dư ví",
+      "short_name": "Số dư",
+      "url": "/wallets?source=pwa",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
       "name": "Quét AI",
       "short_name": "Quét AI",
       "description": "Quét ảnh thiết bị bằng AI",
@@ -58,5 +71,20 @@
       "url": "/devices",
       "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     }
-  ]
+  ],
+  "share_target": {
+    "action": "/expenses/create?source=share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "description",
+      "text": "notes",
+      "files": [
+        {
+          "name": "receipts",
+          "accept": ["image/*"]
+        }
+      ]
+    }
+  }
 }

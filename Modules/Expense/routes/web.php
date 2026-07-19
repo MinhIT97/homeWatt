@@ -6,6 +6,7 @@ use Modules\Expense\Http\Controllers\ExpenseCategoryController;
 use Modules\Expense\Http\Controllers\ExpenseController;
 use Modules\Expense\Http\Controllers\ExpenseReportController;
 use Modules\Expense\Http\Controllers\QuickEntryController;
+use Modules\Expense\Http\Controllers\ReceiptController;
 use Modules\Expense\Http\Controllers\TransferController;
 
 Route::middleware(['web', 'auth', 'verified'])->group(function () {
@@ -28,6 +29,10 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     Route::delete('expenses/quick/recurring/{recurring}', [QuickEntryController::class, 'destroyRecurring'])->name('expenses.quick.recurring.destroy');
     Route::get('expenses/create', [ExpenseController::class, 'create'])->name('expenses.create');
     Route::post('expenses', [ExpenseController::class, 'store'])->name('expenses.store');
+    // Bank Statement Import (must be before {expense} to avoid route conflicts)
+    Route::get('expenses/import', [ExpenseController::class, 'importForm'])->name('expenses.import');
+    Route::post('expenses/import/preview', [ExpenseController::class, 'importPreview'])->name('expenses.import.preview');
+    Route::post('expenses/import', [ExpenseController::class, 'importStore'])->name('expenses.import.store');
     Route::get('expenses/{expense}', [ExpenseController::class, 'show'])->name('expenses.show');
     Route::get('expenses/{expense}/edit', [ExpenseController::class, 'edit'])->name('expenses.edit');
     Route::put('expenses/{expense}', [ExpenseController::class, 'update'])->name('expenses.update');
@@ -49,4 +54,7 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     Route::get('budgets', [BudgetController::class, 'index'])->name('budgets.index');
     Route::post('budgets', [BudgetController::class, 'store'])->name('budgets.store');
     Route::delete('budgets/{budget}', [BudgetController::class, 'destroy'])->name('budgets.destroy');
+
+    // Receipt Gallery
+    Route::get('receipts', [ReceiptController::class, 'index'])->name('receipts.index');
 });

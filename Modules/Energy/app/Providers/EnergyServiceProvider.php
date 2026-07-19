@@ -4,6 +4,7 @@ namespace Modules\Energy\Providers;
 
 use Illuminate\Support\Facades\Gate;
 use Modules\Energy\Console\CheckThresholds;
+use Modules\Energy\Console\DetectAnomaliesCommand;
 use Modules\Energy\Console\GenerateMonthlySummary;
 use Modules\Energy\Models\EnergyReading;
 use Modules\Energy\Policies\EnergyReadingPolicy;
@@ -29,6 +30,7 @@ class EnergyServiceProvider extends ModuleServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 CheckThresholds::class,
+                DetectAnomaliesCommand::class,
                 GenerateMonthlySummary::class,
             ]);
         }

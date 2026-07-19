@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Modules\Device\Models\Device;
 use Modules\Energy\Models\MonthlyEnergySummary;
+use Modules\Energy\Services\AnomalyDetector;
 use Modules\Energy\Services\SavingSuggestion;
 use Modules\Expense\Models\ExpenseCategory;
 use Modules\Home\Models\Home;
@@ -45,6 +46,9 @@ class DashboardController extends Controller
         $dailyData = [];
         $lastMonthDailyData = [];
         $suggestions = [];
+
+        $expenseComparison = null;
+        $energyComparison = null;
 
         if ($selectedHomeId) {
             $home = Home::find($selectedHomeId);
@@ -233,13 +237,94 @@ class DashboardController extends Controller
 
                     $suggestions = (new SavingSuggestion)->analyze($devices, $stats['estimated_monthly_cost']);
                 }
+
+                // Detect energy anomalies
+                $anomalyDetector = app(AnomalyDetector::class);
+                $anomalies = $anomalyDetector->detectAll($home->id);
+
+                $expenseComparison = $home->expenseComparison('month');
+                $energyComparison = $home->energyComparison();
             }
         }
 
         return view('dashboard::index', compact(
             'stats', 'homes', 'selectedHomeId', 'topDevices', 'roomsData',
             'dailyLabels', 'dailyData', 'lastMonthDailyData', 'suggestions',
+            'expenseComparison', 'energyComparison', 'anomalies',
         ));
+    }
+
+    public function overview(Request $request): View
+    {
+        $user = $request->user();
+        $memberships = $user->homeMembers()->with('home')->get();
+
+        $totals = [
+            'total_balance' => 0.0,
+            'monthly_income' => 0.0,
+            'monthly_expense' => 0.0,
+            'monthly_energy_kwh' => 0.0,
+            'monthly_energy_cost' => 0.0,
+            'total_devices' => 0,
+        ];
+
+        $homeDetails = [];
+
+        foreach ($memberships as $membership) {
+            $home = $membership->home;
+            $now = now();
+
+            $walletBalance = (float) Wallet::where('home_id', $home->id)
+                ->where('is_archived', false)
+                ->get()
+                ->sum(fn ($w) => $w->netBalance());
+
+            $income = (float) \Modules\Expense\Models\Expense::where('home_id', $home->id)
+                ->where('type', 'income')
+                ->whereNull('transfer_id')
+                ->whereYear('occurred_at', $now->year)
+                ->whereMonth('occurred_at', $now->month)
+                ->sum('amount');
+
+            $expense = (float) \Modules\Expense\Models\Expense::where('home_id', $home->id)
+                ->where('type', 'expense')
+                ->whereNull('transfer_id')
+                ->whereYear('occurred_at', $now->year)
+                ->whereMonth('occurred_at', $now->month)
+                ->sum('amount');
+
+            $deviceIds = Device::whereHas('room', fn ($q) => $q->where('home_id', $home->id))->pluck('id');
+            $energyKwh = (float) \Modules\Energy\Models\EnergyReading::whereIn('device_id', $deviceIds)
+                ->whereYear('recorded_at', $now->year)
+                ->whereMonth('recorded_at', $now->month)
+                ->sum('kwh');
+
+            $energyCost = (float) DB::table('monthly_energy_summaries')
+                ->where('home_id', $home->id)
+                ->where('year', $now->year)
+                ->where('month', $now->month)
+                ->sum('estimated_cost');
+
+            $totals['total_balance'] += $walletBalance;
+            $totals['monthly_income'] += $income;
+            $totals['monthly_expense'] += $expense;
+            $totals['monthly_energy_kwh'] += $energyKwh;
+            $totals['monthly_energy_cost'] += $energyCost;
+            $totals['total_devices'] += $deviceIds->count();
+
+            $homeDetails[] = [
+                'home' => $home,
+                'balance' => $walletBalance,
+                'income' => $income,
+                'expense' => $expense,
+                'energy_kwh' => $energyKwh,
+                'energy_cost' => $energyCost,
+                'device_count' => $deviceIds->count(),
+                'role' => $membership->role,
+            ];
+        }
+
+        return view('dashboard::overview', compact('totals', 'homeDetails'));
     }
 
     public function compare(Request $request): View

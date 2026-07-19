@@ -39,12 +39,35 @@ self.addEventListener('activate', (event) => {
 
 // Sự kiện fetch: Quản lý request và chiến lược tải cache
 self.addEventListener('fetch', (event) => {
+    const url = new URL(event.request.url);
+
+    // Handle share target POST requests — redirect to GET for SPA handling
+    if (event.request.method === 'POST' && url.pathname === '/expenses/create') {
+        event.respondWith(
+            (async () => {
+                const formData = await event.request.formData();
+                const title = formData.get('description') || '';
+                const text = formData.get('notes') || '';
+                const files = formData.getAll('receipts');
+
+                // Build redirect URL with shared data as query params
+                const redirectUrl = new URL('/expenses/create', self.location.origin);
+                redirectUrl.searchParams.set('source', 'share');
+                if (title) redirectUrl.searchParams.set('description', title);
+                if (text) redirectUrl.searchParams.set('notes', text);
+                if (files.length > 0) redirectUrl.searchParams.set('shared_files', files.length.toString());
+
+                // Redirect to GET so the normal navigation route handles it
+                return Response.redirect(redirectUrl.toString(), 303);
+            })()
+        );
+        return;
+    }
+
     // Chỉ xử lý các request GET
     if (event.request.method !== 'GET') {
         return;
     }
-
-    const url = new URL(event.request.url);
 
     // 1. Đối với tài nguyên điều hướng (HTML pages) -> Chiến lược Network-First
     if (event.request.mode === 'navigate') {

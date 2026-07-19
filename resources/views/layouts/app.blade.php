@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" x-data x-init="$store.theme.init()">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -43,7 +43,7 @@
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="font-sans antialiased text-slate-800 bg-[#F8F9FA] bg-grid-pattern h-screen overflow-hidden">
+    <body class="font-sans antialiased text-slate-800 dark:text-slate-200 bg-[#F8F9FA] dark:bg-slate-950 bg-grid-pattern h-screen overflow-hidden">
         <div class="flex h-screen overflow-hidden">
             <!-- Sidebar Navigation -->
             @include('layouts.sidebar')
@@ -64,7 +64,7 @@
                 <main class="flex-grow pb-24 lg:pb-12">
                     {{ $slot }}
                     <!-- Mobile Bottom Navigation Bar -->
-        <div class="fixed bottom-4 left-4 right-4 z-40 lg:hidden bg-white/85 backdrop-blur-xl border border-white/40 rounded-3xl shadow-lg shadow-slate-200/50 px-2 py-1.5 select-none transition-all duration-200">
+        <div class="fixed bottom-4 left-4 right-4 z-40 lg:hidden bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border border-white/40 dark:border-slate-700/40 rounded-3xl shadow-lg shadow-slate-200/50 dark:shadow-slate-950/50 px-2 py-1.5 select-none transition-all duration-200">
             <div class="flex justify-around items-center h-14">
                 <!-- Overview / Tổng quan -->
                 <a href="{{ route('dashboard') }}" class="relative flex flex-col items-center justify-center w-14 py-1 transition duration-150 {{ request()->routeIs('dashboard') ? 'text-blue-600 font-bold' : 'text-slate-400 hover:text-slate-650' }}">
