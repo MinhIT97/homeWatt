@@ -40,6 +40,22 @@ class ExpenseService
                 Log::error('Error checking budget alerts: '.$e->getMessage());
             }
 
+            // Run automation rules
+            try {
+                app(\Modules\Automation\Services\AutomationEngine::class)->run('expense.created', [
+                    'home_id' => $expense->home_id,
+                    'expense_id' => $expense->id,
+                    'amount' => (float) $expense->amount,
+                    'type' => $expense->type,
+                    'category_id' => $expense->category_id,
+                    'wallet_id' => $expense->wallet_id,
+                    'description' => $expense->description ?: '',
+                    'user_id' => $user->id,
+                ]);
+            } catch (\Throwable $e) {
+                Log::error('Error running automation rules: '.$e->getMessage());
+            }
+
             AuditLogger::log('expense.created', [
                 'expense_id' => $expense->id,
                 'home_id' => $expense->home_id,
@@ -91,6 +107,22 @@ class ExpenseService
                 $this->checkBudgetsAndAlert($locked);
             } catch (\Throwable $e) {
                 Log::error('Error checking budget alerts on update: '.$e->getMessage());
+            }
+
+            // Run automation rules
+            try {
+                app(\Modules\Automation\Services\AutomationEngine::class)->run('expense.updated', [
+                    'home_id' => $locked->home_id,
+                    'expense_id' => $locked->id,
+                    'amount' => (float) $locked->amount,
+                    'type' => $locked->type,
+                    'category_id' => $locked->category_id,
+                    'wallet_id' => $locked->wallet_id,
+                    'description' => $locked->description ?: '',
+                    'user_id' => $locked->user_id,
+                ]);
+            } catch (\Throwable $e) {
+                Log::error('Error running automation rules on update: '.$e->getMessage());
             }
 
             AuditLogger::log('expense.updated', [

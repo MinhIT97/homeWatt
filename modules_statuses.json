@@ -12,5 +12,6 @@
     "Wallet": true,
     "Expense": true,
     "Notification": true,
-    "Goal": true
+    "Goal": true,
+    "Automation": true
 }

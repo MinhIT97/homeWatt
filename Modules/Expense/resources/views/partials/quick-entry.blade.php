@@ -9,10 +9,10 @@
             homeId: {{ $quickSelectedHomeId }},
             homes: @js($quickHomes->map(fn($home) => ['id' => $home->id, 'name' => $home->name])->values()),
             endpoints: {
-                preview: '{{ route('expenses.quick.preview') }}',
-                store: '{{ route('expenses.quick.store') }}',
-                templates: '{{ route('expenses.quick.templates') }}',
-                recurring: '{{ route('expenses.quick.recurring') }}'
+                preview: '/expenses/quick/preview',
+                store: '/expenses/quick/store',
+                templates: '/expenses/quick/templates',
+                recurring: '/expenses/quick/recurring'
             }
         })"
         x-init="init()"

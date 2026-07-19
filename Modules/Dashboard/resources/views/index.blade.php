@@ -227,7 +227,7 @@
                                 <svg class="w-8 h-8 transform -rotate-90">
                                     <circle cx="16" cy="16" r="12" stroke="#E2E8F0" stroke-width="3.5" fill="transparent" />
                                     <circle cx="16" cy="16" r="12" stroke="#8B5CF6" stroke-width="3.5" fill="transparent"
-                                        stroke-dasharray="75.39" :stroke-dashoffset="75.39 * (1 - min(1, activeDevices / max(totalDevices, 1)))" />
+                                        stroke-dasharray="75.39" :stroke-dashoffset="75.39 * (1 - Math.min(1, activeDevices / Math.max(totalDevices, 1)))" />
                                 </svg>
                             </div>
                         </div>

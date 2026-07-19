@@ -1,0 +1,11 @@
+{
+    "name": "Automation",
+    "alias": "automation",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Automation\\Providers\\AutomationServiceProvider"
+    ],
+    "files": []
+}
