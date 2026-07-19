@@ -33,6 +33,7 @@ return [
     'total_opening' => 'Tổng số dư ban đầu',
     'wallet_count' => 'Số ví',
     'current_balance' => 'Số dư hiện tại',
+    'total_spent' => 'Đã chi tiêu',
     'archive' => 'Lưu trữ',
     'recent_transactions' => 'Giao dịch gần đây',
     'no_transactions' => 'Chưa có giao dịch nào cho ví này.',

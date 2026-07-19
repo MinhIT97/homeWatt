@@ -109,6 +109,60 @@ class DefaultCategoriesSeeder extends Seeder
                 ],
             ],
             [
+                'name' => 'Con cái', 'icon' => '👶', 'color' => '#f43f5e',
+                'children' => [
+                    ['name' => 'Bỉm sữa & Ăn dặm', 'icon' => '🍼'],
+                    ['name' => 'Học phí cho con', 'icon' => '🎒'],
+                    ['name' => 'Đồ chơi cho con', 'icon' => '🧸'],
+                    ['name' => 'Y tế & Tiêm phòng', 'icon' => '💉'],
+                    ['name' => 'Quần áo trẻ em', 'icon' => '👶'],
+                ],
+            ],
+            [
+                'name' => 'Thú cưng', 'icon' => '🐕', 'color' => '#b45309',
+                'children' => [
+                    ['name' => 'Thức ăn thú cưng', 'icon' => '🥩'],
+                    ['name' => 'Khám bệnh thú cưng', 'icon' => '🏥'],
+                    ['name' => 'Đồ chơi & Phụ kiện', 'icon' => '🎾'],
+                    ['name' => 'Chăm sóc & Spa', 'icon' => '✂️'],
+                ],
+            ],
+            [
+                'name' => 'Đầu tư & Tiết kiệm', 'icon' => '📈', 'color' => '#16a34a',
+                'children' => [
+                    ['name' => 'Gửi tiết kiệm', 'icon' => '🐷'],
+                    ['name' => 'Chứng khoán & Cổ phiếu', 'icon' => '📈'],
+                    ['name' => 'Bất động sản', 'icon' => '🏢'],
+                    ['name' => 'Vàng & Ngoại tệ', 'icon' => '🪙'],
+                    ['name' => 'Tiền điện tử', 'icon' => '🪙'],
+                ],
+            ],
+            [
+                'name' => 'Quà tặng & Quyên góp', 'icon' => '🎁', 'color' => '#d946ef',
+                'children' => [
+                    ['name' => 'Quà sinh nhật & Kỷ niệm', 'icon' => '🎁'],
+                    ['name' => 'Mừng đám cưới & Hiếu hỷ', 'icon' => '✉️'],
+                    ['name' => 'Từ thiện & Quyên góp', 'icon' => '💖'],
+                    ['name' => 'Biếu bố mẹ & Gia đình', 'icon' => '👴'],
+                ],
+            ],
+            [
+                'name' => 'Phát triển bản thân', 'icon' => '🎓', 'color' => '#0284c7',
+                'children' => [
+                    ['name' => 'Khóa học & Học tập', 'icon' => '🎓'],
+                    ['name' => 'Sách & Tài liệu', 'icon' => '📖'],
+                    ['name' => 'Hội thảo & Sự kiện', 'icon' => '🎙️'],
+                ],
+            ],
+            [
+                'name' => 'Bảo hiểm', 'icon' => '🛡️', 'color' => '#475569',
+                'children' => [
+                    ['name' => 'Bảo hiểm nhân thọ', 'icon' => '👨‍👩‍👧'],
+                    ['name' => 'Bảo hiểm sức khỏe', 'icon' => '🏥'],
+                    ['name' => 'Bảo hiểm tài sản/xe', 'icon' => '🛡️'],
+                ],
+            ],
+            [
                 'name' => 'Khác', 'icon' => '📝', 'color' => '#64748b',
             ],
         ];
@@ -151,6 +205,20 @@ class DefaultCategoriesSeeder extends Seeder
                     ['name' => 'Thu nợ bạn bè', 'icon' => '🪙', 'category_group' => 'debt_collection'],
                     ['name' => 'Thu nợ người thân', 'icon' => '🏡', 'category_group' => 'debt_collection'],
                 ],
+            ],
+            [
+                'name' => 'Đầu tư', 'icon' => '📈', 'color' => '#15803d',
+                'children' => [
+                    ['name' => 'Lãi tiết kiệm', 'icon' => '🏦'],
+                    ['name' => 'Cổ tức & Lợi nhuận', 'icon' => '📈'],
+                    ['name' => 'Thu nhập từ cho thuê', 'icon' => '🏢'],
+                ],
+            ],
+            [
+                'name' => 'Trợ cấp & Hỗ trợ', 'icon' => '🤲', 'color' => '#fbbf24',
+            ],
+            [
+                'name' => 'Hoàn tiền & Cashback', 'icon' => '🪙', 'color' => '#a7f3d0',
             ],
             [
                 'name' => 'Thu nhập khác', 'icon' => '💰', 'color' => '#64748b',

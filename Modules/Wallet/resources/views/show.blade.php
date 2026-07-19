@@ -36,12 +36,15 @@
             @if(session('error'))
                 <div class="mb-6 p-4 bg-red-50/80 border border-red-200 text-red-700 rounded-xl text-sm font-medium shadow-sm">{{ session('error') }}</div>
             @endif
-
             <div class="glass-panel rounded-2xl border border-slate-200/60 shadow-sm bg-white/70 p-6 mb-8">
-                <dl class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <dl class="grid grid-cols-1 md:grid-cols-5 gap-6">
                     <div>
                         <dt class="text-xs font-bold text-slate-400 uppercase tracking-wider">{{ __('wallet.current_balance') }}</dt>
                         <dd class="mt-1 text-3xl font-extrabold text-primary-600 font-outfit">{{ number_format($currentBalance, 0, ',', '.') }} {{ $wallet->currency }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs font-bold text-slate-400 uppercase tracking-wider">{{ __('wallet.total_spent') }}</dt>
+                        <dd class="mt-1 text-3xl font-extrabold text-red-500 font-outfit">{{ number_format($totalSpentAllTime, 0, ',', '.') }} {{ $wallet->currency }}</dd>
                     </div>
                     <div>
                         <dt class="text-xs font-bold text-slate-400 uppercase tracking-wider">{{ __('wallet.type_label') }}</dt>

@@ -33,6 +33,7 @@ return [
     'total_opening' => 'Total Opening Balance',
     'wallet_count' => 'Wallet Count',
     'current_balance' => 'Current Balance',
+    'total_spent' => 'Total Spent',
     'archive' => 'Archive',
     'recent_transactions' => 'Recent Transactions',
     'no_transactions' => 'No transactions yet for this wallet.',

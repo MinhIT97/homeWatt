@@ -178,12 +178,18 @@ class WalletController extends Controller
         $totalTransferOut = (float) $transfersOut->sum('amount');
         $totalTransferIn = (float) $transfersIn->sum('amount');
 
+        $totalSpentAllTime = (float) $wallet->expenses()
+            ->where('type', \Modules\Expense\Models\Expense::TYPE_EXPENSE)
+            ->whereNull('transfer_id')
+            ->sum('amount');
+
         // Group by date Y-m-d
         $groupedExpenses = $recentExpenses->groupBy(fn ($item) => $item['occurred_at']->format('Y-m-d'));
 
         return view('wallet::show', compact(
             'wallet',
             'currentBalance',
+            'totalSpentAllTime',
             'groupedExpenses',
             'totalSpent',
             'totalIncome',
