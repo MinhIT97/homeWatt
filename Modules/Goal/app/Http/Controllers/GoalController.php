@@ -114,7 +114,6 @@ class GoalController extends Controller
         }
 
         $validated = $request->validate([
-            'home_id' => 'required|exists:homes,id',
             'name' => 'required|string|max:255',
             'type' => 'required|in:savings,debt_payoff,energy_reduction,expense_limit,income_target',
             'target_amount' => 'required|numeric|min:0',
@@ -122,14 +121,14 @@ class GoalController extends Controller
             'ends_at' => 'required|date|after:starts_at',
             'icon' => 'nullable|string|max:10',
             'color' => 'nullable|string|max:7',
-            'category_id' => ['nullable', Rule::exists('expense_categories', 'id')->where('home_id', $request->input('home_id'))],
-            'wallet_id' => ['nullable', Rule::exists('wallets', 'id')->where('home_id', $request->input('home_id'))],
+            'category_id' => ['nullable', Rule::exists('expense_categories', 'id')->where('home_id', $goal->home_id)],
+            'wallet_id' => ['nullable', Rule::exists('wallets', 'id')->where('home_id', $goal->home_id)],
             'status' => 'nullable|in:active,completed,cancelled',
         ]);
 
         $goal->update($validated);
 
-        return redirect()->route('goal.index', ['home_id' => $validated['home_id']])
+        return redirect()->route('goal.index', ['home_id' => $goal->home_id])
             ->with('success', 'Mục tiêu đã được cập nhật.');
     }
 

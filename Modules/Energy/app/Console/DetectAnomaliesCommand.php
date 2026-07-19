@@ -4,7 +4,6 @@ namespace Modules\Energy\Console;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Notification;
 use Modules\Energy\Services\AnomalyDetector;
 use Modules\Home\Models\Home;
 

@@ -47,8 +47,19 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     Route::delete('transfers/{transfer}', [TransferController::class, 'destroy'])->name('transfers.destroy');
 
     // Reports
+    Route::get('reports', [ExpenseReportController::class, 'summary'])->name('reports.index');
+    Route::get('reports/summary', [ExpenseReportController::class, 'summary'])->name('reports.summary');
     Route::get('reports/monthly', [ExpenseReportController::class, 'monthly'])->name('reports.monthly');
     Route::get('reports/category', [ExpenseReportController::class, 'byCategory'])->name('reports.category');
+    Route::get('reports/cashflow', [ExpenseReportController::class, 'cashflow'])->name('reports.cashflow');
+    Route::get('reports/trend', [ExpenseReportController::class, 'trend'])->name('reports.trend');
+    Route::get('reports/year-comparison', [ExpenseReportController::class, 'yearComparison'])->name('reports.year-comparison');
+    Route::get('reports/networth', [ExpenseReportController::class, 'networth'])->name('reports.networth');
+
+    // Report Exports
+    Route::get('reports/export/pdf', [ExpenseReportController::class, 'exportPdfForm'])->name('reports.export.pdf-form');
+    Route::get('reports/export/pdf/download', [ExpenseReportController::class, 'exportPdf'])->name('reports.export.pdf');
+    Route::get('reports/export/excel', [ExpenseReportController::class, 'exportExcel'])->name('reports.export.excel');
 
     // Budgets
     Route::get('budgets', [BudgetController::class, 'index'])->name('budgets.index');
