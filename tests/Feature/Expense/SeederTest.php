@@ -7,7 +7,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Expense\Database\Seeders\DefaultCategoriesSeeder;
 use Modules\Expense\Database\Seeders\ExpenseDemoDataSeeder;
 use Modules\Expense\Models\Expense;
-use Modules\Expense\Models\ExpenseCategory;
 use Modules\Expense\Models\Transfer;
 use Modules\Home\Models\Home;
 use Modules\Wallet\Models\Wallet;

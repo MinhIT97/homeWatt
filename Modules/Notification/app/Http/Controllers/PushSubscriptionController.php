@@ -16,29 +16,29 @@ class PushSubscriptionController extends Controller
     public function subscribe(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'endpoint'         => ['required', 'string', 'max:500'],
-            'public_key'       => ['required', 'string', 'max:255'],
-            'auth_token'       => ['required', 'string', 'max:255'],
+            'endpoint' => ['required', 'string', 'max:500'],
+            'public_key' => ['required', 'string', 'max:255'],
+            'auth_token' => ['required', 'string', 'max:255'],
             'content_encoding' => ['nullable', 'string', 'max:50'],
-            'user_agent'       => ['nullable', 'string', 'max:255'],
+            'user_agent' => ['nullable', 'string', 'max:255'],
         ]);
 
         $subscription = PushSubscription::updateOrCreate(
             [
-                'user_id'  => $request->user()->id,
+                'user_id' => $request->user()->id,
                 'endpoint' => $validated['endpoint'],
             ],
             [
-                'public_key'       => $validated['public_key'],
-                'auth_token'       => $validated['auth_token'],
+                'public_key' => $validated['public_key'],
+                'auth_token' => $validated['auth_token'],
                 'content_encoding' => $validated['content_encoding'] ?? 'aesgcm',
-                'user_agent'       => $validated['user_agent'] ?? $request->userAgent(),
-                'last_used_at'     => now(),
+                'user_agent' => $validated['user_agent'] ?? $request->userAgent(),
+                'last_used_at' => now(),
             ]
         );
 
         return response()->json([
-            'message'      => 'Push subscription saved.',
+            'message' => 'Push subscription saved.',
             'subscription' => $subscription,
         ], 201);
     }

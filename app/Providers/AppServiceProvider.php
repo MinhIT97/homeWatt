@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Modules\Device\Models\Device;
 use Modules\Home\Models\Home;
@@ -21,7 +22,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         if (str_starts_with(config('app.url'), 'https://')) {
-            \Illuminate\Support\Facades\URL::forceScheme('https');
+            URL::forceScheme('https');
         }
 
         Gate::policy(Media::class, MediaPolicy::class);

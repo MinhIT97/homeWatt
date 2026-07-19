@@ -3,7 +3,6 @@
 namespace Modules\Expense\Imports;
 
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Modules\Expense\Imports\Parsers\BankParser;
 use Modules\Expense\Imports\Parsers\MomoParser;

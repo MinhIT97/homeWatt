@@ -3,12 +3,11 @@
 namespace Modules\Automation\Services;
 
 use App\Models\User;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Modules\Automation\Models\AutomationRule;
 use Modules\Expense\Models\Expense;
-use Modules\Expense\Models\ExpenseCategory;
 use Modules\Notification\Services\NotificationService;
-use Modules\Wallet\Models\Wallet;
 
 class ActionExecutor
 {
@@ -63,16 +62,20 @@ class ActionExecutor
     private function addNote(array $config, array $context): array
     {
         $expenseId = $context['expense_id'] ?? null;
-        if (! $expenseId) return ['ok' => false, 'error' => 'No expense_id in context'];
+        if (! $expenseId) {
+            return ['ok' => false, 'error' => 'No expense_id in context'];
+        }
 
         $expense = Expense::find($expenseId);
-        if (! $expense) return ['ok' => false, 'error' => 'Expense not found'];
+        if (! $expense) {
+            return ['ok' => false, 'error' => 'Expense not found'];
+        }
 
         $note = $config['text'] ?? '';
         $append = $config['append'] ?? true;
 
         $newNotes = $append
-            ? trim(($expense->notes ? $expense->notes . ' | ' : '') . $note)
+            ? trim(($expense->notes ? $expense->notes.' | ' : '').$note)
             : $note;
 
         $expense->forceFill(['notes' => $newNotes])->save();
@@ -88,10 +91,14 @@ class ActionExecutor
     {
         $expenseId = $context['expense_id'] ?? null;
         $categoryId = $config['category_id'] ?? null;
-        if (! $expenseId || ! $categoryId) return ['ok' => false, 'error' => 'Missing expense_id or category_id'];
+        if (! $expenseId || ! $categoryId) {
+            return ['ok' => false, 'error' => 'Missing expense_id or category_id'];
+        }
 
         $expense = Expense::find($expenseId);
-        if (! $expense) return ['ok' => false, 'error' => 'Expense not found'];
+        if (! $expense) {
+            return ['ok' => false, 'error' => 'Expense not found'];
+        }
 
         $expense->forceFill(['category_id' => (int) $categoryId])->save();
 
@@ -106,13 +113,17 @@ class ActionExecutor
     {
         $expenseId = $context['expense_id'] ?? null;
         $tag = $config['tag'] ?? '';
-        if (! $expenseId || ! $tag) return ['ok' => false, 'error' => 'Missing expense_id or tag'];
+        if (! $expenseId || ! $tag) {
+            return ['ok' => false, 'error' => 'Missing expense_id or tag'];
+        }
 
         $expense = Expense::find($expenseId);
-        if (! $expense) return ['ok' => false, 'error' => 'Expense not found'];
+        if (! $expense) {
+            return ['ok' => false, 'error' => 'Expense not found'];
+        }
 
         $existingRef = $expense->reference ?: '';
-        $newRef = $existingRef ? $existingRef . ', ' . $tag : $tag;
+        $newRef = $existingRef ? $existingRef.', '.$tag : $tag;
         $expense->forceFill(['reference' => $newRef])->save();
 
         return ['expense_id' => $expense->id, 'tag' => $tag];
@@ -128,7 +139,9 @@ class ActionExecutor
         $data = array_merge($context, $config['data'] ?? []);
 
         $user = User::find($rule->user_id);
-        if (! $user) return ['ok' => false, 'error' => 'User not found'];
+        if (! $user) {
+            return ['ok' => false, 'error' => 'User not found'];
+        }
 
         $this->notificationService->send($template, $user, $data, $rule->home_id);
 
@@ -142,22 +155,28 @@ class ActionExecutor
     private function sendTelegram(array $config, AutomationRule $rule, array $context): array
     {
         $text = $config['text'] ?? '';
-        if (empty($text)) return ['ok' => false, 'error' => 'No text configured'];
+        if (empty($text)) {
+            return ['ok' => false, 'error' => 'No text configured'];
+        }
 
         $token = config('services.telegram.bot_token');
-        if (empty($token)) return ['ok' => false, 'error' => 'Telegram token not configured'];
+        if (empty($token)) {
+            return ['ok' => false, 'error' => 'Telegram token not configured'];
+        }
 
         $user = User::find($rule->user_id);
-        if (! $user || ! $user->telegram_chat_id) return ['ok' => false, 'error' => 'User not linked to Telegram'];
+        if (! $user || ! $user->telegram_chat_id) {
+            return ['ok' => false, 'error' => 'User not linked to Telegram'];
+        }
 
         // Replace variables in text
         foreach ($context as $key => $value) {
             if (is_scalar($value)) {
-                $text = str_replace('{{' . $key . '}}', (string) $value, $text);
+                $text = str_replace('{{'.$key.'}}', (string) $value, $text);
             }
         }
 
-        \Illuminate\Support\Facades\Http::timeout(5)
+        Http::timeout(5)
             ->post("https://api.telegram.org/bot{$token}/sendMessage", [
                 'chat_id' => $user->telegram_chat_id,
                 'text' => $text,

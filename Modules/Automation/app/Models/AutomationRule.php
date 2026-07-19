@@ -5,6 +5,7 @@ namespace Modules\Automation\Models;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Modules\Home\Models\Home;
 
 class AutomationRule extends Model
@@ -38,7 +39,7 @@ class AutomationRule extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function logs(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function logs(): HasMany
     {
         return $this->hasMany(AutomationLog::class, 'rule_id');
     }

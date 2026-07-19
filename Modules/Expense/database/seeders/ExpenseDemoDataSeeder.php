@@ -49,7 +49,7 @@ class ExpenseDemoDataSeeder extends Seeder
 
         // 3. Populate default categories for this home
         // This will update/create all default categories (including the newly added ones)
-        $categoriesSeeder = new DefaultCategoriesSeeder();
+        $categoriesSeeder = new DefaultCategoriesSeeder;
         $categoriesSeeder->run();
 
         // 4. Ensure wallets exist for this home
@@ -100,7 +100,7 @@ class ExpenseDemoDataSeeder extends Seeder
 
         // Cache category IDs for this home to avoid query overhead
         $categories = ExpenseCategory::where('home_id', $home->id)->get()->keyBy(function ($item) {
-            return $item->type . '_' . $item->name;
+            return $item->type.'_'.$item->name;
         });
 
         // 5. Generate mock data for the last 90 days
@@ -398,7 +398,7 @@ class ExpenseDemoDataSeeder extends Seeder
 
     private function getCategory($categories, $name, $type)
     {
-        $key = $type . '_' . $name;
+        $key = $type.'_'.$name;
         if ($categories->has($key)) {
             return $categories->get($key)->id;
         }
@@ -409,6 +409,7 @@ class ExpenseDemoDataSeeder extends Seeder
         }
 
         $fallback = ExpenseCategory::where('type', $type)->first();
+
         return $fallback ? $fallback->id : null;
     }
 }

@@ -7,6 +7,7 @@ use App\Support\AuditLogger;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Modules\Automation\Services\AutomationEngine;
 use Modules\Energy\Models\EnergyBill;
 use Modules\Expense\Models\Expense;
 use Modules\Expense\Models\ExpenseBudget;
@@ -42,7 +43,7 @@ class ExpenseService
 
             // Run automation rules
             try {
-                app(\Modules\Automation\Services\AutomationEngine::class)->run('expense.created', [
+                app(AutomationEngine::class)->run('expense.created', [
                     'home_id' => $expense->home_id,
                     'expense_id' => $expense->id,
                     'amount' => (float) $expense->amount,
@@ -111,7 +112,7 @@ class ExpenseService
 
             // Run automation rules
             try {
-                app(\Modules\Automation\Services\AutomationEngine::class)->run('expense.updated', [
+                app(AutomationEngine::class)->run('expense.updated', [
                     'home_id' => $locked->home_id,
                     'expense_id' => $locked->id,
                     'amount' => (float) $locked->amount,

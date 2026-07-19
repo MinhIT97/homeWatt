@@ -3,6 +3,7 @@
 namespace Modules\Energy\Console;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Modules\Energy\Services\AnomalyDetector;
 use Modules\Home\Models\Home;
@@ -33,8 +34,8 @@ class DetectAnomaliesCommand extends Command
                 $totalAnomalies += count($result['device_anomalies']);
                 $totalSpikes += count($result['hourly_spikes']);
 
-                $this->info("  Device anomalies: ".count($result['device_anomalies']));
-                $this->info("  Hourly spikes: ".count($result['hourly_spikes']));
+                $this->info('  Device anomalies: '.count($result['device_anomalies']));
+                $this->info('  Hourly spikes: '.count($result['hourly_spikes']));
 
                 // Log high severity anomalies
                 foreach ($result['device_anomalies'] as $anomaly) {
@@ -101,14 +102,14 @@ class DetectAnomaliesCommand extends Command
 
         $message = "⚡ *CẢNH BÁO BẤT THƯỜNG NĂNG LƯỢNG*\n\n"
             ."Nhà: *{$home->name}*\n"
-            ."Số thiết bị bất thường: *".count($highSeverity)."*\n"
+            .'Số thiết bị bất thường: *'.count($highSeverity)."*\n"
             ."Thiết bị: *{$deviceList}*\n\n"
             ."Vui lòng kiểm tra dashboard để biết chi tiết và nhận đề xuất khắc phục.\n"
             .'[Xem Dashboard]('.route('dashboard', ['home_id' => $home->id]).')';
 
         foreach ($users as $member) {
             try {
-                \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/sendMessage", [
+                Http::post("https://api.telegram.org/bot{$token}/sendMessage", [
                     'chat_id' => $member->user->telegram_chat_id,
                     'text' => $message,
                     'parse_mode' => 'Markdown',

@@ -8,6 +8,7 @@ use Modules\Goal\Models\Goal;
 class SnapshotGoals extends Command
 {
     protected $signature = 'goals:snapshot';
+
     protected $description = 'Take daily snapshots of active goals';
 
     public function handle(): void

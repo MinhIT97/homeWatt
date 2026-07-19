@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Modules\Expense\Models\Expense;
+use Modules\Expense\Models\ExpenseCategory;
 
 class ReceiptController extends Controller
 {
@@ -34,7 +35,7 @@ class ReceiptController extends Controller
 
         $receipts = $query->paginate(20)->withQueryString();
 
-        $categories = \Modules\Expense\Models\ExpenseCategory::whereIn('home_id', $homeIds)
+        $categories = ExpenseCategory::whereIn('home_id', $homeIds)
             ->where('type', 'expense')
             ->orderBy('name')
             ->get();

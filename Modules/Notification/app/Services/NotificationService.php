@@ -55,10 +55,10 @@ class NotificationService
 
         match ($channel) {
             'telegram' => $this->sendTelegram($user, $rendered['body'] ?? ''),
-            'in_app'   => $this->createInApp($user, $template, $rendered, $homeId, $data),
-            'push'     => $this->sendPush($user, $rendered),
-            'mail'     => $this->sendMail($user, $rendered),
-            default    => null,
+            'in_app' => $this->createInApp($user, $template, $rendered, $homeId, $data),
+            'push' => $this->sendPush($user, $rendered),
+            'mail' => $this->sendMail($user, $rendered),
+            default => null,
         };
     }
 
@@ -69,10 +69,10 @@ class NotificationService
     {
         $body = match ($channel) {
             'telegram' => $template->telegram_body,
-            'push'     => $template->push_body,
-            'mail'     => $template->mail_body,
-            'in_app'   => $template->push_body,
-            default    => $template->push_body,
+            'push' => $template->push_body,
+            'mail' => $template->mail_body,
+            'in_app' => $template->push_body,
+            default => $template->push_body,
         };
 
         $title = match ($channel) {
@@ -83,8 +83,8 @@ class NotificationService
 
         foreach ($data as $key => $value) {
             if (is_scalar($value)) {
-                $body = str_replace('{{' . $key . '}}', (string) $value, $body ?? '');
-                $title = str_replace('{{' . $key . '}}', (string) $value, $title ?? '');
+                $body = str_replace('{{'.$key.'}}', (string) $value, $body ?? '');
+                $title = str_replace('{{'.$key.'}}', (string) $value, $title ?? '');
             }
         }
 
@@ -102,14 +102,14 @@ class NotificationService
         array $data
     ): void {
         NotificationModel::create([
-            'user_id'       => $user->id,
-            'home_id'       => $homeId,
+            'user_id' => $user->id,
+            'home_id' => $homeId,
             'template_code' => $template->code,
-            'channel'       => 'in_app',
-            'title'         => $rendered['title'],
-            'body'          => $rendered['body'],
-            'data'          => $data,
-            'sent_at'       => now(),
+            'channel' => 'in_app',
+            'title' => $rendered['title'],
+            'body' => $rendered['body'],
+            'data' => $data,
+            'sent_at' => now(),
         ]);
     }
 
@@ -132,8 +132,8 @@ class NotificationService
 
         Http::timeout(5)
             ->post("https://api.telegram.org/bot{$token}/sendMessage", [
-                'chat_id'    => $user->telegram_chat_id,
-                'text'       => $body,
+                'chat_id' => $user->telegram_chat_id,
+                'text' => $body,
                 'parse_mode' => 'Markdown',
             ]);
     }
@@ -164,8 +164,8 @@ class NotificationService
         }
 
         Log::info('Push notification queued', [
-            'user_id'            => $user->id,
-            'title'              => $rendered['title'],
+            'user_id' => $user->id,
+            'title' => $rendered['title'],
             'subscription_count' => $subscriptions->count(),
         ]);
 

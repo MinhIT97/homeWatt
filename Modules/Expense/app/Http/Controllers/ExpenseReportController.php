@@ -96,13 +96,13 @@ class ExpenseReportController extends Controller
 
         if ($view === 'daily') {
             $rows = (clone $query)
-                ->selectRaw("DATE(occurred_at) as period, type, SUM(amount) as total")
+                ->selectRaw('DATE(occurred_at) as period, type, SUM(amount) as total')
                 ->groupByRaw('DATE(occurred_at), type')
                 ->orderBy('period')
                 ->get();
         } else {
             $rows = (clone $query)
-                ->selectRaw("MONTH(occurred_at) as period, type, SUM(amount) as total")
+                ->selectRaw('MONTH(occurred_at) as period, type, SUM(amount) as total')
                 ->groupByRaw('MONTH(occurred_at), type')
                 ->orderBy('period')
                 ->get();
@@ -133,7 +133,7 @@ class ExpenseReportController extends Controller
             if ($view === 'daily') {
                 $labels[] = Carbon::parse($period)->format('d/m');
             } else {
-                $labels[] = 'T' . (int) $period;
+                $labels[] = 'T'.(int) $period;
             }
         }
 
@@ -216,7 +216,7 @@ class ExpenseReportController extends Controller
         return [
             'datasets' => $datasets,
             'monthly_totals' => array_map(fn ($v) => round($v, 2), $monthlyTotals),
-            'labels' => array_map(fn ($m) => 'T' . $m, range(1, 12)),
+            'labels' => array_map(fn ($m) => 'T'.$m, range(1, 12)),
             'year_total' => round(array_sum($monthlyTotals), 2),
         ];
     }
@@ -276,7 +276,7 @@ class ExpenseReportController extends Controller
 
         return [
             'years' => $result,
-            'labels' => array_map(fn ($m) => 'T' . $m, range(1, 12)),
+            'labels' => array_map(fn ($m) => 'T'.$m, range(1, 12)),
         ];
     }
 
@@ -469,7 +469,9 @@ class ExpenseReportController extends Controller
     public function exportPdf(Request $request): Response
     {
         $home = $this->resolveHome($request);
-        if (! $home) abort(404);
+        if (! $home) {
+            abort(404);
+        }
 
         $type = $request->get('type', 'summary');
         $year = (int) $request->get('year', now()->year);
@@ -512,7 +514,9 @@ class ExpenseReportController extends Controller
     public function exportExcel(Request $request)
     {
         $home = $this->resolveHome($request);
-        if (! $home) abort(404);
+        if (! $home) {
+            abort(404);
+        }
 
         $year = (int) $request->get('year', now()->year);
         $month = (int) $request->get('month', now()->month);
@@ -559,7 +563,9 @@ class ExpenseReportController extends Controller
         $dailyMap = [];
         foreach ($dailyRows as $row) {
             $key = $row->date;
-            if (! isset($dailyMap[$key])) $dailyMap[$key] = ['income' => 0.0, 'expense' => 0.0];
+            if (! isset($dailyMap[$key])) {
+                $dailyMap[$key] = ['income' => 0.0, 'expense' => 0.0];
+            }
             $dailyMap[$key][$row->type] = (float) $row->total;
         }
 

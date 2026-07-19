@@ -23,7 +23,7 @@ class NotificationPreferenceController extends Controller
             ->keyBy('template_code');
 
         return view('notification::preferences', [
-            'templates'   => $templates,
+            'templates' => $templates,
             'preferences' => $preferences,
         ]);
     }
@@ -34,21 +34,21 @@ class NotificationPreferenceController extends Controller
     public function update(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'preferences'                 => ['required', 'array'],
+            'preferences' => ['required', 'array'],
             'preferences.*.template_code' => ['required', 'string', 'exists:notification_templates,code'],
-            'preferences.*.channels'      => ['required', 'array'],
-            'preferences.*.channels.*'    => ['string', 'in:mail,telegram,push,in_app'],
-            'preferences.*.is_enabled'    => ['required', 'boolean'],
+            'preferences.*.channels' => ['required', 'array'],
+            'preferences.*.channels.*' => ['string', 'in:mail,telegram,push,in_app'],
+            'preferences.*.is_enabled' => ['required', 'boolean'],
         ]);
 
         foreach ($validated['preferences'] as $pref) {
             UserNotificationPreference::updateOrCreate(
                 [
-                    'user_id'       => $request->user()->id,
+                    'user_id' => $request->user()->id,
                     'template_code' => $pref['template_code'],
                 ],
                 [
-                    'channels'   => $pref['channels'],
+                    'channels' => $pref['channels'],
                     'is_enabled' => $pref['is_enabled'],
                 ]
             );

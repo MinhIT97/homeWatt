@@ -2,11 +2,6 @@
 
 namespace Modules\Automation\Services;
 
-use Modules\Automation\Models\AutomationLog;
-use Modules\Automation\Models\AutomationRule;
-use Modules\Expense\Models\Expense;
-use Modules\Notification\Services\NotificationService;
-
 class ConditionEvaluator
 {
     /**
@@ -37,8 +32,8 @@ class ConditionEvaluator
         $actualValue = $context[$field] ?? null;
 
         return match ($operator) {
-            '>'  => (float) $actualValue > (float) $expectedValue,
-            '<'  => (float) $actualValue < (float) $expectedValue,
+            '>' => (float) $actualValue > (float) $expectedValue,
+            '<' => (float) $actualValue < (float) $expectedValue,
             '>=' => (float) $actualValue >= (float) $expectedValue,
             '<=' => (float) $actualValue <= (float) $expectedValue,
             '==' => $this->looseEqual($actualValue, $expectedValue),

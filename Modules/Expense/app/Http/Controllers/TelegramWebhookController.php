@@ -1255,7 +1255,7 @@ class TelegramWebhookController extends Controller
 
         // Save the photo as a Media record
         $imageContent = $imageResponse->body();
-        $storedPath = 'media/receipts/' . date('Y/m') . '/' . Str::uuid() . '.jpg';
+        $storedPath = 'media/receipts/'.date('Y/m').'/'.Str::uuid().'.jpg';
         Storage::disk('private')->put($storedPath, $imageContent);
         $media = Media::create([
             'owner_type' => Expense::class,

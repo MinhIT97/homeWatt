@@ -184,16 +184,11 @@ class AnomalyDetector
         $deviceName = mb_strtolower($device->name, 'UTF-8');
 
         $base = match (true) {
-            str_contains($deviceName, 'máy lạnh') || str_contains($deviceName, 'điều hòa') || $slug === 'air_conditioner'
-                => 'Máy lạnh tiêu thụ cao hơn bình thường. Vệ sinh lưới lọc và kiểm tra gas.',
-            str_contains($deviceName, 'tủ lạnh') || $slug === 'refrigerator'
-                => 'Tủ lạnh hao điện bất thường. Kiểm tra gioăng cửa và dàn nóng.',
-            str_contains($deviceName, 'nóng') || str_contains($deviceName, 'heater') || $slug === 'water_heater'
-                => 'Bình nóng lạnh tiêu thụ cao bất thường. Kiểm tra thanh đốt và cặn bám.',
-            str_contains($deviceName, 'máy giặt') || $slug === 'washing_machine'
-                => 'Máy giặt tiêu thụ cao hơn bình thường. Kiểm tra lồng giặt và chế độ vận hành.',
-            str_contains($deviceName, 'bơm') || $slug === 'pump'
-                => 'Máy bơm hoạt động bất thường. Kiểm tra rò rỉ đường ống hoặc van một chiều.',
+            str_contains($deviceName, 'máy lạnh') || str_contains($deviceName, 'điều hòa') || $slug === 'air_conditioner' => 'Máy lạnh tiêu thụ cao hơn bình thường. Vệ sinh lưới lọc và kiểm tra gas.',
+            str_contains($deviceName, 'tủ lạnh') || $slug === 'refrigerator' => 'Tủ lạnh hao điện bất thường. Kiểm tra gioăng cửa và dàn nóng.',
+            str_contains($deviceName, 'nóng') || str_contains($deviceName, 'heater') || $slug === 'water_heater' => 'Bình nóng lạnh tiêu thụ cao bất thường. Kiểm tra thanh đốt và cặn bám.',
+            str_contains($deviceName, 'máy giặt') || $slug === 'washing_machine' => 'Máy giặt tiêu thụ cao hơn bình thường. Kiểm tra lồng giặt và chế độ vận hành.',
+            str_contains($deviceName, 'bơm') || $slug === 'pump' => 'Máy bơm hoạt động bất thường. Kiểm tra rò rỉ đường ống hoặc van một chiều.',
             default => $severity === 'high'
                 ? 'Thiết bị đang tiêu thụ điện cao hơn nhiều so với mức trung bình. Cân nhắc kiểm tra, bảo trì.'
                 : 'Thiết bị đang tiêu thụ điện hơi cao hơn mức trung bình. Cân nhắc kiểm tra.',

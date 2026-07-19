@@ -8,6 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
+use Modules\Energy\Models\EnergyReading;
+use Modules\Expense\Models\Expense;
 use Modules\Expense\Models\ExpenseCategory;
 use Modules\Home\Models\Home;
 use Modules\Wallet\Models\Wallet;
@@ -97,13 +100,13 @@ class Goal extends Model
 
     private function calculateSavings($now): float
     {
-        $income = (float) \Modules\Expense\Models\Expense::where('home_id', $this->home_id)
+        $income = (float) Expense::where('home_id', $this->home_id)
             ->where('type', 'income')
             ->whereNull('transfer_id')
             ->whereBetween('occurred_at', [$this->starts_at->startOfDay(), $this->ends_at->endOfDay()])
             ->sum('amount');
 
-        $expense = (float) \Modules\Expense\Models\Expense::where('home_id', $this->home_id)
+        $expense = (float) Expense::where('home_id', $this->home_id)
             ->where('type', 'expense')
             ->whereNull('transfer_id')
             ->whereBetween('occurred_at', [$this->starts_at->startOfDay(), $this->ends_at->endOfDay()])
@@ -114,12 +117,12 @@ class Goal extends Model
 
     private function calculateDebtPayoff($now): float
     {
-        $debtCategoryIds = \Illuminate\Support\Facades\DB::table('expense_categories')
+        $debtCategoryIds = DB::table('expense_categories')
             ->where('home_id', $this->home_id)
-            ->whereIn('category_group', \Modules\Expense\Models\ExpenseCategory::DEBT_GROUPS)
+            ->whereIn('category_group', ExpenseCategory::DEBT_GROUPS)
             ->pluck('id');
 
-        return (float) \Modules\Expense\Models\Expense::where('home_id', $this->home_id)
+        return (float) Expense::where('home_id', $this->home_id)
             ->where('type', 'expense')
             ->whereNull('transfer_id')
             ->whereIn('category_id', $debtCategoryIds->all())
@@ -130,19 +133,19 @@ class Goal extends Model
     private function calculateEnergyReduction($now): float
     {
         // Total kWh consumed during the goal period (compared to a baseline)
-        $deviceIds = \Illuminate\Support\Facades\DB::table('devices')
+        $deviceIds = DB::table('devices')
             ->join('rooms', 'rooms.id', '=', 'devices.room_id')
             ->where('rooms.home_id', $this->home_id)
             ->pluck('devices.id');
 
-        return (float) \Modules\Energy\Models\EnergyReading::whereIn('device_id', $deviceIds->all())
+        return (float) EnergyReading::whereIn('device_id', $deviceIds->all())
             ->whereBetween('recorded_at', [$this->starts_at->startOfDay(), $this->ends_at->endOfDay()])
             ->sum('kwh');
     }
 
     private function calculateExpenseLimit($now): float
     {
-        $query = \Modules\Expense\Models\Expense::where('home_id', $this->home_id)
+        $query = Expense::where('home_id', $this->home_id)
             ->where('type', 'expense')
             ->whereNull('transfer_id')
             ->whereBetween('occurred_at', [$this->starts_at->startOfDay(), $this->ends_at->endOfDay()]);
@@ -159,7 +162,7 @@ class Goal extends Model
 
     private function calculateIncomeTarget($now): float
     {
-        return (float) \Modules\Expense\Models\Expense::where('home_id', $this->home_id)
+        return (float) Expense::where('home_id', $this->home_id)
             ->where('type', 'income')
             ->whereNull('transfer_id')
             ->whereBetween('occurred_at', [$this->starts_at->startOfDay(), $this->ends_at->endOfDay()])

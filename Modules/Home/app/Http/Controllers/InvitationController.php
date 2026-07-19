@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
-use Modules\Home\Models\Home;
 use Modules\Home\Models\HomeInvitation;
 
 class InvitationController extends Controller

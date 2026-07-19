@@ -4,6 +4,7 @@ namespace Modules\Expense\Services;
 
 use App\Models\User;
 use App\Support\AuditLogger;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Modules\Expense\Models\Expense;
 use Modules\Expense\Models\ExpenseCategory;
@@ -185,7 +186,7 @@ class TransferService
                     'is_system' => true,
                 ]
             );
-        } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+        } catch (UniqueConstraintViolationException) {
             return ExpenseCategory::where('home_id', $homeId)
                 ->where('name', $name)
                 ->where('type', $type)
@@ -205,7 +206,7 @@ class TransferService
                     'is_system' => true,
                 ]
             );
-        } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+        } catch (UniqueConstraintViolationException) {
             return ExpenseCategory::where('home_id', $homeId)
                 ->where('name', 'Phí chuyển khoản')
                 ->where('type', Expense::TYPE_EXPENSE)

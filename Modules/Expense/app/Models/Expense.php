@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\Energy\Models\EnergyBill;
 use Modules\Home\Models\Home;
+use Modules\Media\Models\Media;
 use Modules\Wallet\Models\Wallet;
 
 class Expense extends Model
@@ -78,7 +79,7 @@ class Expense extends Model
 
     public function media(): BelongsTo
     {
-        return $this->belongsTo(\Modules\Media\Models\Media::class, 'media_id');
+        return $this->belongsTo(Media::class, 'media_id');
     }
 
     public function signedAmount(): float

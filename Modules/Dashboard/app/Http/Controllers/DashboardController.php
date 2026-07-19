@@ -9,9 +9,11 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Modules\Device\Models\Device;
+use Modules\Energy\Models\EnergyReading;
 use Modules\Energy\Models\MonthlyEnergySummary;
 use Modules\Energy\Services\AnomalyDetector;
 use Modules\Energy\Services\SavingSuggestion;
+use Modules\Expense\Models\Expense;
 use Modules\Expense\Models\ExpenseCategory;
 use Modules\Home\Models\Home;
 use Modules\Wallet\Models\Wallet;
@@ -279,14 +281,14 @@ class DashboardController extends Controller
                 ->get()
                 ->sum(fn ($w) => $w->netBalance());
 
-            $income = (float) \Modules\Expense\Models\Expense::where('home_id', $home->id)
+            $income = (float) Expense::where('home_id', $home->id)
                 ->where('type', 'income')
                 ->whereNull('transfer_id')
                 ->whereYear('occurred_at', $now->year)
                 ->whereMonth('occurred_at', $now->month)
                 ->sum('amount');
 
-            $expense = (float) \Modules\Expense\Models\Expense::where('home_id', $home->id)
+            $expense = (float) Expense::where('home_id', $home->id)
                 ->where('type', 'expense')
                 ->whereNull('transfer_id')
                 ->whereYear('occurred_at', $now->year)
@@ -294,7 +296,7 @@ class DashboardController extends Controller
                 ->sum('amount');
 
             $deviceIds = Device::whereHas('room', fn ($q) => $q->where('home_id', $home->id))->pluck('id');
-            $energyKwh = (float) \Modules\Energy\Models\EnergyReading::whereIn('device_id', $deviceIds)
+            $energyKwh = (float) EnergyReading::whereIn('device_id', $deviceIds)
                 ->whereYear('recorded_at', $now->year)
                 ->whereMonth('recorded_at', $now->month)
                 ->sum('kwh');

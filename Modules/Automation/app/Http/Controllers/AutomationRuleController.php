@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Modules\Automation\Models\AutomationRule;
 use Modules\Automation\Services\AutomationEngine;
+use Modules\Expense\Models\ExpenseCategory;
 use Modules\Home\Models\Home;
 
 class AutomationRuleController extends Controller
@@ -46,7 +47,7 @@ class AutomationRuleController extends Controller
 
         // Load categories for category-related actions
         $categories = $selectedHomeId
-            ? \Modules\Expense\Models\ExpenseCategory::where('home_id', $selectedHomeId)->orderBy('name')->get()
+            ? ExpenseCategory::where('home_id', $selectedHomeId)->orderBy('name')->get()
             : collect();
 
         return view('automation::create', compact('homes', 'events', 'actionTypes', 'categories', 'selectedHomeId'));
@@ -58,7 +59,7 @@ class AutomationRuleController extends Controller
             'home_id' => 'required|exists:homes,id',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:500',
-            'trigger_event' => 'required|string|in:' . implode(',', array_keys(AutomationEngine::EVENTS)),
+            'trigger_event' => 'required|string|in:'.implode(',', array_keys(AutomationEngine::EVENTS)),
             'is_active' => 'boolean',
             'priority' => 'nullable|integer|min:0|max:999',
             'conditions' => 'nullable|json',
@@ -94,7 +95,7 @@ class AutomationRuleController extends Controller
 
         $events = AutomationEngine::EVENTS;
         $actionTypes = AutomationEngine::ACTION_TYPES;
-        $categories = \Modules\Expense\Models\ExpenseCategory::where('home_id', $rule->home_id)->orderBy('name')->get();
+        $categories = ExpenseCategory::where('home_id', $rule->home_id)->orderBy('name')->get();
 
         return view('automation::edit', compact('rule', 'events', 'actionTypes', 'categories'));
     }
@@ -108,7 +109,7 @@ class AutomationRuleController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:500',
-            'trigger_event' => 'required|string|in:' . implode(',', array_keys(AutomationEngine::EVENTS)),
+            'trigger_event' => 'required|string|in:'.implode(',', array_keys(AutomationEngine::EVENTS)),
             'is_active' => 'boolean',
             'priority' => 'nullable|integer|min:0|max:999',
             'conditions' => 'nullable|json',

@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use Modules\Expense\Models\Expense;
 use Modules\Wallet\Http\Requests\StoreWalletRequest;
 use Modules\Wallet\Http\Requests\UpdateWalletRequest;
 use Modules\Wallet\Models\Wallet;
@@ -179,7 +180,7 @@ class WalletController extends Controller
         $totalTransferIn = (float) $transfersIn->sum('amount');
 
         $totalSpentAllTime = (float) $wallet->expenses()
-            ->where('type', \Modules\Expense\Models\Expense::TYPE_EXPENSE)
+            ->where('type', Expense::TYPE_EXPENSE)
             ->whereNull('transfer_id')
             ->sum('amount');
 

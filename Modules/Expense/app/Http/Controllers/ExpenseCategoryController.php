@@ -10,6 +10,7 @@ use Illuminate\View\View;
 use Modules\Expense\Http\Requests\StoreExpenseCategoryRequest;
 use Modules\Expense\Http\Requests\UpdateExpenseCategoryRequest;
 use Modules\Expense\Models\ExpenseCategory;
+use Modules\Home\Models\Home;
 
 class ExpenseCategoryController extends Controller
 {
@@ -47,7 +48,7 @@ class ExpenseCategoryController extends Controller
 
     public function store(StoreExpenseCategoryRequest $request): RedirectResponse
     {
-        $this->authorize('create', [ExpenseCategory::class, \Modules\Home\Models\Home::findOrFail($request->validated('home_id'))]);
+        $this->authorize('create', [ExpenseCategory::class, Home::findOrFail($request->validated('home_id'))]);
 
         $category = ExpenseCategory::create([
             ...$request->validated(),

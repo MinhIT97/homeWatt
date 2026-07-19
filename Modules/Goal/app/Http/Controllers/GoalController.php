@@ -9,7 +9,6 @@ use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Modules\Goal\Models\Goal;
 use Modules\Home\Models\Home;
-use Modules\Home\Models\HomeMember;
 
 class GoalController extends Controller
 {

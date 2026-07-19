@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\Device\Models\Device;
 use Modules\Energy\Models\EnergyBill;
+use Modules\Energy\Models\EnergyReading;
+use Modules\Expense\Models\Expense;
 use Modules\Room\Models\Room;
 
 class Home extends Model
@@ -115,17 +117,17 @@ class Home extends Model
         $lastYearStart = $currentStart->copy()->subYear();
         $lastYearEnd = $currentEnd->copy()->subYear();
 
-        $currentTotal = (float) \Modules\Expense\Models\Expense::where('home_id', $this->id)
+        $currentTotal = (float) Expense::where('home_id', $this->id)
             ->where('type', 'expense')->whereNull('transfer_id')
             ->whereBetween('occurred_at', [$currentStart, $currentEnd])
             ->sum('amount');
 
-        $lastMonthTotal = (float) \Modules\Expense\Models\Expense::where('home_id', $this->id)
+        $lastMonthTotal = (float) Expense::where('home_id', $this->id)
             ->where('type', 'expense')->whereNull('transfer_id')
             ->whereBetween('occurred_at', [$lastStart, $lastEnd])
             ->sum('amount');
 
-        $lastYearTotal = (float) \Modules\Expense\Models\Expense::where('home_id', $this->id)
+        $lastYearTotal = (float) Expense::where('home_id', $this->id)
             ->where('type', 'expense')->whereNull('transfer_id')
             ->whereBetween('occurred_at', [$lastYearStart, $lastYearEnd])
             ->sum('amount');
@@ -145,11 +147,11 @@ class Home extends Model
         $lastStart = $currentStart->copy()->subMonth();
         $lastEnd = $currentEnd->copy()->subMonth();
 
-        $currentKwh = (float) \Modules\Energy\Models\EnergyReading::whereHas(
+        $currentKwh = (float) EnergyReading::whereHas(
             'device.room', fn ($q) => $q->where('home_id', $this->id)
         )->whereBetween('recorded_at', [$currentStart, $currentEnd])->sum('kwh');
 
-        $lastKwh = (float) \Modules\Energy\Models\EnergyReading::whereHas(
+        $lastKwh = (float) EnergyReading::whereHas(
             'device.room', fn ($q) => $q->where('home_id', $this->id)
         )->whereBetween('recorded_at', [$lastStart, $lastEnd])->sum('kwh');
 

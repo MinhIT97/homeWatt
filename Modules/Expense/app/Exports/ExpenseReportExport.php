@@ -9,13 +9,14 @@ use Maatwebsite\Excel\Concerns\WithColumnWidths;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use Modules\Expense\Models\Expense;
 use Modules\Expense\Models\ExpenseCategory;
 use Modules\Expense\Models\Transfer;
 use Modules\Wallet\Models\Wallet;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class ExpenseReportExport implements FromArray, WithHeadings, WithTitle, ShouldAutoSize, WithStyles, WithColumnWidths
+class ExpenseReportExport implements FromArray, ShouldAutoSize, WithColumnWidths, WithHeadings, WithStyles, WithTitle
 {
     public function __construct(
         private int $homeId,
@@ -48,7 +49,7 @@ class ExpenseReportExport implements FromArray, WithHeadings, WithTitle, ShouldA
     public function styles(Worksheet $sheet): void
     {
         $sheet->getStyle('A1:F1')->getFont()->setBold(true);
-        $sheet->getStyle('A1:F1')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFE2E8F0');
+        $sheet->getStyle('A1:F1')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFE2E8F0');
     }
 
     public function array(): array
@@ -99,7 +100,7 @@ class ExpenseReportExport implements FromArray, WithHeadings, WithTitle, ShouldA
         $wallets = Wallet::where('home_id', $this->homeId)->where('is_archived', false)->get();
         $data[] = ['', '', '', '', '', ''];
         foreach ($wallets as $w) {
-            $data[] = ['SỐ DƯ VÍ: ' . $w->name, '', (float) $w->netBalance(), $w->type, '', ''];
+            $data[] = ['SỐ DƯ VÍ: '.$w->name, '', (float) $w->netBalance(), $w->type, '', ''];
         }
 
         return $data;
