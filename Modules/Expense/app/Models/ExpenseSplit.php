@@ -30,7 +30,9 @@ class ExpenseSplit extends Model
     ];
 
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_PARTIAL = 'partial';
+
     public const STATUS_SETTLED = 'settled';
 
     public function expense(): BelongsTo

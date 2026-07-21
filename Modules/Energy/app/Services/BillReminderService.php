@@ -2,7 +2,6 @@
 
 namespace Modules\Energy\Services;
 
-use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Modules\Energy\Models\EnergyBill;
@@ -59,7 +58,7 @@ class BillReminderService
                         [
                             'home_name' => $home->name,
                             'provider' => $bill->provider ?? 'Unknown',
-                            'amount' => number_format($bill->amount, 0, ',', '.') . ' ' . $bill->currency,
+                            'amount' => number_format($bill->amount, 0, ',', '.').' '.$bill->currency,
                             'due_date' => $bill->due_date ? Carbon::parse($bill->due_date)->format('d/m/Y') : 'N/A',
                             'billing_period' => $bill->billing_period ?? 'N/A',
                         ],
@@ -124,7 +123,7 @@ class BillReminderService
                         [
                             'home_name' => $home->name,
                             'provider' => $bill->provider ?? 'Unknown',
-                            'amount' => number_format($bill->amount, 0, ',', '.') . ' ' . $bill->currency,
+                            'amount' => number_format($bill->amount, 0, ',', '.').' '.$bill->currency,
                             'due_date' => Carbon::parse($bill->due_date)->format('d/m/Y'),
                             'days_overdue' => (string) $daysOverdue,
                             'billing_period' => $bill->billing_period ?? 'N/A',

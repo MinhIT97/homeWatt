@@ -4,6 +4,7 @@ namespace Modules\Expense\Services;
 
 use App\Models\User;
 use App\Support\AuditLogger;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Modules\Expense\Models\Expense;
 use Modules\Expense\Models\ExpenseSplit;
@@ -48,7 +49,7 @@ class ExpenseSplitService
     /**
      * Get all debts for a user in a home.
      *
-     * @return array{owes: \Illuminate\Support\Collection, owed_to_you: \Illuminate\Support\Collection}
+     * @return array{owes: Collection, owed_to_you: Collection}
      */
     public function getDebts(int $homeId, User $user): array
     {

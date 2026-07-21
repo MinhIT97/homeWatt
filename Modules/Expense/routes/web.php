@@ -2,12 +2,12 @@
 
 use Illuminate\Support\Facades\Route;
 use Modules\Expense\Http\Controllers\BudgetController;
+use Modules\Expense\Http\Controllers\DebtController;
 use Modules\Expense\Http\Controllers\ExpenseCategoryController;
 use Modules\Expense\Http\Controllers\ExpenseController;
 use Modules\Expense\Http\Controllers\ExpenseReportController;
 use Modules\Expense\Http\Controllers\QuickEntryController;
 use Modules\Expense\Http\Controllers\ReceiptController;
-use Modules\Expense\Http\Controllers\DebtController;
 use Modules\Expense\Http\Controllers\TransferController;
 
 Route::middleware(['web', 'auth', 'verified'])->group(function () {

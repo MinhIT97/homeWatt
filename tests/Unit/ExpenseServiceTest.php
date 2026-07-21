@@ -11,6 +11,7 @@ use Modules\Expense\Services\ExpenseService;
 use Modules\Home\Models\Home;
 use Modules\Home\Models\HomeMember;
 use Modules\Wallet\Models\Wallet;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 class ExpenseServiceTest extends TestCase
@@ -125,7 +126,7 @@ class ExpenseServiceTest extends TestCase
         $otherUser = User::factory()->create();
         ['wallet' => $otherWallet] = $this->setupHome($otherUser);
 
-        $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
+        $this->expectException(HttpException::class);
 
         $this->service->createExpense([
             'home_id' => $home->id,             // home A
@@ -263,7 +264,7 @@ class ExpenseServiceTest extends TestCase
             'transfer_id' => $transfer->id,
         ]);
 
-        $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
+        $this->expectException(HttpException::class);
 
         $this->service->deleteExpense($linkedExpense);
     }
@@ -305,7 +306,7 @@ class ExpenseServiceTest extends TestCase
             'transfer_id' => $transfer->id,
         ]);
 
-        $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
+        $this->expectException(HttpException::class);
 
         $this->service->updateExpense($linkedExpense, ['amount' => 50000]);
     }

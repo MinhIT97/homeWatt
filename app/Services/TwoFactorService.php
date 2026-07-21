@@ -3,14 +3,17 @@
 namespace App\Services;
 
 use App\Models\User;
-use Illuminate\Support\Facades\Log;
 
 class TwoFactorService
 {
     private const RECOVERY_CODE_COUNT = 8;
+
     private const RECOVERY_CODE_LENGTH = 10;
+
     private const TOTP_PERIOD = 30;
+
     private const TOTP_DIGITS = 6;
+
     private const TOTP_ALGORITHM = 'sha1';
 
     /**

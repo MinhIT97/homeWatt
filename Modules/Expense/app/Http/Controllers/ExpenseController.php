@@ -134,7 +134,7 @@ class ExpenseController extends Controller
             : collect();
 
         $members = $selectedHomeId
-            ? \Modules\Home\Models\Home::with(['members.user'])->find($selectedHomeId)?->members ?? collect()
+            ? Home::with(['members.user'])->find($selectedHomeId)?->members ?? collect()
             : collect();
 
         $expenseCats = $categories->where('type', 'expense')->whereNotIn('category_group', ExpenseCategory::DEBT_GROUPS);
